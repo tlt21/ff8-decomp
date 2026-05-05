@@ -77,6 +77,9 @@ extern s16 D_800DE4D0;
 extern s8 D_800DE4D2;
 extern s8 D_800DE4D3;
 extern s8 D_800DE4D4;
+extern Eline *D_800DE4F0;
+extern Eline *D_800DE4F4;
+extern Eline *D_800DE4F8;
 
 /**
  * @brief Pop a key item ID and store its value.
@@ -1419,7 +1422,103 @@ INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object7", func_800B79C8);
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object7", func_800B7D44);
 
-INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object7", func_800B7E78);
+/**
+ * @brief 3-party walk opcode handler.
+ *
+ * Pops 9 stack values (3 sets of XYZ coordinates), shifts each into Q19.12
+ * fixed-point, and dispatches movement (via func_800B7D44) to up to 3 active
+ * party-member entities looked up through D_800562C4->entityLookup[0..2].
+ * Sets the movement-active flag (bit 0) on each non-self entity. On
+ * subsequent ticks (when the activeMask bit is clear), waits for all
+ * dispatched entities to reach msgState == 2 (movement complete), then
+ * clears msgActive and the active flag and returns 2.
+ *
+ * @param eline Pointer to the event line (script context).
+ * @return 1 while still moving, 2 when all entities have completed.
+ */
+s32 func_800B7E78(Eline *eline) {
+    s32 z2, y2, x2, z1, y1, x1, z0, y0, x0;
+    Eline *e0, *e4, *e8;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        D_800DE4F8 = 0;
+        D_800DE4F4 = 0;
+        D_800DE4F0 = 0;
+
+        z2 = POP(eline) << 12;
+        y2 = POP(eline) << 12;
+        x2 = POP(eline) << 12;
+        z1 = POP(eline) << 12;
+        y1 = POP(eline) << 12;
+        x1 = POP(eline) << 12;
+        z0 = POP(eline) << 12;
+        y0 = POP(eline) << 12;
+        x0 = POP(eline) << 12;
+
+        if (D_800562C4->entityLookup[0] != 0xFF) {
+            D_800DE4F0 = &D_80085224[D_800562C4->entityLookup[0]];
+            func_800B7D44(D_800DE4F0, x0, y0, z0);
+            if (D_800562C4->entityLookup[0] != eline->field_0x256) {
+                D_800DE4F0->flags |= 1;
+            }
+        }
+
+        if (D_800562C4->entityLookup[1] != 0xFF) {
+            D_800DE4F4 = &D_80085224[D_800562C4->entityLookup[1]];
+            func_800B7D44(D_800DE4F4, x1, y1, z1);
+            if (D_800562C4->entityLookup[1] != eline->field_0x256) {
+                D_800DE4F4->flags |= 1;
+            }
+        }
+
+        if (D_800562C4->entityLookup[2] != 0xFF) {
+            D_800DE4F8 = &D_80085224[D_800562C4->entityLookup[2]];
+            func_800B7D44(D_800DE4F8, x2, y2, z2);
+            if (D_800562C4->entityLookup[2] != eline->field_0x256) {
+                D_800DE4F8->flags |= 1;
+            }
+        }
+
+        return 1;
+    }
+
+    if (D_800DE4F0->msgState == 2 && D_800DE4F0->field_0x24E != D_800DE4F0->field_0x24F) {
+        func_800B912C(D_800DE4F0, D_800DE4F0->field_0x24F);
+        D_800DE4F0->flags |= 0x8000;
+    }
+    if (D_800DE4F4->msgState == 2 && D_800DE4F4->field_0x24E != D_800DE4F4->field_0x24F) {
+        func_800B912C(D_800DE4F4, D_800DE4F4->field_0x24F);
+        D_800DE4F4->flags |= 0x8000;
+    }
+    if (D_800DE4F8->msgState == 2 && D_800DE4F8->field_0x24E != D_800DE4F8->field_0x24F) {
+        func_800B912C(D_800DE4F8, D_800DE4F8->field_0x24F);
+        D_800DE4F8->flags |= 0x8000;
+    }
+
+    if (D_800DE4F0 == 0 || D_800DE4F0->msgState == 2) {
+        if (D_800DE4F4 == 0 || D_800DE4F4->msgState == 2) {
+            if (D_800DE4F8 == 0 || D_800DE4F8->msgState == 2) {
+                e0 = D_800DE4F0;
+                if (e0 != 0) {
+                    e0->msgActive = 0;
+                    e0->flags &= ~1;
+                }
+                e4 = D_800DE4F4;
+                if (e4 != 0) {
+                    e4->msgActive = 0;
+                    e4->flags &= ~1;
+                }
+                e8 = D_800DE4F8;
+                if (e8 != 0) {
+                    e8->msgActive = 0;
+                    e8->flags &= ~1;
+                }
+                return 2;
+            }
+        }
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object7", func_800B8344);
 
