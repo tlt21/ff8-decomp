@@ -248,16 +248,7 @@ INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B8230);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B83B4);
 
-/** @brief Slot-state record at *D_800D226C (used by 0xFF28 / 0xFF2E handlers). */
-typedef struct {
-    /* 0x00 */ u8 pad00[0x74];
-    /* 0x74 */ u32 flags[2];      /**< 64-bit flag set, split into low/high u32. */
-    /* 0x7C */ u8 bytes[2];       /**< Action bytes selectable by 0xFF2E. */
-    /* 0x7E */ u8 pad7E[2];
-} Slot;
-
 extern u8 *D_800C96C8;
-extern Slot *D_800D226C;
 extern s32 D_800C4DBC;
 
 extern void func_8009B358(s32 a0, s32 a1, s32 a2);

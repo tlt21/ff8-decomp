@@ -15,7 +15,97 @@ void func_800AD690(void) {
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object6", func_800AD698);
 
-INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object6", func_800ADE24);
+/**
+ * @brief Walk the placement script and emit slot entries for FF13/FF14 ops.
+ *
+ * Reads the script returned by @c func_800AF004 (base @c D_800D2288) and
+ * dispatches each FF13/FF14 placement opcode to @c func_800BD82C, building
+ * the rotation/translation pair from one of:
+ *   - @c ctx track A (low byte 0x01)
+ *   - @c ctx track B (low byte 0x40 / 0x41)
+ *   - @c D_800D2128 entry indexed by the high byte (when high byte >= 0)
+ *   - all-zero defaults (when high byte < 0)
+ *
+ * @param actor Opaque marker buffer with a 0x40-byte slot table at offset 6.
+ * @param slot  First @c SlotEntry; advances by one entry per emitted slot.
+ * @param ctx   Slot context holding two transform tracks at +0x18 and +0x24.
+ * @return 1 if at least one slot was emitted, 0 otherwise.
+ */
+s32 func_800ADE24(u8 *actor, SlotEntry *slot, Slot *ctx) {
+    SVECTOR rot;
+    s32 didWork;
+    VECTOR trans;
+    ScriptOp *p;
+
+    didWork = 0;
+    p = func_800AF004(D_800D2288, 0);
+    if (p == 0) return didWork;
+
+    while (1) {
+        u16 op = p->op;
+        if (op == 0xFF05) break;
+
+        if (op == 0xFF0E) {
+            p = (ScriptOp *)(D_800D2288 + p->param);
+            continue;
+        }
+
+        if (op == 0xFF13 || op == 0xFF14) {
+            u16 paramVal = p->param;
+            s32 lowByte = *(u8 *)&p->param;
+            s32 highByte = paramVal >> 8;
+
+            if (lowByte != 3 || func_800BEFC4() != 0) {
+                if (lowByte == 1) {
+                    rot.vz = 0;
+                    rot.vx = 0;
+                    rot.vy = ctx->tracks[0].rot_y;
+                    trans.vx = ctx->tracks[0].trans_x;
+                    trans.vy = ctx->tracks[0].trans_y;
+                    trans.vz = -ctx->tracks[0].trans_z;
+                    func_800BD82C(actor, slot, 1, 0, &rot, &trans);
+                } else if (lowByte == 0x40) {
+                    rot.vz = 0;
+                    rot.vx = 0;
+                    rot.vy = ctx->tracks[1].rot_y;
+                    trans.vx = ctx->tracks[1].trans_x;
+                    trans.vy = ctx->tracks[1].trans_y;
+                    trans.vz = -ctx->tracks[1].trans_z;
+                    func_800BD82C(actor, slot, 0x40, 0, &rot, &trans);
+                } else if (lowByte == 0x41) {
+                    rot.vz = 0;
+                    rot.vx = 0;
+                    rot.vy = ctx->tracks[1].rot_y;
+                    trans.vx = ctx->tracks[1].trans_x;
+                    trans.vy = ctx->tracks[1].trans_y;
+                    trans.vz = -ctx->tracks[1].trans_z;
+                    func_800BD82C(actor, slot, 0x41, 2, &rot, &trans);
+                } else if ((s8)highByte >= 0) {
+                    s32 rz;
+                    trans = *(VECTOR *)&D_800D2128[(s8)highByte];
+                    rot.vy = D_800D2128[(s8)highByte].rot_y;
+                    rz = D_800D2128[(s8)highByte].rot_z;
+                    rot.vz = rz;
+                    rot.vx = 0;
+                    func_800BD82C(actor, slot, lowByte, (lowByte == 0x50) ? 4 : 0, &rot, &trans);
+                } else {
+                    rot.vz = 0;
+                    rot.vy = 0;
+                    rot.vx = 0;
+                    func_800BD82C(actor, slot, lowByte, 0, &rot, NULL);
+                }
+
+                slot++;
+                D_800C5B50++;
+                didWork = 1;
+            }
+        }
+
+        p++;
+    }
+
+    return didWork;
+}
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object6", func_800AE0C8);
 

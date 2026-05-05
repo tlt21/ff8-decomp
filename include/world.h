@@ -185,7 +185,58 @@ typedef struct {
     u16 param;
 } ScriptOp;
 
+/**
+ * @brief 12-byte transform track (translation + y-rotation).
+ *
+ * Two of these live inside @c Slot at offsets 0x18 (track A) and 0x24
+ * (track B). The translation z is negated when copied into a VECTOR
+ * (PSX y-down convention).
+ */
+typedef struct {
+    /* 0x00 */ s32 trans_x;
+    /* 0x04 */ s32 trans_z;
+    /* 0x08 */ s16 trans_y;
+    /* 0x0A */ u16 rot_y;
+} Track;
+
+/**
+ * @brief Slot-state record at @c *D_800D226C (used by 0xFF13/0xFF14
+ * placement opcodes and 0xFF28 / 0xFF2E flag handlers).
+ *
+ * Holds two transform tracks and a 64-bit flag set; the trailing
+ * @c bytes pair selects per-action data via the 0xFF2E handler.
+ */
+typedef struct {
+    /* 0x00 */ u8 pad00[0x18];
+    /* 0x18 */ Track tracks[2];   /**< Track A at 0x18, Track B at 0x24. */
+    /* 0x30 */ u8 pad30[0x44];
+    /* 0x74 */ u32 flags[2];      /**< 64-bit flag set (low/high). */
+    /* 0x7C */ u8 bytes[2];       /**< Action bytes selectable by 0xFF2E. */
+    /* 0x7E */ u8 pad7E[2];
+} Slot;
+
+/**
+ * @brief 16-byte transform entry from @c *D_800D2128 — VECTOR translation
+ * plus a partial (y, z) rotation pair.
+ *
+ * The first 12 bytes alias a @c VECTOR's vx/vy/vz translation; the trailing
+ * 4 bytes hold a (y-rotation, z-rotation) pair that callers read separately.
+ */
+typedef struct {
+    /* 0x00 */ s32 vx;
+    /* 0x04 */ s32 vy;
+    /* 0x08 */ s32 vz;
+    /* 0x0C */ u16 rot_y;
+    /* 0x0E */ s16 rot_z;
+} TransformEntry;
+
+extern u8 *D_800D2288;
+extern Slot *D_800D226C;
+extern TransformEntry *D_800D2128;
+
 extern ScriptOp *func_800AF004(u8 *base, s32 flag);
 extern s32 func_800AF28C(ScriptOp *p);
+extern s32 func_800BEFC4(void);
+extern void func_800BD82C(u8 *actor, SlotEntry *slot, s32 marker, s32 flag, SVECTOR *rot, VECTOR *trans);
 
 #endif /* WORLD_H */
