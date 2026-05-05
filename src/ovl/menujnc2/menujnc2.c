@@ -3,6 +3,7 @@
 #include "gamestate.h"
 #include "battle.h"
 #include "gf.h"
+#include "ability_list.h"
 
 /** @brief Auto-junction priority tables (Atk/Mag/Def), each a 0xFF-terminated slot type list. */
 extern u8 *g_autoJunctionPriority[];
@@ -45,10 +46,12 @@ extern s32 func_801EF9AC(s32 renderCtx, s32 cursorY, s32 scale, s32 color);
 extern s32 func_8002FF34(s32 renderCtx, s32 cursorY, s32 stringId, s32 x, s32 y, s32 color);
 extern u8 *getAbilityName(s32 id);
 extern s32 D_801EED00;
-extern u8 D_801EEC50[];
+extern AbilityListEntry D_801EEC50[];
+extern u8 D_801EEDE0[];
 
 extern MagicJunctionData g_magicJunctionData[];
 extern s32 popcount(s32 flags);
+extern s32 getGfAvailabilityMask(void);
 
 /** @brief Junction menu layout constants (pixel positions). */
 #define JNC_ROW_HEIGHT      13   /**< Row height in pixels. */
@@ -1730,7 +1733,7 @@ void renderStatGrid(s32 renderCtx, s32 cursorY, s32 x, s32 y) {
     s32 namePtr;
     s32 ctx = renderCtx + 0x10;
     MenuDisplayConfig *cfg = &g_menuDisplayCfg;
-    u8 *table;
+    AbilityListEntry *table;
 
     if (D_801EED00 > 0) {
         table = D_801EEC50;
@@ -1741,11 +1744,11 @@ void renderStatGrid(s32 renderCtx, s32 cursorY, s32 x, s32 y) {
             yOff = rem * 13 + 11;
             xPos = x + xOff;
             yPos = y + yOff;
-            cursorY = func_8002FF34(ctx, cursorY, table[3] + 0xD8, xPos, yPos - 2, g_menuColor);
+            cursorY = func_8002FF34(ctx, cursorY, table->category + 0xD8, xPos, yPos - 2, g_menuColor);
             xPos += 14;
-            namePtr = (s32)getAbilityName(table[0]);
+            namePtr = (s32)getAbilityName(table->slotIndex);
             gfInfo = 7;
-            table += 8;
+            table++;
             i++;
             cursorY = func_801F0FEC(ctx, cursorY, xPos, yPos, namePtr, gfInfo);
         } while (i < D_801EED00);
@@ -2431,7 +2434,83 @@ INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderJunctionMenu);
  *
  * @note Non-matching — see https://decomp.me/scratch/CZM5k
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", initJunctionGfTable);
+void initJunctionGfTable(void) {
+    u32 availMask;
+    s32 availCount;
+    s32 i, j;
+    s32 abilityCount;
+    JunctionGfEntry *gf;
+    u8 level;
+    s32 outIdx;
+
+    availMask = getGfAvailabilityMask();
+    availCount = popcount(availMask);
+
+    /* Phase 1: init each GF entry, OR ability flags from learned slots. */
+    for (i = 0; i < GF_COUNT; i++) {
+        gf = &g_junctionGfTable[i];
+        gf->charIdx = 0xFF;
+        gf->abilityFlags = 0;
+        level = g_battleChars.levelEntries[i].level;
+        gf->cmdSlotCount = 0;
+        gf->ablSlotCount = 0;
+        gf->maxAbilitySlots = 2;
+        gf->pad04 = level;
+
+        abilityCount = func_800369CC(i, D_801EEC50, 0);
+        for (j = 0; j < abilityCount; j++) {
+            s32 slot = D_801EEC50[j].slotIndex;
+            if (slot < 20) {
+                gf->abilityFlags |= D_8007CEE4[slot].flagWord >> 8;
+            }
+        }
+    }
+
+    /* Phase 2: derive slot counts from ability bits.
+     * NOTE: outIdx is reused here as a scratch holding abilityFlags before
+     * being reset to 0 for phase 4. The reuse pins outIdx to a specific
+     * register early, which gcc 2.7.2 carries through to phase 4 — this
+     * matches the original code and is required for byte-match. */
+    for (gf = g_junctionGfTable, i = 0; i < GF_COUNT; i++, gf++) {
+        outIdx = gf->abilityFlags;
+        gf->ablSlotCount = 0;
+        gf->cmdSlotCount = 0;
+        gf->maxAbilitySlots = 2;
+        if (outIdx & 0x800)   gf->ablSlotCount = 1;
+        if (outIdx & 0x2000)  gf->ablSlotCount = 2;
+        if (outIdx & 0x4000)  gf->ablSlotCount = 4;
+        if (outIdx & 0x1000)  gf->cmdSlotCount = 1;
+        if (outIdx & 0x8000)  gf->cmdSlotCount = 2;
+        if (outIdx & 0x10000) gf->cmdSlotCount = 4;
+        if (outIdx & 0x20000) gf->maxAbilitySlots = 3;
+        if (outIdx & 0x40000) gf->maxAbilitySlots = 4;
+    }
+
+    /* Sentinel entry at index GF_COUNT (= D_801EEDD0). */
+    g_junctionGfTable[GF_COUNT].abilityFlags = 0;
+    g_junctionGfTable[GF_COUNT].charIdx = 0xFF;
+    g_junctionGfTable[GF_COUNT].cmdSlotCount = 0;
+    g_junctionGfTable[GF_COUNT].ablSlotCount = 0;
+    g_junctionGfTable[GF_COUNT].maxAbilitySlots = 0;
+
+    /* Phase 3: map juncted GFs back to characters. */
+    for (i = 0; i < CHARACTER_COUNT; i++) {
+        u32 junctedGfs = g_junctionChars[i].junctedGfs;
+        for (j = 0; j < GF_COUNT; j++) {
+            if (junctedGfs & (1 << j)) {
+                g_junctionGfTable[j].charIdx = i;
+            }
+        }
+    }
+
+    /* Phase 4: build available GF index list (D_801EEDE0). */
+    outIdx = 0;
+    for (i = 0; outIdx < availCount; i++) {
+        if (availMask & (1 << i)) {
+            D_801EEDE0[outIdx++] = i;
+        }
+    }
+}
 
 /**
  * @brief Initialize and enter the junction menu.

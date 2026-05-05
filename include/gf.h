@@ -15,6 +15,9 @@
 
 #include "common.h"
 
+/** @brief Total number of GFs. */
+#define GF_COUNT 16
+
 /**
  * @brief Ability table entry (stride 8 bytes).
  *
@@ -39,6 +42,21 @@ typedef struct {
     u8 bonusField;    /**< +0x06: Bonus value or GF field B value. */
     u8 extraField;    /**< +0x07: Status immunity byte, party flag, or mode selector. */
 } AbilityEntry; /* 8 bytes */
+
+/**
+ * @brief 8-byte view at &AbilityEntry[0].cap (= D_8007CEE4).
+ *
+ * Strides through AbilityEntry[] reading the upper 4 bytes (cap | typeField
+ * | bonusField | extraField packed as u32) of each entry. The next struct
+ * field aligns to the following entry's statParam0/statParam1 (unused).
+ */
+typedef struct {
+    u32 flagWord;
+    u32 _next;
+} AbilityFlagSlot;
+
+/** @brief Offset view at &AbilityEntry[0].cap; used to read packed flag words. */
+extern AbilityFlagSlot D_8007CEE4[];
 
 /**
  * @brief GF junction/stat entry (stride 60 bytes).

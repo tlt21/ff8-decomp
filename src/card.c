@@ -3,6 +3,7 @@
 #include "battle.h"
 #include "overlay.h"
 #include "gamestate.h"
+#include "ability_list.h"
 #include "character.h"
 
 /** @brief GF ability learn requirement (4 bytes). */
@@ -45,22 +46,6 @@ typedef struct {
 } AbilityCategoryInfo;
 
 extern AbilityCategoryInfo D_80053C3C[];
-
-/**
- * @brief Output entry for GF ability list (8 bytes).
- *
- * One per available ability, populated by func_800369CC for the
- * junction/ability menu.
- */
-typedef struct {
-    u8 slotIndex;      /**< Ability slot index (0-127). */
-    u8 abilityIndex;   /**< Ability index within the GF's learn table. */
-    u8 type;           /**< Slot type (learned/eligible/chained). */
-    u8 category;       /**< Ability category (0-6, from getAbilityCategory). */
-    u8 gfDataValue;    /**< Data value from g_gfData ability table. */
-    u8 gsValue;        /**< Current ability level from GF save data. */
-    u8 pad[2];         /**< Padding to 8-byte stride. */
-} AbilityListEntry;
 
 /**
  * @brief Initialize 128 ability slots to empty.
