@@ -195,49 +195,72 @@ void initBattleEntity(s32 idx) {
  * @brief Compute the rectangular intersection of two RECTs.
  *
  * Reads each RECT as two packed s32 words (xy at +0, wh at +4), sign-extracts
- * the four halves, then takes max(r1.x, r2.x) / max(r1.y, r2.y) for the top-left
- * and min(r1.right, r2.right) / min(r1.bottom, r2.bottom) for the bottom-right.
- * If either dimension collapses to <= 0 the intersection is empty: width or
- * height is forced to 0 and the function returns 0; otherwise returns 1.
+ * the four halves, then takes max(clip.x, src.x) / max(clip.y, src.y) for the
+ * top-left and min(clip.right, src.right) / min(clip.bottom, src.bottom) for
+ * the bottom-right. If either dimension collapses to <= 0 the intersection is
+ * empty: width or height is forced to 0 and the function returns 0;
+ * otherwise returns 1.
  *
- * @param out Output RECT receiving the clipped rectangle.
- * @param r1  First input RECT.
- * @param r2  Second input RECT.
- * @return 1 if @p r1 and @p r2 overlap (positive area), 0 otherwise.
+ * The args are typed as a @c CustomRECT union view (s16 fields + RectWords
+ * packed s32 view), reflecting the developer's "rect as packed (xy, wh) word
+ * pair" mental model also used in @c clipBlitRects via
+ * @c savedPos = *(s32 *)&rect.
  *
- * Best clean attempt (~68.73%; same instruction count as target, only
- * register allocation diverges — gcc 2.7.2 picks `lh` for r1.w/r1.h instead
- * of `lw + sll/sra` extract that target uses):
+ * @param overlap Output RECT receiving the clipped rectangle.
+ * @param clip    Clipping rectangle (input).
+ * @param src     Source rectangle to clip (input).
+ * @return 1 if @p clip and @p src overlap (positive area), 0 otherwise.
+ *
+ * Best attempt: ~88.81% match (up from 68% baseline) using a CustomRECT
+ * union view + several "dead-variable reuse" tricks the permuter discovered.
+ * The remaining diffs are gcc 2.7.2 register-allocation choices that we
+ * cannot reach from clean source — would require either further permuter
+ * iterations or a specific original-source idiom we haven't deduced.
+ * The version below is the cleanest semantically-correct form:
  * @code
- * s32 func_8002B080(RECT *out, RECT *r1, RECT *r2) {
- *     s32 result = 1;
- *     s32 r1xy = *(s32 *)&r1->x;
- *     s32 r2xy = *(s32 *)&r2->x;
- *     s32 r1wh = *(s32 *)&r1->w;
- *     s32 r2wh = *(s32 *)&r2->w;
- *     s32 r1y = r1xy >> 16;
- *     s32 r2y = r2xy >> 16;
- *     s32 r1_right = (s16)r1wh + (s16)r1xy;
- *     s32 r1_bottom = (r1wh >> 16) + r1y;
+ * typedef struct { s32 xy; s32 wh; } RectWords;
+ * typedef union {
+ *     struct { s16 x, y, w, h; } r;
+ *     RectWords words;
+ * } CustomRECT;
+ *
+ * s32 func_8002B080(CustomRECT *overlap, CustomRECT *clip, CustomRECT *src) {
+ *     s32 hasOverlap = 1;
+ *     s32 clipXY = clip->words.xy;
+ *     s32 srcXY = src->words.xy;
+ *     s32 clipWH = clip->words.wh;
+ *     s32 srcWH = src->words.wh;
+ *     s32 clipY, clipX, srcY, srcX, clipH, clipW, srcH, srcW;
+ *     s32 clipRight, srcRight, clipBottom, srcBottom;
  *     s32 left, top, right, bottom;
  *
- *     left = (s16)r2xy;
- *     if ((s16)r1xy >= left) left = (s16)r1xy;
- *     top = r2y;
- *     if (r1y >= top) top = r1y;
- *     right = (s16)r2wh + (s16)r2xy;
- *     if (right >= r1_right) right = r1_right;
- *     bottom = (r2wh >> 16) + r2y;
- *     if (bottom >= r1_bottom) bottom = r1_bottom;
- *
- *     if (left >= right) { right = left; result = 0; }
- *     if (top >= bottom) { bottom = top; result = 0; }
- *
- *     out->w = right - left;
- *     out->h = bottom - top;
- *     out->x = left;
- *     out->y = top;
- *     return result;
+ *     clipY = clipXY >> 16;
+ *     clipX = (clipXY << 16) >> 16;
+ *     srcY = srcXY >> 16;
+ *     do {
+ *         srcX = (srcXY << 16) >> 16;
+ *         clipH = clipWH >> 16;  clipW = (clipWH << 16) >> 16;
+ *         srcH  = srcWH >> 16;   srcW  = (srcWH << 16) >> 16;
+ *         clipRight = clipW + clipX;
+ *         srcRight  = srcW + srcX;
+ *     } while (0);
+ *     clipBottom = clipH + clipY;
+ *     left = srcX;
+ *     if (clipX >= srcX) left = clipX;
+ *     srcBottom = srcH + srcY;
+ *     top = srcY;
+ *     if (clipY >= srcY) top = clipY;
+ *     right = srcRight;
+ *     if (srcRight >= clipRight) right = clipRight;
+ *     bottom = srcBottom;
+ *     if (srcBottom >= clipBottom) bottom = clipBottom;
+ *     if (left >= right) { right = left; hasOverlap = 0; }
+ *     if (top >= bottom) { bottom = top; hasOverlap = 0; }
+ *     overlap->r.w = right - left;
+ *     overlap->r.h = bottom - top;
+ *     overlap->r.x = left;
+ *     overlap->r.y = top;
+ *     return hasOverlap;
  * }
  * @endcode
  */
