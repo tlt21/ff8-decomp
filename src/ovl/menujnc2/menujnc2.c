@@ -45,6 +45,8 @@ extern u32 func_801F0FEC(s32 renderCtx, s32 cursorY, s32 x, s32 height, s32 name
 extern s32 func_801EF9AC(s32 renderCtx, s32 cursorY, s32 scale, s32 color);
 extern s32 func_8002FF34(s32 renderCtx, s32 cursorY, s32 stringId, s32 x, s32 y, s32 color);
 extern u8 *getAbilityName(s32 id);
+extern s32 func_801F79F8(s32 mask);
+extern u32 D_801EEFC0[];
 extern s32 D_801EED00;
 extern AbilityListEntry D_801EEC50[];
 extern u8 D_801EEDE0[];
@@ -2290,18 +2292,101 @@ INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderMagicListPanel);
 /**
  * @brief Render a single ability list entry with flag-based categorization.
  *
- * Reads ability data from g_menuDisplayCfg.dataPtr, checks 5 ability
- * flag categories (commands, character abilities, GF abilities, party
- * abilities, menu abilities), renders the appropriate icon and name
- * for the entry.
+ * Reads ability data from g_menuDisplayCfg.dataPtr (a (id, iconId) byte-pair
+ * array). Checks the D_801EEFC0 bitmap for an initial highlight (1 if set,
+ * 7 otherwise), renders the icon if @c iconId != 0xFF, then checks 5 ability
+ * category masks via func_801F79F8 (1=character, 2=cmd, 4=cmd, 8=cmd,
+ * 0x10=GF/party/menu) — each mask sets highlight=1 when the ability matches
+ * a specific id range, and finally renders the ability name.
  *
- * @param ctx Junction menu context.
- * @param renderCtx Render context.
- * @param cursorY Current cursor Y position.
- * @param itemIdx Item index.
- * @param x Panel X position (on stack).
+ * @param ctx Render context.
+ * @param cursorY Current cursor Y position (also returned, advanced by render calls).
+ * @param row Logical row index (combined with col into list index = row*11 + col).
+ * @param col Logical column index (also used for vertical offset col*13).
+ * @param panelX Panel X position (5th arg, on stack).
+ * @return Updated cursorY after rendering.
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderAbilityListEntry);
+s32 renderAbilityListEntry(s32 ctx, s32 cursorY, s32 row, s32 col, s32 panelX) {
+    u8 *data;
+    s32 idx;
+    s32 cfgX;
+    s32 cfgY;
+    s32 colY;
+    s32 textY;
+    s32 abilityId;
+    s32 iconId;
+    s32 highlight;
+    s32 stringX;
+
+    data = (u8 *)g_menuDisplayCfg.dataPtr;
+    if (data != 0) {
+        idx = (row * 11) + col;
+        cfgX = g_menuDisplayCfg.x;
+        cfgY = g_menuDisplayCfg.y;
+        if (idx < g_menuDisplayCfg.itemId) {
+            colY = col * 13;
+            {
+                s32 xOff = panelX + 0x16;
+                stringX = cfgX + xOff;
+            }
+            textY = cfgY + 0xA;
+            textY = textY + colY;
+            abilityId = data[idx * 2];
+            iconId = data[(idx * 2) + 1];
+            if (D_801EEFC0[abilityId / 32] & (1 << (abilityId & 0x1F))) {
+                highlight = 1;
+            } else {
+                highlight = 7;
+            }
+            if (iconId != 0xFF) {
+                cursorY = func_8002FF34(ctx, cursorY, iconId + 0xD8, stringX, textY - 2, g_menuColor);
+            }
+            {
+                s32 xOff = panelX + 0x24;
+                stringX = cfgX + xOff;
+            }
+            textY = cfgY + 0xA;
+            textY = textY + colY;
+            if (func_801F79F8(1) != 0) {
+                if (abilityId == 0x18) {
+                    highlight = 1;
+                }
+                if (abilityId == 0x17) {
+                    highlight = 1;
+                }
+            }
+            if (func_801F79F8(2) != 0) {
+                if (abilityId == 0x14) {
+                    highlight = 1;
+                }
+            }
+            if (func_801F79F8(4) != 0) {
+                if (abilityId == 0x15) {
+                    highlight = 1;
+                }
+            }
+            if (func_801F79F8(8) != 0) {
+                if (abilityId == 0x16) {
+                    highlight = 1;
+                }
+            }
+            if (func_801F79F8(0x10) != 0) {
+                s32 d = abilityId - 0x14;
+                if (((u32)d) < 0x13) {
+                    if (((u32)d) >= 3) {
+                        if (abilityId != 0x18) {
+                            if (abilityId != 0x17) {
+                                highlight = 1;
+                            }
+                        }
+                    }
+                }
+            }
+            cursorY = func_801F0FEC(ctx, cursorY, stringX, textY, (s32)getAbilityName(abilityId), highlight);
+        }
+    }
+    return cursorY;
+}
 
 /**
  * @brief Set up and render the ability list panel.
