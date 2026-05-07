@@ -78,7 +78,8 @@ typedef struct {
     /* 0x04 */ s16 z;       /**< Position Z. */
     /* 0x06 */ u16 unk6;    /**< Stored to entity offset 0x1FA. */
     /* 0x08 */ u8  unk8;    /**< Stored to entity offset 0x258. */
-    /* 0x09 */ u8  pad9[3];
+    /* 0x09 */ u8  unk9;    /**< Set by func_8009BD50 (recorder) when writing path. */
+    /* 0x0A */ u8  padA[2];
 } PathEntry;
 
 extern Entity *D_80085224;
@@ -261,7 +262,71 @@ void func_8009BB18(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object1", func_8009BD50);
+/**
+ * @brief Record entity position into both path tables and advance the path phase.
+ *
+ * Inverse of @c func_8009BB18: writes the entity's posX/posY/posZ (each
+ * divided by 4096 for round-toward-zero fixed-point conversion), unk1FA
+ * halfword, and two extra bytes (b9 at offset 9, b8 at offset 8) into the
+ * current waypoint slot @c D_8005F144 of BOTH path tables (D_80070A60 and
+ * D_80070760).
+ *
+ * If @p mode == 1, also advances the recorder:
+ *   - increments @c D_8005F144 (mod 64),
+ *   - nudges @c D_8005F118 by one toward @c D_8005F160 (target phase),
+ *   - nudges @c D_8005F11A by one toward @c D_8005F162.
+ *
+ * Each xyz coordinate uses signed `/ 4096` (target compiles this as
+ * `bgez; addiu +0xFFF; sra 12` — the round-toward-zero idiom).
+ *
+ * @param e   Source entity providing posX/posY/posZ/unk1FA.
+ * @param mode If 1, advance D_8005F144 and the phase counters.
+ * @param b9  Byte stored at offset 9 of each waypoint.
+ * @param b8  Byte stored at offset 8 of each waypoint.
+ */
+void func_8009BD50(Entity *e, s16 mode, u8 b9, u8 b8) {
+    PathEntry *base1 = D_80070760;
+    PathEntry *p1 = base1 + D_8005F144;
+    PathEntry *base0 = D_80070A60;
+    PathEntry *p0 = base0 + D_8005F144;
+    s16 v;
+    u16 u;
+
+    v = e->posX / 4096;
+    p0->x = v;
+    p1->x = v;
+    v = e->posY / 4096;
+    p0->y = v;
+    p1->y = v;
+    v = e->posZ / 4096;
+    p0->z = v;
+    p1->z = v;
+    u = e->unk1FA;
+    p0->unk6 = u;
+    p1->unk6 = u;
+    p0->unk9 = b9;
+    p1->unk9 = b9;
+    {
+        PathEntry *q0 = base0 + D_8005F144;
+        PathEntry *q1 = base1 + D_8005F144;
+        q0->unk8 = b8;
+        q1->unk8 = b8;
+    }
+
+    if (mode == 1) {
+        D_8005F144++;
+        if (D_8005F144 == 64) D_8005F144 = 0;
+
+        if (D_8005F118 != D_8005F160) {
+            if (D_8005F160 < D_8005F118) D_8005F118--;
+            if (D_8005F118 < D_8005F160) D_8005F118++;
+        }
+        if (D_8005F11A != D_8005F162) {
+            if (D_8005F162 < D_8005F11A) D_8005F11A--;
+            if (D_8005F11A < D_8005F162) D_8005F11A++;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object1", func_8009BEC8);
 
