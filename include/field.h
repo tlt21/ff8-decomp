@@ -49,7 +49,7 @@ typedef struct {
 } FieldEntity;              /* size >= 0x24D */
 
 /**
- * @brief Field engine global state (pointed to by D_800562C4).
+ * @brief Field engine global state (pointed to by g_seedState).
  *
  * Large runtime struct for field map state. Only partially mapped;
  * fields are added as they are identified in decomped code.

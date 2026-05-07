@@ -52,7 +52,72 @@ s32 func_800BD2AC(FieldEntity *entity) { u8 *a0 = (u8 *)entity; u8 idx = entity-
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object10", func_800BD318);
 
-INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object10", func_800BD3A8);
+/**
+ * @brief SeeD level-up tick: update SeeD experience and pay salary based on rank.
+ *
+ * Called from the step accumulator (@c func_800BD804) when the step counter at
+ * @c state[0x8] overflows @c 0x6000. Performs:
+ *   1. Snapshots current SeeD experience to @c prevSeedExp.
+ *   2. Sums kill counts across all 8 characters.
+ *   3. Adjusts @c seedExp by @c (totalKills - prevKillSum) - 10 (clamped to
+ *      @c [100, 3100]). SeeD level @c = seedExp / 100, so 100..199 = lvl 1,
+ *      500..599 = lvl 5, 2500..2599 = lvl 25, capping at 31 (exp = 3100).
+ *   4. Pays salary: @c gil += @c g_seedSalaryTable[level] * 10 (capped at
+ *      99,999,999).
+ *   5. If state isn't muted (flags 0x10 and 0x1000 both clear), triggers the
+ *      level-up notification: palette transition (@c func_800316D4 with old/new
+ *      rank and old/new salary) plus three rank-up sound effects.
+ *   6. Stores @c totalKills as the new @c prevKillSum baseline.
+ *
+ * Best-effort C reproduction reaches 96.82% match (142/142 instructions, 4
+ * register-allocator differences vs target). Reproduction kept here for
+ * future iteration:
+ *
+ * @verbatim
+ * void updateSeedLevel(void) {
+ *     s32 totalKills, newSeedExp, level, salary, flags;
+ *     s32 oldLevel, newLevel, oldSalary, newSalary;
+ *     s32 i;
+ *
+ *     g_seedState->prevSeedExp = g_seedState->seedExp;     // snapshot rank
+ *
+ *     totalKills = 0;
+ *     for (i = 0; i < 8; i++) {
+ *         totalKills += g_gameState.chars[i].kills;
+ *     }
+ *
+ *     newSeedExp = (totalKills - g_seedState->prevKillSum) + g_seedState->seedExp - 10;
+ *     g_seedState->seedExp = newSeedExp;
+ *     if ((s16)newSeedExp < 100) g_seedState->seedExp = 100;
+ *     else if ((s16)newSeedExp >= 0xC1C) g_seedState->seedExp = 0xC1C;
+ *
+ *     level = (s16)g_seedState->seedExp / 100;
+ *     i = g_gameState.gil;
+ *     salary = g_seedSalaryTable[level];
+ *     salary = i + salary * 10;                       // salary reused as new gil
+ *     g_gameState.gil = salary;
+ *     if ((u32)salary > 0x5F5E0FE) g_gameState.gil = 0x5F5E0FF;
+ *
+ *     flags = g_seedState->stateFlags;
+ *     if ((flags & 0x10) == 0) {
+ *         if ((flags & 0x1000) == 0) {
+ *             oldLevel = (s16)g_seedState->prevSeedExp / 100;
+ *             newLevel = (s16)g_seedState->seedExp / 100;
+ *             oldSalary = g_seedSalaryTable[oldLevel] * 10;
+ *             newSalary = g_seedSalaryTable[newLevel] * 10;
+ *             func_800316D4(oldLevel, newLevel, oldSalary, newSalary);
+ *             g_seedState->levelUpDisplayTimer = 150;
+ *             sndPlaySfx(0x5B, 0, 0x80, 0x7F);
+ *             sndPlaySfx(0x5C, 0, 0x80, 0x7F);
+ *             sndPlaySfx(0x5D, 0, 0x80, 0x7F);
+ *         }
+ *     }
+ *
+ *     g_seedState->prevKillSum = totalKills;
+ * }
+ * @endverbatim
+ */
+INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object10", updateSeedLevel);
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object10", func_800BD5E0);
 

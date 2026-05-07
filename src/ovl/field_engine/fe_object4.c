@@ -3,7 +3,7 @@
 
 
 extern s32 (*D_800C6760[])(u8 *);
-extern s32 D_800562C4;
+extern s32 g_seedState;
 extern s32 D_800705E8;
 extern s32 D_800705F0;
 extern s32 D_800705F8;
@@ -598,7 +598,7 @@ s32 func_800AF3B4(u8 *a0) {
 }
 
 /**
- * Sets bits 0x18 in entity flags at D_800562C4+0x68, then calls
+ * Sets bits 0x18 in entity flags at g_seedState+0x68, then calls
  * setTransitionFlag with the inverted bit 3 value.
  *
  * @param a0 Unused.
@@ -607,24 +607,24 @@ s32 func_800AF3B4(u8 *a0) {
 s32 func_800AF404(u8 *a0) {
     s32 flags;
 
-    flags = *(s32 *)(D_800562C4 + 0x68);
+    flags = *(s32 *)(g_seedState + 0x68);
     flags = flags | 0x18;
-    *(s32 *)(D_800562C4 + 0x68) = flags;
+    *(s32 *)(g_seedState + 0x68) = flags;
     setTransitionFlag(((u32)flags >> 3 ^ 1) & 1);
     return 2;
 }
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object4", func_800AF444);
 
-/** @brief Set bit 0x10 in entity flags word at D_800562C4+0x68. Returns 2. */
+/** @brief Set bit 0x10 in entity flags word at g_seedState+0x68. Returns 2. */
 s32 func_800AF47C(void) {
-    *(s32 *)(D_800562C4 + 0x68) |= 0x10;
+    *(s32 *)(g_seedState + 0x68) |= 0x10;
     return 2;
 }
 
-/** @brief Clear bit 0x10 in entity flags word at D_800562C4+0x68. Returns 2. */
+/** @brief Clear bit 0x10 in entity flags word at g_seedState+0x68. Returns 2. */
 s32 func_800AF4A0(void) {
-    *(s32 *)(D_800562C4 + 0x68) &= ~0x10;
+    *(s32 *)(g_seedState + 0x68) &= ~0x10;
     return 2;
 }
 
@@ -759,14 +759,14 @@ INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object4", func_800B06D0);
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object4", func_800B0784);
 
 /**
- * Clears bit 0x800 in entity flags at D_800562C4+0x68, clears
+ * Clears bit 0x800 in entity flags at g_seedState+0x68, clears
  * D_80082C10 and D_80077E5F, then calls recalcPartyStats.
  *
  * @param a0 Unused.
  * @return 2 (continue processing).
  */
 s32 func_800B0818(u8 *a0) {
-    u8 *entity = (u8 *)D_800562C4;
+    u8 *entity = (u8 *)g_seedState;
 
     *(s32 *)(entity + 0x68) = *(s32 *)(entity + 0x68) & ~0x800;
     D_80082C10 = 0;

@@ -5,7 +5,7 @@
 
 extern u8 D_800780D8[];
 extern u8 D_800D23D8[];
-extern FieldEngineState *D_800562C4;
+extern FieldEngineState *g_seedState;
 extern s32 D_800C9E68;
 extern s32 D_800C9E70;
 
@@ -27,7 +27,7 @@ extern s32 sndCmd1A(s32 a0, s32 a1, s32 a2);
  * @param val Signed 8-bit value forwarded as the third arg.
  */
 void func_8009CDC4(s32 a0, s8 val) {
-    D_800562C4->soundHandle0 = sndCmd1A(a0, 0x78, val);
+    g_seedState->soundHandle0 = sndCmd1A(a0, 0x78, val);
 }
 
 extern s32 sndCmd10(s32 a0);
@@ -49,7 +49,7 @@ extern void sndCmdC1(s32 a0, s32 a1, s32 a2);
  * @param val Signed 8-bit value forwarded to sndCmdC1 as the third arg.
  */
 void func_8009CDFC(s32 a0, s8 val) {
-    D_800562C4->soundHandle0 = sndCmd10(a0);
+    g_seedState->soundHandle0 = sndCmd10(a0);
     sndCmdC1(0, 0x3C, val);
 }
 
@@ -63,7 +63,7 @@ extern void sndCmd11(s32 a0);
  */
 void func_8009CE40(void) {
     sndCmd11(0);
-    D_800562C4->audioChannel0State = -1;
+    g_seedState->audioChannel0State = -1;
 }
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object2", func_8009CE70);

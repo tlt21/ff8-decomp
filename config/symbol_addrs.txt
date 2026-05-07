@@ -1388,3 +1388,5 @@ D_80083858 = 0x80083858;
 D_80083868 = 0x80083868;
 g_ovlCmdQueue = 0x80085168;
 g_meshRenderCtx = 0x801F0000;
+g_seedState = 0x800562C4;
+g_seedSalaryTable = 0x800C5F70;

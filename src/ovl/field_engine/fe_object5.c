@@ -7,7 +7,7 @@ extern u8 D_800DE878[];
 extern u8 D_800C5FB0[];
 
 /**
- * Pop mask, clear those bits from D_800562C4->0xF3, copy to globals, call recalcPartyStats.
+ * Pop mask, clear those bits from g_seedState->0xF3, copy to globals, call recalcPartyStats.
  *
  * @param a0 Pointer to the script/object structure.
  * @return 2 (continue processing).

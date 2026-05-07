@@ -2,7 +2,7 @@
 #include "field.h"
 
 /**
- * @brief Subset of the @c D_800562C4 context exposing the per-sfx-slot
+ * @brief Subset of the @c g_seedState context exposing the per-sfx-slot
  * state mask bytes at +0xD2 / +0xD3.
  *
  * Each bit indexed by an SFX slot id (0..7); bits are set when an SFX
@@ -14,7 +14,7 @@ typedef struct {
     u8 field_0xD3;     /**< 0xD3: per-slot start mask (set on play). */
 } SfxStateMaskCtx;
 
-extern SfxStateMaskCtx *D_800562C4;
+extern SfxStateMaskCtx *g_seedState;
 extern u8 *D_800704C0;
 extern s32 D_800DE4DC;
 extern u8 D_800704A8[];
@@ -51,7 +51,7 @@ s32 func_800BB650(FieldEntity *entity) { s16 buf[4]; func_800A8DAC(*((u8 *)entit
  * at offsets 0xD8-0xEE (matching pairs: src+0x108->dst+0xD8, etc).
  */
 void func_800BB6C8(void) {
-    u8 *dst = (u8 *)D_800562C4;
+    u8 *dst = (u8 *)g_seedState;
     u8 *src = D_800704A8;
 
     *(u16 *)(dst + 0xD8) = *(u16 *)(src + 0x108);
@@ -95,13 +95,13 @@ INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object9", func_800BBC08);
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object9", func_800BBC64);
 
-s32 func_800BBDA8(void) { u8 *src = D_800704A8; if (*(u16 *)(src + 0x10C) != *(u16 *)(src + 0x10A)) { return 1; } *(u16 *)((u8 *)D_800562C4 + 0xD8) = *(u16 *)(src + 0x108); return 2; }
+s32 func_800BBDA8(void) { u8 *src = D_800704A8; if (*(u16 *)(src + 0x10C) != *(u16 *)(src + 0x10A)) { return 1; } *(u16 *)((u8 *)g_seedState + 0xD8) = *(u16 *)(src + 0x108); return 2; }
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object9", func_800BBDE0);
 
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object9", func_800BBE50);
 
-s32 func_800BBE78(void) { u8 *src = D_800704A8; *(volatile u16 *)(src + 0x108) = 4; *(u16 *)((u8 *)D_800562C4 + 0xD8) = *(volatile u16 *)(src + 0x108); return 2; }
+s32 func_800BBE78(void) { u8 *src = D_800704A8; *(volatile u16 *)(src + 0x108) = 4; *(u16 *)((u8 *)g_seedState + 0xD8) = *(volatile u16 *)(src + 0x108); return 2; }
 
 /**
  * Pops two parameters from the stack and calls func_8002E1B4(val2 & 7, val1).
@@ -203,7 +203,7 @@ s32 func_800BC8CC(Eline *e) {
     sfxIdx = stack[e->stackPtr - 7];
 
     if ((e->activeMask >> e->scriptGroup) & 1) {
-        if ((D_800562C4->field_0xD2 >> sfxIdx) & 1) {
+        if ((g_seedState->field_0xD2 >> sfxIdx) & 1) {
             return 5;
         }
         D_800DE4DC = getSfxGlobalFlag();
@@ -216,8 +216,8 @@ s32 func_800BC8CC(Eline *e) {
         func_8002D784(sfxIdx, text, paramY, paramZ, paramW, paramV);
         startSfxSlow(sfxIdx);
         e->field_0x204 = 0;
-        D_800562C4->field_0xD3 |= (1 << sfxIdx);
-        D_800562C4->field_0xD2 |= (1 << sfxIdx);
+        g_seedState->field_0xD3 |= (1 << sfxIdx);
+        g_seedState->field_0xD2 |= (1 << sfxIdx);
     } else {
         state = e->field_0x204;
         switch (state) {
@@ -232,7 +232,7 @@ s32 func_800BC8CC(Eline *e) {
             break;
         case 1:
             if (getSfxField1C(sfxIdx) == 0) {
-                D_800562C4->field_0xD2 &= ~(state << sfxIdx);
+                g_seedState->field_0xD2 &= ~(state << sfxIdx);
                 e->stackPtr -= 8;
                 setSfxGlobalFlag(D_800DE4DC);
                 return 3;
