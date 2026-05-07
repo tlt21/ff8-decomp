@@ -19,4 +19,12 @@ typedef struct {
     s32 callback2;  /**< 0x10: Second callback address (or 0). */
 } OvlCmdEntry;      /* 0x14 = 20 bytes */
 
+/**
+ * @brief Overlay load result code (set by overlay.c, polled elsewhere).
+ *
+ * -2 = invalid command, -1 = pending, 0 = success, positive = caller-defined
+ * status (e.g. menututo writes 0xD before func_801F010C).
+ */
+extern volatile s32 D_8008514C;
+
 #endif /* OVERLAY_H */

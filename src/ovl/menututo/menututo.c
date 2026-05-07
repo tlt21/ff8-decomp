@@ -1,29 +1,7 @@
 #include "common.h"
 #include "gamestate.h"
-#include "menu.h"
-
-extern MenuDisplayConfig g_menuDisplayCfg;
-extern s32 g_menuColor;
-extern s32 func_801E4BD0(s32, s32, s32);
-extern u32 func_801F0FEC(s32, s32, s32, s32, s32, s32);
-extern s32 func_801EF9AC(s32, s32, s32, s32);
-extern u32 func_801EFBB4(s32, s32, s32);
-extern u32 func_801F5F60(s32, s32, s32, s32);
-extern s32 func_801F6AFC(s32);
-extern s32 func_801F7A54(void);
-extern s32 drawColorByMenuPalette(s32, s32, s32, s32, s32);
-extern void decodeMessage(u8 *, u8 *, s32);
-extern u8 D_800780AB;
-extern u16 D_801FA3C8[];
-extern u8 D_801E4EA8;
-extern u8 D_801E4EB4[];
-extern u8 D_801E4EC0;
-extern u8 D_801E4EC1;
-extern u8 D_801E4EC2;
-extern u8 D_801FABC7;
-extern u16 D_801FAB1C;
-extern u16 D_801E4EAC[];
-extern void func_801E48C0();
+#include "overlay.h"
+#include "menututo.h"
 
 /**
  * @brief Read tutorial column index 1.
@@ -130,58 +108,6 @@ void func_801E293C(s32 a0, s32 a1) {
  * @param a0 OT pointer
  * @param a1 Pointer to tutorial state structure
  */
-/** @brief Tutorial callback context structure. */
-typedef struct {
-    /* 0x00 */ u8 pad00[0x10];
-    /* 0x10 */ u16 state;
-    /* 0x12 */ u8 pad12[4];
-    /* 0x16 */ u16 returnState;
-    /* 0x18 */ u8 pad18[8];
-    /* 0x20 */ u16 fadeAlpha;
-    /* 0x22 */ U16Split pageIndex;
-    /* 0x24 */ s32 panelHandle;
-    /* 0x28 */ s16 fadePos;
-    /* 0x2A */ s16 scrollPos;
-    /* 0x2C */ s16 fadeProgress;
-    /* 0x2E */ s16 scrollAnim;
-    /* 0x30 */ u8 targetPage;
-    /* 0x31 */ u8 prevPage;
-    /* 0x32 */ s8 entryIndex;
-    /* 0x33 */ s8 pageCount;
-    /* 0x34 */ u8 sectionIndex;
-    /* 0x35 */ u8 cursorPos;
-    /* 0x36 */ u8 availCount;
-    /* 0x37 */ u8 loadParam;
-    /* 0x38 */ u8 isReentry;
-    /* 0x39 */ u8 availSlots[9];
-} TutoState;
-
-/** @brief Tutorial entry (4 bytes). */
-typedef struct {
-    u8 panelId;
-    u8 hasFlag;
-    u8 loadCmd;
-    u8 pad03;
-} TutoEntry;
-
-extern TutoEntry D_801E4E18[];
-
-/** @brief Tutorial section entry (12 bytes). */
-typedef struct {
-    u8 sectionId;
-    u8 bgParam;
-    u8 overlayCmd;
-    u8 gfDataId;
-    u8 charDataId;
-    u8 subOvlId1;
-    u8 subOvlId2;
-    u8 saveFlag;
-    u8 fieldFlagId;
-    u8 pad09[3];
-} TutoSectionEntry;
-
-extern TutoSectionEntry D_801E4E3C[];
-
 void func_801E296C(s32 a0, TutoState *data) {
     s32 index;
     s32 tableVal;
@@ -369,27 +295,25 @@ void func_801E2EF0(void) {
  * @brief Scan tutorial entry table and build list of available entries.
  *
  * Iterates over 9 entries in D_801E4E3C (12-byte stride), calls
- * testFieldFlag to check if each entry's item (byte at offset 8) is
- * available. Available entries' indices are stored sequentially at
- * a0+0x39, and the total count is stored at a0+0x36.
- *
- * @param a0 Pointer to tutorial state structure
+ * testFieldFlag to check if each entry's fieldFlagId is available.
+ * Available entries' indices are stored sequentially in availSlots[]
+ * and the total count is stored in availCount.
  */
-void func_801E30C4(u8 *a0) {
+void func_801E30C4(TutoState *ctx) {
     s32 i = 0;
     s32 count = 0;
     u8 *table = (u8 *)D_801E4E3C;
 
     do {
         if (testFieldFlag(table[8]) != 0) {
-            *(u8 *)(a0 + count + 0x39) = i;
+            ctx->availSlots[count] = i;
             count++;
         }
         i++;
         table += 0xC;
     } while (i < 9);
 
-    *(u8 *)(a0 + 0x36) = count;
+    ctx->availCount = count;
 }
 
 /**
@@ -403,8 +327,6 @@ void func_801E30C4(u8 *a0) {
  * @param ctx Tutorial state context.
  */
 void func_801E3140(TutoState *ctx) {
-    volatile extern s32 D_8008514C;
-
     u16 inputNew = g_menuDisplayCfg.inputNew;
     u16 inputRepeat = g_menuDisplayCfg.inputRepeat;
     u16 *statePtr = &ctx->state;
@@ -1262,7 +1184,64 @@ s32 func_801E4598(TutoState *state, s32 renderCtx, s32 cursorY) {
     return cursorY;
 }
 
-INCLUDE_ASM("asm/ovl/menututo/nonmatchings/menututo", func_801E46DC); /* 0x11C */
+/**
+ * @brief Cold-entry to tutorial menu: register callbacks and initialize state.
+ *
+ * Registers func_801E3140/func_801E4598 callbacks via func_801F179C,
+ * primes the returned state for a fresh entry (isReentry=0,
+ * fadeProgress=0, cursorPos=0), sets field flag 0x3E, populates
+ * availability table via func_801E30C4, and resets fade/panel globals.
+ * If func_801EFFB8() returns 0x1A, applies the D_801E4EA8 panel preset.
+ *
+ * If registration succeeded, dispatches the main callback and primes
+ * runtime state: scrollPos=0x1000, fadePos=0, pageCount based on
+ * D_800780AB (10-page sections), fadeAlpha=0x1B, pageIndex.b.hi=3.
+ *
+ * Finally, zeroes the two memory regions bracketing menututo's load
+ * area: [0x801E5800..0x801EF800) (sibling menu overlay area above) and
+ * [0x801CD000..0x801E0000) (sub-overlay scratch buffer below).
+ */
+void func_801E46DC(void) {
+    TutoState *ctx;
+    u8 *p;
+
+    ctx = (TutoState *)func_801F179C((s32)func_801E3140, (s32)func_801E4598);
+    NOP();
+
+    ctx->isReentry = 0;
+    ctx->fadeProgress = 0;
+    ctx->cursorPos = 0;
+
+    setFieldFlag(0x3E);
+    func_801E30C4(ctx);
+    func_801F0948(0);
+
+    if (func_801EFFB8() == 0x1A) {
+        func_801F1D34(D_801E4EA8);
+        func_801F1DB0(0);
+    }
+
+    if (ctx != NULL) {
+        func_801E3140(ctx);
+        *(volatile s16 *)&ctx->scrollPos = 0x1000;
+        *(volatile s16 *)&ctx->fadePos = 0;
+        ctx->pageCount = ((s8)D_800780AB + 9) / 10;
+        ctx->fadeAlpha = 0x1B;
+        ctx->pageIndex.b.hi = 3;
+    }
+
+    p = (u8 *)0x801E5800;
+    do {
+        *p = 0;
+        p++;
+    } while (p != (u8 *)0x801EF800);
+
+    p = (u8 *)0x801CD000;
+    do {
+        *p = 0;
+        p++;
+    } while (p != (u8 *)0x801E0000);
+}
 
 /**
  * @brief Warm-entry to tutorial menu with sibling overlay memory scrub.
@@ -1287,12 +1266,12 @@ void func_801E47F8(void) {
     u8 *p;
 
     ctx = (TutoState *)func_801F179C((s32)func_801E3140, (s32)func_801E4598);
-    NOP(); // FIXME
+    NOP();
     ctx->isReentry = 1;
     ctx->fadeProgress = 0;
     ctx->cursorPos = 0;
     func_801F0948(0);
-    func_801F1D34(&D_801E4EA8);
+    func_801F1D34(D_801E4EA8);
     func_801F1DB0(0);
 
     if (ctx != NULL) {
@@ -1465,6 +1444,91 @@ void func_801E48C0(TutoState *self) {
     }
 }
 
+/**
+ * @brief Build five textured-sprite GPU primitives for the tutorial fade banner.
+ *
+ * Iterates 5 times to produce a 320x216 strip of TSPRT primitives at y=0,
+ * each 64 pixels wide, sourcing from texpages at TX=13..15. The sprite
+ * color (r0/g0/b0) is set to fade/32 so opacity ramps smoothly. Each
+ * primitive is linked into the OT via the lwl/swl addPrim pattern.
+ *
+ * @param ot   Ordering table pointer.
+ * @param prim TSPRT packet allocation pointer.
+ * @param fade Fade alpha value (signed); divided by 32 for the per-sprite tint.
+ * @return Updated packet pointer (prim + 5 * sizeof(TSPRT)).
+ *
+ * @note A byte-matching version exists but is heavily contorted (raw
+ * pointer offsets relative to `prim + 0x12`, inline asm for addPrim
+ * with explicit register names, dead-code variables to engineer the
+ * register allocation). Preserved below for reference; do not enable
+ * unless you accept the deviation from the project's "human-style C"
+ * rule. The clean idiomatic version remains a TODO.
+ *
+ * @verbatim
+ * s32 func_801E4BD0(s32 ot, TSPRT *prim, s32 fade) {
+ *     s32 color  = fade / 32;
+ *     s32 src    = 0x340;
+ *     s32 x      = 0;
+ *     s32 y      = x;
+ *     s32 count  = x;
+ *     s32 lenVal = 5;
+ *     s32 abr    = count;
+ *     s32 tpY    = count;
+ *     u8 *p      = (u8 *)prim + 0x12;
+ *
+ * top:
+ *     {
+ *         s32 cmd    = 0xE1000400;
+ *         s32 tpQuot = src;
+ *         s32 tpVal;
+ *
+ *         {
+ *             s32 t = (src & 0x3FF) >> 6;
+ *             t |= 0x80;
+ *             tpVal = abr | t;
+ *             tpVal |= cmd;
+ *         }
+ *
+ *         *(u32 *)(p - 0xE) = tpVal;
+ *         *(u8 *)(p - 0x7)  = 0x64;
+ *         *(u16 *)(p + 0x2) = 0x40;
+ *         *(u8 *)(p - 0xF)  = lenVal;
+ *         *(u8 *)(p - 0xA)  = color;
+ *         *(u8 *)(p - 0x9)  = color;
+ *         *(u8 *)(p - 0x8)  = color;
+ *         *(s16 *)(p - 0x6) = x;
+ *         *(s16 *)(p - 0x4) = y;
+ *         *(u16 *)(p + 0x4) = 0xD8;
+ *
+ *         if (src < 0)
+ *             tpQuot = src + 0x3F;
+ *         {
+ *             s32 sraResult = tpQuot >> 6;
+ *             *(u8 *)(p - 0x2) = (src - (sraResult << 6)) * 2;
+ *         }
+ *         *(u8 *)(p - 0x1)  = 0;
+ *         *(u16 *)(p + 0x0) = 0x36A0;
+ *
+ *         asm volatile(
+ *             ".set push; .set noat\n"
+ *             "sll $1, %1, 8\n"
+ *             "lwl $12, 2(%0)\n"
+ *             "swl $1, 2(%0)\n"
+ *             "swl $12, 2(%1)\n"
+ *             ".set pop\n"
+ *             : : "r"(ot), "r"(prim), "r"(tpY), "r"(tpQuot) : "$12", "memory");
+ *     }
+ *     p     += 0x18;
+ *     prim++;
+ *     count += 0x40;
+ *     x     += 0x40;
+ *     src   += 0x20;
+ *     if (count < 0x140) goto top;
+ *
+ *     return (s32)prim;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/menututo/nonmatchings/menututo", func_801E4BD0); /* 0xE0 */
 
 /**
