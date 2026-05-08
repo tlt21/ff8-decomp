@@ -18,7 +18,6 @@ void func_800AE6C0(void);
 s32 func_8009AF3C(s32, s32, s32, s32, s32);
 void func_80048BB8(s32);
 void sndStopAll(void);
-extern u8 g_battleConfig[];
 extern u8 g_gameState[];
 void resetCdDrive(void);
 
@@ -381,7 +380,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object6", func_800AEB50);
  * D_800EE449, and registers func_8009AD7C as callback.
  */
 void func_800AEC04(void) {
-    u8 *base = g_battleConfig;
+    u8 *base = (u8 *)&g_battleConfig;
 
     if (base[7] != 0) {
         return;

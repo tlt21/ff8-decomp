@@ -90,23 +90,12 @@ typedef struct {
 
 
 extern volatile BattleState D_800ED148;
-extern BattleConfig g_battleConfig;
 extern u8 D_800ED157[];
 typedef struct {
     BattleUnit slots[7];
     u8 pad5B0[0x754];
     u8 unkD04[8];
 } BattleSlotData;
-
-/** @brief Sound-command queue slot returned by func_8009B134.
- *
- * The two parameter bytes at +2/+3 are sometimes written as a single u16
- * and sometimes as two separate u8s (callers vary by command id), so they
- * are exposed via U16Split to keep both views available. */
-typedef struct {
-    u16 unk0;
-    U16Split unk2;
-} SoundCmd;
 
 extern BattleSlotData D_800ED158;
 

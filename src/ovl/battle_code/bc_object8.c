@@ -25,7 +25,6 @@ extern u8 D_800EE465[];
 extern u8 D_80082C11[];
 extern u8 D_8005F388[];
 extern u8 D_80063388[];
-extern u8 g_battleConfig[];
 extern u8 D_800EF2D0[];
 extern u8 D_800EF020[];
 extern u8 D_800EEFB0[];
@@ -342,7 +341,7 @@ s32 func_800B2128(void) {
         return 0;
     }
     if (*(u8 *)D_8007809A & 4) {
-        if (*(u16 *)g_battleConfig != 0x13D) {
+        if (*(u16 *)&g_battleConfig != 0x13D) {
             if (func_8009B79C(0x40, 0xFF) != 0) {
                 *(u8 *)D_800EE45C = 1;
                 func_800B1A48();

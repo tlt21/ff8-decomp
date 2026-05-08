@@ -626,6 +626,19 @@ typedef struct {
 
 extern BattleSceneData D_80078E00;
 
+/** @brief Top-level battle config block (g_battleConfig at 0x...). */
+extern BattleConfig g_battleConfig;
+
+/** @brief Sound-command queue slot returned by @c func_8009B134.
+ *
+ * The two parameter bytes at +2/+3 are sometimes written as a single u16
+ * and sometimes as two separate u8s (callers vary by command id), so they
+ * are exposed via U16Split to keep both views available. */
+typedef struct {
+    u16 unk0;
+    U16Split unk2;
+} SoundCmd;
+
 /* ---------------------------------------------------------------- *
  *  Battle data symbols (battle_code overlay region).
  * ---------------------------------------------------------------- */
