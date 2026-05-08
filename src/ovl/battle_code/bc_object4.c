@@ -529,75 +529,71 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A71C0);
  *
  * @param idx Battle slot index (0..6 covers the 7 active slots).
  */
-void func_800A7518(s32 idx) {
-    u8 *charData = (u8 *)&g_battleChars + idx * 0x1D0;
-    u8 *slot     = (u8 *)&D_800ED158 + idx * 0xD0;
-    u8 *scene;
-    u8  charId;
-    s32 i;
+/* Slot offsets exposed only to the init-time view of a BattleEntity slot.
+   Same memory as the regular @c BattleEntity fields but accessed through
+   different sized loads/stores (32-bit flag words at @c 0x7C / @c 0x08
+   that overlap @c field64[] / @c key+pad09, and the 16-bit display
+   mirror at @c 0x80 that overlaps @c pad80[]). */
+#define SLOT_FLAGS(slot)      (*(s32 *)((u8 *)(slot) + 0x7C))
+#define SLOT_DISPLAY(slot)    (*(u16 *)((u8 *)(slot) + 0x80))
+#define SLOT_INIT_FLAGS(slot) (*(s32 *)((u8 *)(slot) + 0x08))
 
-    charId = charData[0x1C3];
+void func_800A7518(s32 idx) {
+    BattleCharData *charData = (BattleCharData *)((u8 *)&g_battleChars + idx * 0x1D0);
+    BattleEntity   *slot     = &D_800ED158.slots[idx];
+    u8             *scene;
+    u8              charId;
+    s32             i;
+
+    charId = charData->characterId;
     if (charId == 0xFF) {
-        *(s32 *)(slot + 0x7C) = 0;
-        slot[0xBB] = 0xFF;
+        SLOT_FLAGS(slot) = 0;
+        slot->linkedIdx2 = 0xFF;
         return;
     }
 
     {
         u16 dispStatus;
-        slot[0xBB] = charId;
-        dispStatus = *(u16 *)(charData + 0x1B2);
-        *(s32 *)(slot + 0x7C) = 0x8801;
-        *(u16 *)(slot + 0x80) = dispStatus;
+        slot->linkedIdx2   = charId;
+        dispStatus         = charData->displayStatus;
+        SLOT_FLAGS(slot)   = 0x8801;
+        SLOT_DISPLAY(slot) = dispStatus;
     }
 
     scene = (u8 *)&D_80078E00;
-    if (scene[0x35C3 + charData[0x1BA] * 12] & 1) {
-        *(s32 *)(slot + 0x7C) |= 0x1000;
-    }
-    if (scene[0x37A7 + slot[0xBB] * 36] & 1) {
-        *(s32 *)(slot + 0x7C) |= 0x100;
-    }
+    if (scene[0x35C3 + charData->classId * 12] & 1) SLOT_FLAGS(slot) |= 0x1000;
+    if (scene[0x37A7 + slot->linkedIdx2 * 36]   & 1)  SLOT_FLAGS(slot) |= 0x100;
 
-    *(s32 *)(slot + 0x8) = 0;
-    if (*(s32 *)(charData + 0x190) & 0x1000) {
-        *(s32 *)(slot + 0x8) = 0x80;
-    }
-    if (*(s32 *)(charData + 0x190) & 0x4000) {
-        *(s32 *)(slot + 0x8) |= 0x20;
-    }
-    if (*(s32 *)(charData + 0x190) & 0x2000) {
-        *(s32 *)(slot + 0x8) |= 0x40;
-    }
-    if (*(s32 *)(charData + 0x190) & 0x8000) {
-        *(s32 *)(slot + 0x8) |= 0x2;
-    }
+    SLOT_INIT_FLAGS(slot) = 0;
+    if (charData->statusFlags & 0x1000) SLOT_INIT_FLAGS(slot)  = 0x80;
+    if (charData->statusFlags & 0x4000) SLOT_INIT_FLAGS(slot) |= 0x20;
+    if (charData->statusFlags & 0x2000) SLOT_INIT_FLAGS(slot) |= 0x40;
+    if (charData->statusFlags & 0x8000) SLOT_INIT_FLAGS(slot) |= 0x02;
 
-    func_800A7188(slot);
-    func_800A71A0(slot);
+    func_800A7188((u8 *)slot);
+    func_800A71A0((u8 *)slot);
     func_800A554C(idx);
 
     {
         s32 fillVal;
         u8 *p;
 
-        if (!(*(s32 *)(slot + 0x80) & 5)) {
-            if (*(s32 *)(charData + 0x190) & 0x10000) {
-                u8 *entityHdr = (u8 *)&D_800ED158 - 0x10 + idx * 0xD0;
-                *(volatile s32 *)(entityHdr + 0x24) = *(volatile s32 *)(entityHdr + 0x20);
+        if (!(*(s32 *)((u8 *)slot + 0x80) & 5)) {
+            if (charData->statusFlags & 0x10000) {
+                u8 *entity = (u8 *)&D_800ED158 - 0x10 + idx * 0xD0; /* &D_800ED148.entities[idx] */
+                *(volatile s32 *)(entity + 0x24) = *(volatile s32 *)(entity + 0x20);
             } else {
                 func_800A559C(idx);
             }
         }
 
         fillVal = 100;
-        i = 0x27;
-        p = slot + 0x27;
-    top:
-        p[0x90] = fillVal;
-        i--;
-        p--;
-        if (i >= 0) goto top;
+        i       = 0x27;
+        p       = (u8 *)slot + 0x27;
+        for (; i >= 0; i--) {
+            p[0x90] = fillVal;
+            p--;
+        }
     }
 }
 
