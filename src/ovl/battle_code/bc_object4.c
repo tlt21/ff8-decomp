@@ -575,8 +575,10 @@ void func_800A7518(s32 idx) {
            above was 16-bit) — pick up the wider view via the same union. */
         if (!(slot->at0x80.word & 5)) {
             if (charData->statusFlags & 0x10000) {
-                /* &D_800ED148.entities[idx], expressed via D_800ED158 minus
-                   0x10 to match the addressing chosen by the original code. */
+                /* &D_800ED148.entities[idx], written via D_800ED158 - 0x10 so
+                   gcc reuses the D_800ED158 base register already materialized
+                   above for the slot lookup, instead of re-emitting lui+addiu
+                   for D_800ED148. */
                 volatile BattleEntity *entity =
                     (volatile BattleEntity *)((u8 *)&D_800ED158 - 0x10 + idx * 0xD0);
                 entity->field24 = entity->field20;
@@ -585,6 +587,13 @@ void func_800A7518(s32 idx) {
             }
         }
 
+        /* Fill 40 bytes of @c slot[0x90..0xB7] (status, statusBackup,
+           hpDisplay, and the head of @c pad96[]) with 100. The walker
+           starts at @c slot+0x27 with a constant @c +0x90 baked into
+           the store — that splits the address into a saved-register
+           offset (@c 0x27) and an immediate displacement (@c 0x90),
+           which is the form gcc 2.7.2 schedules into the loop body
+           with the @c addiu in the @c bgez delay slot. */
         fillVal = 100;
         i       = 0x27;
         p       = (u8 *)slot + 0x27;
