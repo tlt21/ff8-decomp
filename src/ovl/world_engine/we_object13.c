@@ -1,16 +1,13 @@
 #include "common.h"
 #include "gamestate.h"
 #include "battle.h"
+#include "psxsdk/libcd.h"
 
-extern void func_80043578(s32);
-extern void func_8004358C(s32);
-extern void func_800435A0(s32, s32, s32);
-
-/** Initializes audio/display subsystem. */
+/** Initializes the CD subsystem: clears callbacks and pauses the drive. */
 void func_800C40F8(void) {
-    func_80043578(0);
-    func_8004358C(0);
-    func_800435A0(9, 0, 0);
+    CdSyncCallback(NULL);
+    CdReadyCallback(NULL);
+    CdControl(9, NULL, NULL);
 }
 
 /**
@@ -40,8 +37,6 @@ typedef struct StreamState {
 extern StreamState D_800E3E70;
 extern void (*D_800E3E60)(s32, void *);
 
-extern void func_8004397C(void *dst, s32 size);
-extern s32  func_80043B04(void *buf);
 extern void func_80047C3C(u8 *msg);
 extern u8   D_800987C0;
 
@@ -50,8 +45,8 @@ extern u8   D_800987C0;
  *
  * On @p event == 1: services the in-flight read pipeline. While
  * @c D_800E3E70.remaining is positive, pulls the just-finished sector's
- * header via @c func_8004397C and validates the decoded sequence number
- * (from @c func_80043B04) against @c expectedSeq. On mismatch, logs
+ * header via @c CdGetSector and validates the decoded sequence number
+ * (from @c CdPosToInt) against @c expectedSeq. On mismatch, logs
  * "CdRead: sector error" and aborts the buffer by setting @c remaining to
  * -1. After verify, if @c remaining is still positive, queues the next
  * block read at @c buffers[bufIdx] + blockIdx*0x800 (0x200 words = one
@@ -73,13 +68,13 @@ void func_800C4130(u8 event, void *ctx) {
         u8 header[0x10];
 
         if (s->remaining > 0) {
-            func_8004397C(header, 3);
-            if (func_80043B04(header) != s->expectedSeq) {
+            CdGetSector(header, 3);
+            if (CdPosToInt((CdlLOC *)header) != s->expectedSeq) {
                 func_80047C3C(&D_800987C0);
                 s->remaining = -1;
             }
             if (s->remaining > 0) {
-                func_8004397C(s->buffers[s->bufIdx] + s->blockIdx * 0x800, 0x200);
+                CdGetSector(s->buffers[s->bufIdx] + s->blockIdx * 0x800, 0x200);
                 s->remaining--;
                 s->expectedSeq++;
                 s->blockIdx++;

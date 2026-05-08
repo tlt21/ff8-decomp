@@ -313,5 +313,12 @@ void AddPrim(s32 *ot, void *p);
 void AddPrims(s32 *ot, void *p0, void *p1);
 void SetDrawArea(u8 *p, RECT *rect);
 void SetDrawOffset(u8 *p, RECT *rect);
+s32 MoveImage(RECT *rect, s32 x, s32 y);
+s32 OpenTIM(u32 *addr);
+void *ReadTIM(void *timimg);
+s32 GetODE(void);
+void SetSemiTrans(void *p, s32 abe);
+void SetShadeTex(void *p, s32 tge);
+void SetDrawTPage(void *p, s32 dfe, s32 dtd, s32 tpage);
 
 #endif /* LIBGPU_H */

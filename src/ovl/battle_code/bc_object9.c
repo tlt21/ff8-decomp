@@ -14,9 +14,6 @@ extern u8 D_800EEC5C[];
 extern u8 D_800EF2D0[];
 void func_800B8314(void);
 void func_800B8870(u8 *, s32);
-void func_80040FA4(s32, s32);
-void func_8003FD84(s32, s32, s32);
-void func_80040264(s32, s32);
 s32 func_8013E000(s32);
 void func_800B8F4C(s32);
 s32 func_800B5604(u8 *);
@@ -73,9 +70,9 @@ void func_800B54A0(s32 a0, s32 a1, s32 a2) {
     *(s32 *)(dst + 0x14) = *(s32 *)(a1 + 0x14) - *(s32 *)(a0 + 0x14);
     *(s32 *)(dst + 0x18) = *(s32 *)(a1 + 0x18) - *(s32 *)(a0 + 0x18);
     *(s32 *)(dst + 0x1C) = *(s32 *)(a1 + 0x1C) - *(s32 *)(a0 + 0x1C);
-    func_80040FA4(a0, dst);
-    func_8003FD84(dst, dst + 0x14, dst + 0x14);
-    func_80040264(dst, a1);
+    TransposeMatrix((MATRIX *)a0, (MATRIX *)dst);
+    ApplyMatrixLV((MATRIX *)dst, (VECTOR *)(dst + 0x14), (VECTOR *)(dst + 0x14));
+    MulMatrix((MATRIX *)dst, (MATRIX *)a1);
 }
 
 /**

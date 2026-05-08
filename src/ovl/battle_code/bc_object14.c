@@ -1,4 +1,5 @@
 #include "common.h"
+#include "psxsdk/libgte.h"
 
 extern u8 D_800FA4FC[];
 extern u8 D_800FA5F0[];
@@ -14,7 +15,6 @@ extern u8 D_800F02F4[];
 s32 func_800C5B1C(u8 *a0);
 s32 func_800B853C(void *);
 s32 func_800C5A94(s32, s32);
-void func_8003F41C(void);
 void func_800408C4(s32, s32);
 void func_800408E4(s32);
 void func_800C5338(s32);
@@ -23,9 +23,6 @@ void func_800472F4(void);
 void sndEnableReverb(s32);
 void sndDisableReverb(s32);
 void func_8009B6B0(void);
-void func_80049A14(s32);
-void func_8004D584(s32, s32);
-void func_80049A94(s32, s32);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object14", func_800C4A64);
 
@@ -200,8 +197,8 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object14", func_800C6198);
  * @brief Update animation frame counter with optional palette reset.
  *
  * If the frame counter (byte at +6) is less than 2, resets the palette
- * via func_800408A4(0xFF, 0xFF, 0xFF), then sets up a palette entry via
- * func_80040918 with the counter shifted left by 11, and clears byte +0x2B.
+ * via SetFarColor(0xFF, 0xFF, 0xFF), then sets up a palette entry via
+ * DpqColor with the counter shifted left by 11, and clears byte +0x2B.
  * Then, if the counter is non-zero, decrements it. If the counter is zero,
  * generates a new random value in the range [1, 15] using func_80023D04.
  *
@@ -209,8 +206,8 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object14", func_800C6198);
  */
 void func_800C624C(u8 *a0) {
     if (a0[6] < 2) {
-        func_800408A4(0xFF, 0xFF, 0xFF);
-        func_80040918((s32)a0 + 0x28, (a0[6] + 1) << 11, (s32)a0 + 0x28);
+        SetFarColor(0xFF, 0xFF, 0xFF);
+        DpqColor((CVECTOR *)((s32)a0 + 0x28), (a0[6] + 1) << 11, (CVECTOR *)((s32)a0 + 0x28));
         a0[0x2B] = 0;
     }
     if (a0[6] != 0) {
@@ -231,7 +228,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object14", func_800C65A8);
 /**
  * @brief Initialize palette and display state for battle effect.
  *
- * Calls func_8003F41C to reset state, clears D_800FA504 (2 halfwords),
+ * Calls InitGeom to reset state, clears D_800FA504 (2 halfwords),
  * calls func_800408C4 with dimensions 0xA0 x 0x6C, stores 0x200 to
  * D_800FA500, calls func_800408E4 with 0x200, sets D_800FA4F8 to 0x11,
  * and sets bit 2 of D_800EEC5C.

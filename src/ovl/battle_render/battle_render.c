@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psxsdk/libetc.h"
+#include "psxsdk/libgpu.h"
 
 /** @brief Battle render command block (linked-list node, 0x10 bytes). */
 typedef struct CmdBlk_ {
@@ -362,8 +363,8 @@ void func_8009A664(void) {
 /**
  * @brief Process render object and dispatch collision checks.
  *
- * Calls func_8004B8F4 to initialize, then func_8004B904 to populate
- * a local buffer. Dispatches func_80048EFC with the third/fourth
+ * Calls OpenTIM to initialize, then ReadTIM to populate
+ * a local buffer. Dispatches LoadImage with the third/fourth
  * words, and if bit 3 of the first word is set, also dispatches
  * with the second/third words.
  *
@@ -371,11 +372,11 @@ void func_8009A664(void) {
  */
 void func_8009A66C(u8 *a0) {
     s32 buf[6];
-    func_8004B8F4(a0);
-    func_8004B904(&buf);
-    func_80048EFC(buf[3], buf[4]);
+    OpenTIM(a0);
+    ReadTIM(&buf);
+    LoadImage(buf[3], buf[4]);
     if (((u32)buf[0] >> 3) & 1) {
-        func_80048EFC(buf[1], buf[2]);
+        LoadImage(buf[1], buf[2]);
     }
 }
 
@@ -388,14 +389,14 @@ void func_8009A6CC(void) {
 /**
  * @brief Initialize render object with two display functions.
  *
- * Calls func_8004D604 with mode 0, then func_8004D634 with mode 1,
+ * Calls SetSemiTrans with mode 0, then SetShadeTex with mode 1,
  * both using the same object pointer.
  *
  * @param a0 Render object pointer.
  */
 void func_8009A6FC(s32 a0) {
-    func_8004D604(a0, 0);
-    func_8004D634(a0, 1);
+    SetSemiTrans(a0, 0);
+    SetShadeTex(a0, 1);
 }
 
 INCLUDE_ASM("asm/ovl/battle_render/nonmatchings/battle_render", func_8009A734);

@@ -1,6 +1,7 @@
 #include "common.h"
 #include "battle.h"
 #include "psxsdk/libc.h"
+#include "psxsdk/libgpu.h"
 
 typedef struct {
     u32 type;
@@ -43,10 +44,6 @@ extern s32 func_80099C78();
 extern s32 func_8009A314();
 extern s32 func_8009A508();
 
-extern void func_8004D724(u8 *, s32, s32, s32);
-extern void func_8004D584(u8 *, u8 *);
-extern void func_80049244(u8 *);
-extern void func_80049074(u8 *, s32);
 
 /**
  * @brief Initialize the battle engine subsystems and build the object lookup table.
@@ -378,14 +375,14 @@ extern ResHeader D_800B71D8;
  * @brief Register @c D_800B71D8 and set up the current frame's draw targets.
  *
  * Registers the @c D_800B71D8 resource into the D_801C2ED0 pool via
- * @c func_80098A6C, kicks off @c func_80049074 for the current buffer's
+ * @c func_80098A6C, kicks off @c ClearOTag for the current buffer's
  * drawenv slot, then rebases the framebuffer (@c D_801D2FE0) and drawenv
  * (@c D_801D3000) pointers to the slot indexed by @c D_80182B54. Unlike
  * @c func_80099464, this does not flip the buffer index first.
  */
 void func_80098DD4(void) {
     func_80098A6C(&D_800B71D8);
-    func_80049074(D_801D2FF0[D_80182B54], 2);
+    ClearOTag(D_801D2FF0[D_80182B54], 2);
     D_801D2FE0 = D_801C2FE0[D_80182B54];
     D_801D3000 = D_801D2FF0[D_80182B54];
 }
@@ -547,12 +544,12 @@ void func_80099424(s32 a0, ...) {
 void func_80099464(void) {
     u8 *fb = D_801D2FE0;
 
-    func_8004D724(fb, 0, 1, 3);
-    func_8004D584(D_801D3000, fb);
-    func_80049244(D_801D3000);
+    SetDrawTPage(fb, 0, 1, 3);
+    AddPrim(D_801D3000, fb);
+    DrawOTag(D_801D3000);
 
     D_80182B54 = D_80182B54 ^ 1;
-    func_80049074(D_801D2FF0[D_80182B54], 2);
+    ClearOTag(D_801D2FF0[D_80182B54], 2);
 
     D_80182B5A = 8;
     D_80182B56 = 8;

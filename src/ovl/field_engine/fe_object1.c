@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psxsdk/libgte.h"
+#include "psxsdk/libgpu.h"
 
 /** @brief 12-byte signed integer 3D position (x, y, z). */
 typedef struct {
@@ -501,7 +502,7 @@ INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object1", func_800A1BB8);
 
 /**
  * If D_8005F0F8 byte at offset 0xE is 1, sets up a display region
- * (0x200 x 0xF0 at 0x100, 0x10) and calls func_80048EFC.
+ * (0x200 x 0xF0 at 0x100, 0x10) and calls LoadImage.
  */
 void func_800A1C64(void) {
     u8 *data = (u8 *)D_8005F0F8;
@@ -512,7 +513,7 @@ void func_800A1C64(void) {
         rect[1] = 0xF0;
         rect[2] = 0x100;
         rect[3] = 0x10;
-        func_80048EFC(rect, D_800C71E4);
+        LoadImage(rect, D_800C71E4);
     }
 }
 

@@ -1,0 +1,8 @@
+/* PsyQ library aliases used by decomped C in the display_init overlay. */
+VSync       = 0x80042634;
+ResetGraph  = 0x800488D4;
+SetDispMask = 0x80048BB8;
+DrawSync    = 0x80048C50;
+LoadImage   = 0x80048EFC;
+MoveImage   = 0x80048FBC;
+GetODE      = 0x800499AC;

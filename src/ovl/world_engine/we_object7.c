@@ -57,7 +57,6 @@ extern MATRIX D_800C9838;
 
 extern s32 func_800A5DC8(s32 x, s32 y);
 extern s8 func_800B01A0(s16 viewY, s16 viewX, TrackEntry *e, u16 *posOut, s8 *unk30Out, u8 *unk2COut);
-extern s32 func_8003F4A4(s32 x);
 extern s32 func_80041E84(s32 y, s32 x);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B310C);
@@ -114,7 +113,7 @@ void func_800B3868(TrackObj *obj) {
             diff.vy = target->posY - current->posY;
             diff.vz = target->posZ - current->posZ;
             current->unk18 = 0;
-            horizDist = func_8003F4A4(diff.vz * diff.vz + diff.vx * diff.vx);
+            horizDist = SquareRoot0(diff.vz * diff.vz + diff.vx * diff.vx);
             current->pitch = func_80041E84(-diff.vy, horizDist);
             current->yaw = func_80041E84(-diff.vz, diff.vx) + 0x800;
         }

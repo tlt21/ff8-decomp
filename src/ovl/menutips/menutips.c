@@ -1,5 +1,7 @@
 #include "common.h"
 #include "menu.h"
+#include "psxsdk/libgpu.h"
+#include "psxsdk/libetc.h"
 
 extern u8 D_801ED430[];
 extern s16 D_801ED630;
@@ -559,8 +561,8 @@ void func_801E696C(void) {
         ;
     }
 
-    func_80048C50(0);
-    func_80042634(0);
+    DrawSync(0);
+    VSync(0);
     work = (WorkStruct *)func_801F179C(func_801E5A10, &func_801E67F4);
     for (i = 0; i < 0x1000; i++) {
         D_801E6B10[i] = 0;

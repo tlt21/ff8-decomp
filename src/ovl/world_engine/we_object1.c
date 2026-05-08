@@ -1,5 +1,6 @@
 #include "common.h"
 #include "sound.h"
+#include "psxsdk/libapi.h"
 
 extern u8 D_800780D8[];
 extern u8 D_800C4DCC[];
@@ -52,14 +53,11 @@ INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object1", func_8009C294);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object1", func_8009C478);
 
-extern void func_800471E4(s32 category, s32 rc);
-
 /**
  * @brief Fatal-error thunk that invokes the PSX SDK SystemError with category 0x57.
  *
- * Forwards @p rc to SystemError (func_800471E4) with a fixed category code.
- * Callers pass a line-number-like token so the fault site can be identified
- * post-mortem.
+ * Forwards @p rc to SystemError with a fixed category code. Callers pass a
+ * line-number-like token so the fault site can be identified post-mortem.
  *
  * @note Category values in use elsewhere: field_engine → 0x53, battle_code
  *       → 0x59, world_engine → 0x57. They happen to be ASCII ('S','Y','W')
@@ -68,7 +66,7 @@ extern void func_800471E4(s32 category, s32 rc);
  * @param rc Diagnostic code (typically a unique line/site identifier).
  */
 void func_8009C528(s32 rc) {
-    func_800471E4(0x57, rc);
+    SystemError(0x57, rc);
 }
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object1", func_8009C54C);

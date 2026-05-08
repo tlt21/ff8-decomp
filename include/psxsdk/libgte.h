@@ -37,14 +37,23 @@ typedef struct {
 
 MATRIX *RotMatrix(SVECTOR *r, MATRIX *m);
 MATRIX *CompMatrix(MATRIX *m0, MATRIX *m1, MATRIX *m2);
+MATRIX *MulMatrix(MATRIX *m0, MATRIX *m1);
 MATRIX *ScaleMatrix(MATRIX *m, VECTOR *scale);
 MATRIX *ScaleMatrixL(MATRIX *m, VECTOR *scale);
+MATRIX *TransposeMatrix(MATRIX *m0, MATRIX *m1);
 void SetRotMatrix(MATRIX *m);
 void SetTransMatrix(MATRIX *m);
+void SetLightMatrix(MATRIX *m);
+void SetFarColor(s32 rfc, s32 gfc, s32 bfc);
 
 /* --- GTE transform operations --- */
 
+VECTOR *ApplyMatrixLV(MATRIX *m, VECTOR *v0, VECTOR *v1);
 s32 RotTransPers(SVECTOR *v0, s32 *sxy, s32 *p, s32 *flag);
+
+/* --- GTE color/lighting --- */
+
+void DpqColor(CVECTOR *v0, s32 p, CVECTOR *v1);
 
 /* --- GTE initialization --- */
 

@@ -1,0 +1,2 @@
+OpenEvent     = 0x80047204;
+EnableEvent   = 0x80047244;

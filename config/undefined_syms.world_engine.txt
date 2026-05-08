@@ -18,6 +18,15 @@ ScaleMatrix = 0x80040564;
 SetRotMatrix = 0x800406A4;
 SetTransMatrix = 0x80040734;
 RotMatrix = 0x80040FE4;
+SquareRoot0 = 0x8003F4A4;
+MulMatrix = 0x80040264;
+SetLightMatrix = 0x800406D4;
+SystemError = 0x800471E4;
+CdSyncCallback = 0x80043578;
+CdReadyCallback = 0x8004358C;
+CdControl = 0x800435A0;
+CdGetSector = 0x8004397C;
+CdPosToInt = 0x80043B04;
 
 /* Data blobs in bin section that are called/referenced by real code */
 func_800C4CA4 = 0x800C4CA4;

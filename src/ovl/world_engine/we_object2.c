@@ -312,26 +312,24 @@ INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object2", func_8009F6EC);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object2", func_8009FDA4);
 
-extern void func_80040264(MATRIX *m, s32 a1);
-extern void func_800406D4(MATRIX *m);
-
 /**
- * @brief Build a rotation matrix from angles, post-modify it, and finalize.
+ * @brief Build a rotation matrix from angles, multiply by another, and set
+ *        as the GTE light matrix.
  *
  * Three-step transform pipeline:
  *  1. @c RotMatrix(angles, &m) — fill @c m with a rotation derived from
  *     the @c SVECTOR pointed to by @p a0.
- *  2. @c func_80040264(&m, a1) — apply/combine @p a1 into @c m.
- *  3. @c func_800406D4(&m) — finalize/commit the matrix.
+ *  2. @c MulMatrix(&m, a1) — multiply @c m by the matrix at @p a1.
+ *  3. @c SetLightMatrix(&m) — load @c m as the GTE LLM (light matrix).
  *
  * @param a0 Input @c SVECTOR with rotation angles.
- * @param a1 Second input (applied during step 2).
+ * @param a1 Right-hand multiplier matrix.
  */
-void func_8009FE80(SVECTOR *a0, s32 a1) {
+void func_8009FE80(SVECTOR *a0, MATRIX *a1) {
     MATRIX m;
     RotMatrix(a0, &m);
-    func_80040264(&m, a1);
-    func_800406D4(&m);
+    MulMatrix(&m, a1);
+    SetLightMatrix(&m);
 }
 
 extern void func_800A017C(s32 *vec);

@@ -1,4 +1,6 @@
 #include "common.h"
+#include "psxsdk/libgpu.h"
+#include "psxsdk/libetc.h"
 
 extern u32 D_800990B8[];
 extern s32 D_8009928C;
@@ -52,7 +54,7 @@ void func_800985EC(void) {
 
     if ((s16)y < 0x1BC) {
         do {
-            func_80048EFC(&rect, ptr);
+            LoadImage(&rect, ptr);
             y = rect[1] + 2;
             rect[1] = y;
             ptr += 0x910;
@@ -73,9 +75,9 @@ void func_8009869C(void) {
     s32 i;
 
     D_80099290 = 2;
-    func_80042634(0);
+    VSync(0);
 
-    i = func_800499AC();
+    i = GetODE();
     brightness = 0xFF;
     D_8009928C = (u32)i < 1;
 
@@ -90,7 +92,7 @@ void func_8009869C(void) {
         brightness -= 4;
         func_8009818C();
         D_80099294 = 1;
-        func_80048BB8(1);
+        SetDispMask(1);
     } while (brightness >= 0);
 
     /* Wait 300 frames */
@@ -108,7 +110,7 @@ void func_8009869C(void) {
         func_8009818C();
     } while (i < 0xFF);
 
-    func_80048BB8(0);
+    SetDispMask(0);
     D_80099290 = 1;
 }
 
@@ -128,15 +130,15 @@ INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_80098974);
 void func_80098FD4(s32 mode) {
     s16 rect[4];
 
-    func_800488D4(1);
+    ResetGraph(1);
 
     rect[0] = 0x100;
     rect[1] = 0xE0;
     rect[2] = 0x40;
     rect[3] = 0x20;
-    func_80048FBC(&rect, 0, 0x1E0);
-    func_80048C50(0);
-    func_80042634(0);
+    MoveImage(&rect, 0, 0x1E0);
+    DrawSync(0);
+    VSync(0);
 
     switch (mode) {
     case 0:
@@ -149,13 +151,13 @@ void func_80098FD4(s32 mode) {
         break;
     }
 
-    func_80048BB8(0);
+    SetDispMask(0);
 
     rect[1] = 0x1E0;
     rect[2] = 0x40;
     rect[0] = 0;
     rect[3] = 0x20;
-    func_80048FBC(&rect, 0x100, 0xE0);
-    func_80048C50(0);
-    func_80042634(0);
+    MoveImage(&rect, 0x100, 0xE0);
+    DrawSync(0);
+    VSync(0);
 }

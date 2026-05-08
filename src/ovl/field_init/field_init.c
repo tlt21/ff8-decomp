@@ -2,6 +2,7 @@
 #include "cd.h"
 #include "battle.h"
 #include "field_init_font.h"
+#include "psxsdk/libapi.h"
 
 /** @brief Kernel event control block entity (stride 0xC0). */
 typedef struct {
@@ -128,23 +129,23 @@ void func_800980D0(void) {
     func_8004D844(0);
     func_800472E4();
 
-    g_cardData.events[0] = func_80047204(0xF4000001, 4, 0x2000, 0);
-    g_cardData.events[1] = func_80047204(0xF4000001, 0x8000, 0x2000, 0);
-    g_cardData.events[2] = func_80047204(0xF4000001, 0x100, 0x2000, 0);
-    g_cardData.events[3] = func_80047204(0xF4000001, 0x2000, 0x2000, 0);
-    g_cardData.events[4] = func_80047204(0xF0000011, 4, 0x2000, 0);
-    g_cardData.events[5] = func_80047204(0xF0000011, 0x8000, 0x2000, 0);
-    g_cardData.events[6] = func_80047204(0xF0000011, 0x100, 0x2000, 0);
-    g_cardData.events[7] = func_80047204(0xF0000011, 0x2000, 0x2000, 0);
+    g_cardData.events[0] = OpenEvent(0xF4000001, 4, 0x2000, 0);
+    g_cardData.events[1] = OpenEvent(0xF4000001, 0x8000, 0x2000, 0);
+    g_cardData.events[2] = OpenEvent(0xF4000001, 0x100, 0x2000, 0);
+    g_cardData.events[3] = OpenEvent(0xF4000001, 0x2000, 0x2000, 0);
+    g_cardData.events[4] = OpenEvent(0xF0000011, 4, 0x2000, 0);
+    g_cardData.events[5] = OpenEvent(0xF0000011, 0x8000, 0x2000, 0);
+    g_cardData.events[6] = OpenEvent(0xF0000011, 0x100, 0x2000, 0);
+    g_cardData.events[7] = OpenEvent(0xF0000011, 0x2000, 0x2000, 0);
 
-    func_80047244(g_cardData.events[0]);
-    func_80047244(g_cardData.events[1]);
-    func_80047244(g_cardData.events[2]);
-    func_80047244(g_cardData.events[3]);
-    func_80047244(g_cardData.events[4]);
-    func_80047244(g_cardData.events[5]);
-    func_80047244(g_cardData.events[6]);
-    func_80047244(g_cardData.events[7]);
+    EnableEvent(g_cardData.events[0]);
+    EnableEvent(g_cardData.events[1]);
+    EnableEvent(g_cardData.events[2]);
+    EnableEvent(g_cardData.events[3]);
+    EnableEvent(g_cardData.events[4]);
+    EnableEvent(g_cardData.events[5]);
+    EnableEvent(g_cardData.events[6]);
+    EnableEvent(g_cardData.events[7]);
 
     func_800472F4();
 

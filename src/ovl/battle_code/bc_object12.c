@@ -177,7 +177,7 @@ s32 func_800C0AE4(s32 a0, s32 a1) {
  * @brief Look up sound, compute inverse ratio, and start playback.
  *
  * Sign-extends a0, looks up sound via func_800C07B4. If found,
- * calls func_80040FA4 with a1, computes 0x1000000 / result,
+ * calls TransposeMatrix with a1, computes 0x1000000 / result,
  * fills a buffer with the quotient, and calls func_80040564.
  *
  * @param a0 Sound ID (sign-extended to s16).
@@ -189,7 +189,7 @@ s32 func_800C0B3C(s32 a0, s32 a1) {
     s32 result = func_800C07B4((s16)a0);
     if (result != 0) {
         s32 quotient;
-        func_80040FA4(a1, a1);
+        TransposeMatrix((MATRIX *)a1, (MATRIX *)a1);
         quotient = 0x1000000 / result;
         buf.vz = quotient;
         buf.vy = quotient;

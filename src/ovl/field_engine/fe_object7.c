@@ -2,6 +2,7 @@
 #include "battle.h"
 #include "gamestate.h"
 #include "field.h"
+#include "psxsdk/libgte.h"
 
 
 /** @brief World map / field context pointed to by g_seedState. */
@@ -1334,7 +1335,7 @@ s32 func_800B76A4(Eline *self) {
     s32 dy = (self->msgPosX - self->posY) / 4096;
     dx = dx * dx;
     dy = dy * dy;
-    return func_8003F4A4(dx + dy);
+    return SquareRoot0(dx + dy);
 }
 
 /**

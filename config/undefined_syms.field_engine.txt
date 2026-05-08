@@ -1,3 +1,6 @@
+/* PsyQ library aliases used by decomped C. */
+SquareRoot0 = 0x8003F4A4;
+
 /* Symbols for data tables incorrectly disassembled as code by splat.
    Cross-file labels and bogus function pointers from data segments. */
 .L800AB150 = 0x800AB150;
@@ -47,3 +50,4 @@ func_8F7C2F6C = 0x8F7C2F6C;
 func_8FA02F8C = 0x8FA02F8C;
 func_8FC02FB0 = 0x8FC02FB0;
 func_8FE02FD0 = 0x8FE02FD0;
+LoadImage = 0x80048EFC;
