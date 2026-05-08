@@ -640,7 +640,7 @@ void func_800AB0C0(s32 a0, s32 a1) {
  * @param idx Entity index (stride 0xD0 in D_800ED148).
  */
 void func_800AB11C(s16 idx) {
-    BattleEntity *base = (BattleEntity *)D_800ED148;
+    BattleEntity *base = (BattleEntity *)&D_800ED148;
     volatile s32 *flags = &base[idx].controlFlags;
     *flags &= ~CTRL_FLAG_40;
     *flags &= ~CTRL_FLAG_80;

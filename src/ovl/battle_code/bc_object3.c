@@ -5,7 +5,6 @@ extern u8 D_800786D8[];
 extern u8 D_800EE424[];
 extern u8 D_800EE43C[];
 extern u8 D_800EE462[];
-extern u8 D_800ED158[];
 extern u8 D_80077E58[];
 s32 func_800A4798(s32, s32);
 void func_8009B320(s32, u8 *, u8 *);
@@ -517,9 +516,9 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object3", func_800A4A74);
 void func_800A4B68(s32 arg0) {
     s16 tmp = arg0;
     s32 tmp2 = arg0 & 0xE000;
-    D_800ED148.unk12E0 = (tmp &= 0x1FFF);
+    ((BattleSystem *)&D_800ED148)->unk12E0 = (tmp &= 0x1FFF);
     tmp = ((u32)tmp2) >> 0xD;
-    D_800ED148.unk130F = (s8)tmp;
+    ((BattleSystem *)&D_800ED148)->unk130F = (s8)tmp;
 }
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object3", func_800A4B88);
@@ -622,7 +621,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object3", func_800A5688);
  * @param idx Entity index.
  */
 void func_800A5778(s32 idx) {
-    u8 *src = D_800ED158 + idx * 0xD0;
+    u8 *src = (u8 *)&D_800ED158 + idx * 0xD0;
     u8 *dst = (u8 *)&g_battleChars + idx * 0x1D0;
 
     if (idx < 3) {

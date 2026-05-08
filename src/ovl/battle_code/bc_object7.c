@@ -10,7 +10,6 @@ s32 func_800B0204(u8 *, s32, s32, s32);
 void func_800A4C84(s32);
 void func_800AE524(s32);
 void func_8009AE08(s32);
-extern u8 D_800ED158[];
 extern u8 g_gameState[];
 extern u8 D_800E3CF0[];
 extern u8 D_800EE4E8[];
@@ -348,7 +347,7 @@ void func_800B0600(s32 a0, s32 a1) {
 s32 func_800B0668(s32 a0, s32 a1) {
     s32 bitPos = func_800B054C(a1);
     if (bitPos < 14) {
-        if (D_800ED148.entities[a0].field64[bitPos] == -0x457) {
+        if (((BattleSystem *)&D_800ED148)->entities[a0].field64[bitPos] == -0x457) {
             return 1;
         }
     }
@@ -414,7 +413,7 @@ s32 func_800B0794(s32 a0, s32 a1) {
         return 1;
     }
     if (a1 & 0x1000) {
-        D_800ED148.entities[a0].status |= 4;
+        ((BattleSystem *)&D_800ED148)->entities[a0].status |= 4;
         func_800A2520(a0);
     }
     return 0;

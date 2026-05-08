@@ -128,10 +128,10 @@ void func_800AEC04(void);
 void func_800AED9C(void);
 void func_800AEB50(void);
 void func_800AF8A4(s32);
-s32 func_800B0600(s32, s32);
+
 s32 func_800B0668(s32, s32);
-s32 func_800B0F7C(s32);
-s32 func_800B0F9C(s32);
+
+
 s32 func_800B1930(s32);
 void func_800B1ACC(void);
 void func_800B2024(void);
@@ -163,12 +163,12 @@ void func_80099FE8(void) {
     func_80027448();
     func_8009B428();
 
-    *((u8 *)&D_800ED148 + 0x5C3) = 1;
-    D_800ED148.entities[0].state = 0;
-    D_800ED148.unk12EC = 0xFF;
-    D_800ED148.entities[0].timer = 0xFF;
+    ((BattleSystemHeader *)&D_800ED148)->unk5C3 = 1;
+    ((BattleSystemHeader *)&D_800ED148)->unk4 = 0;
+    ((BattleSystemHeader *)&D_800ED148)->unk12EC = 0xFF;
+    ((BattleSystemHeader *)&D_800ED148)->unkC = 0xFF;
     g_battleConfig.result = BATTLE_RESULT_UNDETERMINED;
-    D_800ED148.unk1319 = 0xFF;
+    ((BattleSystemHeader *)&D_800ED148)->unk1319 = 0xFF;
 
     for (i = 0; i < 3; i++) {
         g_battleConfig.unk4[i] = 0xFF;
@@ -527,7 +527,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object1", func_8009A74C);
 void func_8009A8B4(s32 idx) {
     SoundCmd *cmd = func_8009B134(0x66, 0x80, (s32)&D_800ED158.slots[idx]);
     cmd->unk0 = idx;
-    cmd->unk2.hword = *(u8 *)&D_800ED158.slots[idx].unkBB;
+    cmd->unk2.hword = *(u8 *)&D_800ED158.slots[idx].linkedIdx2;
 }
 
 /**

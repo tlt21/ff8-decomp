@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle.h"
 
 extern u8 D_800EEED8[];
 void func_800B304C();
@@ -13,7 +14,6 @@ extern u8 D_800EEEB8[];
 extern u8 D_800EEEBC[];
 extern u8 D_800EEEC0[];
 extern u8 g_gameState[];
-extern u8 D_800EE9E8[];
 void func_800B3164(void);
 void func_800B2F3C(void);
 extern u8 D_8007809A[];
@@ -359,7 +359,7 @@ s32 func_800B2128(void) {
 void func_800B21B4(void) {
     s32 i = 0;
     u8 *src = g_gameState;
-    u8 *dst = D_800EE9E8;
+    u8 *dst = (u8 *)&D_800EE9E8;
     do {
         dst[0xA3] = src[i + 0xAF4];
         i++;

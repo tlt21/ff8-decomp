@@ -349,22 +349,22 @@ void func_8009CF38(s32 attackerIdx, s32 targetIdx, s32 power, s32 type) {
             defense = 0;
         case 0:
             mod = func_8009CF18();
-            stat = D_800ED148.entities[attackerIdx].fieldCD;
+            stat = ((BattleSystem *)&D_800ED148)->entities[attackerIdx].fieldCD;
             sq = stat * stat / 16 + stat;
             dmg = sq * (0x109 - defense) / 256 * power / 16 * mod / 256;
             break;
 
         case 1:
-            if (D_800ED148.entities[targetIdx].controlFlags & 0x10000) {
+            if (((BattleSystem *)&D_800ED148)->entities[targetIdx].controlFlags & 0x10000) {
                 dmg = 0;
                 D_800EE4C0[6] |= 4;
             } else {
-                dmg = D_800ED148.entities[targetIdx].field28 * power / 16;
+                dmg = ((BattleSystem *)&D_800ED148)->entities[targetIdx].field28 * power / 16;
             }
             break;
 
         case 3:
-            dmg = D_800ED148.entities[attackerIdx].field2C * 5;
+            dmg = ((BattleSystem *)&D_800ED148)->entities[attackerIdx].field2C * 5;
             break;
 
         case 16:

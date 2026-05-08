@@ -336,6 +336,31 @@ typedef struct {
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
 } BattleSystem;
 
+/**
+ * @brief Header view of @c D_800ED148 with named fields for accesses
+ *        that don't fit the @c BattleSystem.entities[] view.
+ *
+ * Maps the same @c 0x1324 byte block as @c BattleSystem but exposes
+ * specific bytes by name. Use via cast: @c ((BattleSystemHeader *)&D_800ED148)->unk5C3.
+ */
+typedef struct {
+    /* 0x0000 */ s32 unk0;
+    /* 0x0004 */ s32 unk4;
+    /* 0x0008 */ u8 pad8[0x4];
+    /* 0x000C */ u8 unkC;
+    /* 0x000D */ u8 unkD;
+    /* 0x000E */ u8 padE;
+    /* 0x000F */ u8 unkF;
+    /* 0x0010 */ u8 pad10[0x5B3];
+    /* 0x05C3 */ u8 unk5C3;
+    /* 0x05C4 */ u8 pad5C4[0xD25];
+    /* 0x12E9 */ u8 hdr_pad12E9[0x3];
+    /* 0x12EC */ u8 unk12EC;
+    /* 0x12ED */ u8 hdr_pad12ED[0x2C];
+    /* 0x1319 */ u8 unk1319;
+    /* 0x131A */ u8 hdr_pad131A[0xA];
+} BattleSystemHeader; /* 0x1324 */
+
 /** @brief 20-byte slot in @c BattleSystemFlat.entries. */
 typedef struct {
     u8 unk_00;
@@ -631,7 +656,7 @@ extern BattleSceneData D_80078E00;
 extern BattleConfig g_battleConfig;
 
 /** @brief The battle system block at @c 0x800ED148. */
-extern BattleSystem D_800ED148;
+extern volatile BattleSystem D_800ED148;
 
 /** @brief Battle slot data block at @c D_800ED158 (alias for D_800ED148+0x10). */
 typedef struct {

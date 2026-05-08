@@ -1,8 +1,7 @@
 #include "common.h"
+#include "battle.h"
 
 extern u8 D_800EE464[];
-extern u8 g_battleChars[];
-extern u8 D_80078E00[];
 extern u8 D_800EE38C[];
 extern u8 D_800EE9B3[];
 extern u8 g_gameState[];
@@ -14,11 +13,7 @@ void func_8009AF14(s32);
 s32 func_800AA4E8(void);
 void func_8009AE08(s32);
 void func_800E1850(void);
-void func_800A09D0(s32);
-void func_800A5210(s32);
 extern u8 D_800EEBC8[];
-extern u8 D_800EE4C0[];
-extern u8 D_800EE9E8[];
 void func_800A8578(void);
 
 /**
@@ -311,7 +306,7 @@ void func_800A6AE0(void) {
  */
 s32 func_800A6B08(void) {
     s32 i = 3;
-    volatile u8 *base = (u8 *)D_800ED148;
+    volatile u8 *base = (volatile u8 *)&D_800ED148;
     u8 *entry = (u8 *)base + 3 * 0xD0;
 
 top:
@@ -342,7 +337,7 @@ top:
  */
 s32 func_800A6B6C(s32 a0, s32 a1) {
     s32 i = 3;
-    volatile u8 *base = (u8 *)D_800ED148;
+    volatile u8 *base = (volatile u8 *)&D_800ED148;
     u8 *entry = (u8 *)base + 3 * 0xD0;
 
 top:
@@ -555,8 +550,8 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A79A0);
  * @return Byte value from the second-level table.
  */
 s32 func_800A7A44(s32 a0) {
-    u8 *table = D_80078E00;
-    u8 *base = g_battleChars;
+    u8 *table = (u8 *)&D_80078E00;
+    u8 *base = (u8 *)&g_battleChars;
     s32 val = *(u8 *)(base + a0 * 464 + 0x1BA);
     return *(u8 *)(table + val * 12 + 0x35C1);
 }
@@ -568,7 +563,7 @@ s32 func_800A7A44(s32 a0) {
  * @return Byte at offset 0x1B9 within the entity entry.
  */
 s32 func_800A7A8C(s32 idx) {
-    u8 *base = g_battleChars;
+    u8 *base = (u8 *)&g_battleChars;
     u8 *entry;
     asm("");
     entry = base + idx * 0x1D0;
@@ -709,7 +704,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A8A48);
  * @return Always 2.
  */
 s32 func_800A8AFC(s32 a0) {
-    u8 *entry = g_battleChars + a0 * 0x1D0;
+    u8 *entry = (u8 *)&g_battleChars + a0 * 0x1D0;
     func_800A8A48(entry, 0, 0x23, 0);
     func_800A8A48(entry, 1, 0x24, 0);
     func_800A8A48(entry, 2, 0, 0);
