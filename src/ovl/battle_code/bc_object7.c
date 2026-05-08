@@ -365,11 +365,11 @@ s32 func_800B0668(s32 a0, s32 a1) {
  * @param arg0 Entity bitmask (16-bit).
  */
 void func_800B06DC(s32 arg0) {
-    BattleSystemFlat *sys;
+    BattleSystem *sys;
     s32 idx;
     func_800A4C84(arg0 & 0xFFFF);
-    sys = (BattleSystemFlat *)&D_800ED148;
-    if (sys->unkE == 0) {
+    sys = (BattleSystem *)&D_800ED148;
+    if (sys->entities[0].pad0E == 0) {
         func_8009AE08(5);
         func_800AE524(sys->unk5C0 - 1);
         idx = sys->unk5C0 - 1;

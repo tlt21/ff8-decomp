@@ -163,12 +163,12 @@ void func_80099FE8(void) {
     func_80027448();
     func_8009B428();
 
-    ((BattleSystemHeader *)&D_800ED148)->unk5C3 = 1;
-    ((BattleSystemHeader *)&D_800ED148)->unk4 = 0;
-    ((BattleSystemHeader *)&D_800ED148)->unk12EC = 0xFF;
-    ((BattleSystemHeader *)&D_800ED148)->unkC = 0xFF;
+    D_800ED148.unk5C3 = 1;
+    D_800ED148.entities[0].state = 0;
+    D_800ED148.unk12EC = 0xFF;
+    D_800ED148.entities[0].timer = 0xFF;
     g_battleConfig.result = BATTLE_RESULT_UNDETERMINED;
-    ((BattleSystemHeader *)&D_800ED148)->unk1319 = 0xFF;
+    D_800ED148.unk1319 = 0xFF;
 
     for (i = 0; i < 3; i++) {
         g_battleConfig.unk4[i] = 0xFF;

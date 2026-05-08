@@ -321,10 +321,22 @@ typedef struct {
     u16 z;
 } BattleVec3u;
 
+/** @brief 20-byte action-queue entry in @c BattleSystem.entries. */
 typedef struct {
-    /* 0x0000 */ BattleEntity entities[16];     /**< 16 × 0xD0 = 0xD00 bytes. */
-    /* 0x0CE4 */                                /**< NOTE: unkCE4[] overlaps entities[15] tail; access via cast. */
-    /* 0x0D00 */ u8 padD00[0x14];               /**< First 0x14 bytes of post-entities region (continuation of unkCE4). */
+    u8 unk_00;
+    u8 pad01[0x13];
+} BattleEntry; /* 0x14 */
+
+typedef struct {
+    /* 0x0000 */ BattleEntity entities[7];      /**< 7 × 0xD0 = 0x5B0. Index 0 is also the header proxy. */
+    /* 0x05B0 */ u8 pad5B0[0x10];               /**< Pre-control padding. */
+    /* 0x05C0 */ u8 unk5C0;                     /**< Action queue head index (used by func_800B06DC). */
+    /* 0x05C1 */ u8 pad5C1[0x02];
+    /* 0x05C3 */ u8 unk5C3;                     /**< Misc state byte (init to 1 by func_80099FE8). */
+    /* 0x05C4 */ u8 pad5C4[0x11];
+    /* 0x05D5 */ BattleEntry entries[91];       /**< Action queue (stride 0x14). */
+    /* 0x0CF1 */ u8 padCF1[0x0F];               /**< Pad to padD00. */
+    /* 0x0D00 */ u8 padD00[0x14];               /**< First 0x14 bytes of post-entries region (continuation of unkCE4). */
     /* 0x0D14 */ u8 unkD14[0x8];                /**< Hit-type byte table (8 entries). */
     /* 0x0D1C */ u8 padD1C[0x40];               /**< Misc state. */
     /* 0x0D5C */ u8 unkD5C[0x8];                /**< Per-trigger flag array (8 entries). */
@@ -357,61 +369,7 @@ typedef struct {
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
     /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
-} BattleSystem;
-
-/**
- * @brief Header view of @c D_800ED148 with named fields for accesses
- *        that don't fit the @c BattleSystem.entities[] view.
- *
- * Maps the same @c 0x1324 byte block as @c BattleSystem but exposes
- * specific bytes by name. Use via cast: @c ((BattleSystemHeader *)&D_800ED148)->unk5C3.
- */
-typedef struct {
-    /* 0x0000 */ s32 unk0;
-    /* 0x0004 */ s32 unk4;
-    /* 0x0008 */ u8 pad8[0x4];
-    /* 0x000C */ u8 unkC;
-    /* 0x000D */ u8 unkD;
-    /* 0x000E */ u8 padE;
-    /* 0x000F */ u8 unkF;
-    /* 0x0010 */ u8 pad10[0x5B3];
-    /* 0x05C3 */ u8 unk5C3;
-    /* 0x05C4 */ u8 pad5C4[0xD25];
-    /* 0x12E9 */ u8 hdr_pad12E9[0x3];
-    /* 0x12EC */ u8 unk12EC;
-    /* 0x12ED */ u8 hdr_pad12ED[0x2C];
-    /* 0x1319 */ u8 unk1319;
-    /* 0x131A */ u8 hdr_pad131A[0xA];
-} BattleSystemHeader; /* 0x1324 */
-
-/** @brief 20-byte slot in @c BattleSystemFlat.entries. */
-typedef struct {
-    u8 unk_00;
-    u8 pad01[0x13];
-} BattleEntry; /* 0x14 */
-
-/**
- * @brief Alternate flat view of the @c D_800ED148 block exposing the
- *        stride-0x14 @c entries[] sub-array at offset 0x5D5.
- *
- * Same memory as @c BattleSystem; pick whichever view fits the access
- * pattern via a cast on @c &D_800ED148.
- *
- * @todo FIXME: this view (≈7 real entities + a 170-entry action queue)
- *       is probably more faithful to what @c D_800ED148 actually is than
- *       the @c BattleSystem.entities[16] placeholder. Consider flipping
- *       the primary type once more of bc_object1/2/5/7's entity-style
- *       accesses are revisited.
- */
-typedef struct {
-    /* 0x0000 */ u8 pad00[0x0E];
-    /* 0x000E */ u8 unkE;
-    /* 0x000F */ u8 padF[0x5B1];
-    /* 0x05C0 */ u8 unk5C0;
-    /* 0x05C1 */ u8 pad5C1[0x14];
-    /* 0x05D5 */ BattleEntry entries[170];
-    /* 0x131D */ u8 pad131D[7];
-} BattleSystemFlat;                             /* 0x1324 */
+} BattleSystem; /* 0x1324 */
 
 /** @brief 5-byte slot in @c BattleAnimTable.animSlots. */
 typedef struct {
