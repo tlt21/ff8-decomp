@@ -20,34 +20,6 @@
 #include "battle.h"
 #include "gf.h"
 
-/** @brief Three-element u16 vector (e.g. position). */
-typedef struct {
-    u16 x;
-    u16 y;
-    u16 z;
-} Vec3u;
-
-/** @brief Single battle unit entry (stride 0xD0), used for array access. */
-typedef struct {
-    u8 pad0[0x7];
-    u8 type;            /* 0x7  — pending-trigger type code */
-    u8 key;             /* 0x8  — pending-trigger key (matched against arg) */
-    u8 pad9[0xF];
-    s32 unk18;          /* 0x18 */
-    u8 pad1C[0xC];
-    s32 unk28;          /* 0x28 */
-    u8 pad2C[0x58];
-    Vec3u pos;          /* 0x84 — position (x, y, z) */
-    u8 pad8A[0x2];
-    s32 flags;          /* 0x8C */
-    u16 status;         /* 0x90 — status flags (bit 0 suppresses type-2 trigger) */
-    u8 pad92[0x29];
-    u8 unkBB;           /* 0xBB — hit-type byte (sound parameter) */
-    u8 padBC[0xF];
-    u8 unkCB;           /* 0xCB — linked entity index (0xFF = unlinked) */
-    u8 padCC[0x4];
-} BattleUnit; /* 0xD0 bytes */
-
 /** @brief Battle state structure (D_800ED148). */
 typedef struct {
     s32 unk0;
@@ -63,7 +35,7 @@ typedef struct {
     u8 pad5C4[0x719];
     u8 unkCDD;
     u8 padCDE[0x6];
-    Vec3u unkCE4[0x8];          /* 0xCE4 — table of (x, y, z) position triples */
+    BattleVec3u unkCE4[0x8];    /* 0xCE4 — table of (x, y, z) position triples */
     u8 unkD14[0x8];             /* 0xD14 — hit-type byte table */
     u8 padD1C[0x40];
     u8 unkD5C[0x8];
@@ -91,13 +63,6 @@ typedef struct {
 
 extern volatile BattleState D_800ED148;
 extern u8 D_800ED157[];
-typedef struct {
-    BattleUnit slots[7];
-    u8 pad5B0[0x754];
-    u8 unkD04[8];
-} BattleSlotData;
-
-extern BattleSlotData D_800ED158;
 
 /* FIXME: D_800E19BC is conceptually an array of (s32 sector, s32 length)
    pairs (8-byte stride, two s32s per entry) used as CdRead arguments by

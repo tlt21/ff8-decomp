@@ -629,6 +629,39 @@ extern BattleSceneData D_80078E00;
 /** @brief Top-level battle config block (g_battleConfig at 0x...). */
 extern BattleConfig g_battleConfig;
 
+/** @brief Single battle unit entry (stride 0xD0).
+ *
+ * Same memory as @c BattleEntity, but with field names from the
+ * entity-iteration view used in bc_object1.c. */
+typedef struct {
+    u8 pad0[0x7];
+    u8 type;            /* 0x7  — pending-trigger type code */
+    u8 key;             /* 0x8  — pending-trigger key (matched against arg) */
+    u8 pad9[0xF];
+    s32 unk18;          /* 0x18 */
+    u8 pad1C[0xC];
+    s32 unk28;          /* 0x28 */
+    u8 pad2C[0x58];
+    BattleVec3u pos;    /* 0x84 — position (x, y, z) */
+    u8 pad8A[0x2];
+    s32 flags;          /* 0x8C */
+    u16 status;         /* 0x90 — status flags (bit 0 suppresses type-2 trigger) */
+    u8 pad92[0x29];
+    u8 unkBB;           /* 0xBB — hit-type byte (sound parameter) */
+    u8 padBC[0xF];
+    u8 unkCB;           /* 0xCB — linked entity index (0xFF = unlinked) */
+    u8 padCC[0x4];
+} BattleUnit; /* 0xD0 bytes */
+
+/** @brief Battle slot data block at @c D_800ED158 (alias for D_800ED148+0x10). */
+typedef struct {
+    BattleUnit slots[7];
+    u8 pad5B0[0x754];
+    u8 unkD04[8];
+} BattleSlotData;
+
+extern BattleSlotData D_800ED158;
+
 /** @brief Sound-command queue slot returned by @c func_8009B134.
  *
  * The two parameter bytes at +2/+3 are sometimes written as a single u16
