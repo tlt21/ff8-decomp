@@ -35,6 +35,8 @@ s32 func_800B0600(s32, s32);
 s32 func_800B0F7C(s32);
 s32 func_800B0F9C(s32);
 s32 func_800A1760(s32);
+extern u8 *getMenuString(s32 id);
+extern u8 *getStatName(s32 statId);
 
 /**
  * @brief Look up entity ability flags with index-based table lookup.
@@ -202,7 +204,104 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009C8B8);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009CA14);
 
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009CAD8);
+/**
+ * @brief Apply a single-stat boost effect from src entity onto dst entity.
+ *
+ * Clears the queued action; bails if dst already has the 0x800 control flag.
+ * Calls @c func_800AF134 with a "type byte" read from past entities[srcIdx]
+ * (offset 0xD1 — into the next entity's region) plus two output bytes.
+ * On result == 1, queues an actionType=1 message with the two bytes, sets
+ * the dst's 0x800 control flag, and renders a formatted message string
+ * via @c func_800B0248 chained calls. The "count == 1" branch produces a
+ * single-stat phrase; otherwise produces a multi-stat phrase with an extra
+ * @c getMenuString(0x77) clause. On result 0/2 it shows a generic message.
+ *
+ * @param srcIdx Source entity slot index.
+ * @param dstIdx Target entity slot index.
+ */
+void func_8009CAD8(s32 srcIdx, s32 dstIdx) {
+    u8 stackbuf[8];
+    u8 stat;
+    u8 count;
+    u8 *p;
+    u8 *str;
+    s16 chA1;
+    u32 chA2;
+    u8 ch;
+    s16 chB2;
+    u8 *strCacheB2;
+    s16 chB1;
+    u8 *strCacheB1;
+    BattleEntity *entityDst;
+
+    entityDst = &D_800ED148.entities[dstIdx];
+    D_800ED148.actionType = 0;
+
+    if (entityDst->controlFlags & 0x800) {
+        func_800A432C(0x12);
+        return;
+    }
+
+    {
+        s32 src_off = srcIdx * 0xD0 + 0xD1;
+        switch (func_800AF134(dstIdx, &stat, &count, ((u8 *)&D_800ED148)[src_off])) {
+        case 1:
+            D_800ED148.actionType = 1;
+            D_800ED148.actionByte0 = stat;
+            D_800ED148.actionByte1 = count;
+            *(volatile s32 *)&entityDst->controlFlags |= 0x800;
+
+            if (count == 1) {
+                {
+                    u8 *prefix1 = getMenuString(0x13);
+                    u8 *prefix2;
+                    str = getMenuString(0xB);
+                    ch = *str;
+                    chA1 = ch;
+                    prefix2 = func_800B0248(prefix1, chA1, func_800B04A0(count, stackbuf));
+                    str = getMenuString(0xB);
+                    ch = *str;
+                    chA2 = ch;
+                    p = func_800B0248(prefix2, chA2, getMenuString(0x47));
+                }
+                {
+                    u8 *prefix3 = func_800B0248(p, 7, getStatName(stat));
+                    p = func_800B0248(prefix3, 7, getMenuString(0x73));
+                }
+                func_800A4320(func_800B02AC(p));
+                break;
+            } else {
+                {
+                    u8 *prefix1 = getMenuString(0x13);
+                    u8 *prefix2;
+                    strCacheB2 = getMenuString(0xB);
+                    str = strCacheB2;
+                    ch = *str;
+                    chB2 = ch;
+                    prefix2 = func_800B0248(prefix1, chB2, func_800B04A0(count, stackbuf));
+                    strCacheB1 = getMenuString(0xB);
+                    str = strCacheB1;
+                    ch = *str;
+                    chB1 = ch;
+                    p = func_800B0248(prefix2, chB1, getMenuString(0x47));
+                }
+                {
+                    u8 *prefix3 = func_800B0248(p, 7, getStatName(stat));
+                    u8 *prefix4 = func_800B0248(prefix3, 7, getMenuString(0x77));
+                    p = func_800B0248(prefix4, 7, getMenuString(0x73));
+                }
+                func_800A4320(func_800B02AC(p));
+            }
+            break;
+        case 0:
+            func_800A432C(0x11);
+            break;
+        case 2:
+            func_800A432C(0x12);
+            break;
+        }
+    }
+}
 
 /**
  * @brief Conditionally queue a status effect clear command.

@@ -292,7 +292,11 @@ typedef struct {
  */
 typedef struct {
     /* 0x0000 */ BattleEntity entities[16];     /**< 16 × 0xD0 = 0xD00 bytes. */
-    /* 0x0D00 */ u8 padD00[0x623];              /**< Misc state fields not yet mapped. */
+    /* 0x0D00 */ u8 padD00[0x611];              /**< Misc state fields not yet mapped. */
+    /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
+    /* 0x1312 */ u8 actionByte0;                /**< Queued action arg 0 (stat ID for type 1). */
+    /* 0x1313 */ u8 actionByte1;                /**< Queued action arg 1 (count for type 1). */
+    /* 0x1314 */ u8 pad1314[0xF];               /**< More misc state. */
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
 } BattleSystem;
 
@@ -586,5 +590,27 @@ typedef struct {
 } BattleSceneData;
 
 extern BattleSceneData D_80078E00;
+
+/* ---------------------------------------------------------------- *
+ *  Battle-overlay function prototypes (battle_code internals).
+ * ---------------------------------------------------------------- */
+
+/** @brief Apply a stat-effect probe; outputs (a1=stat, a2=count). */
+s32 func_800AF134(s32 entityIdx, u8 *outStat, u8 *outCount, s32 typeByte);
+
+/** @brief Format helper that writes into a caller-provided buffer. */
+u8 *func_800B04A0(s32 a0, u8 *buf);
+
+/** @brief Concatenate two parts into the @c D_800EEBE8 message buffer. */
+u8 *func_800B0248(u8 *part1, s32 sepByte, u8 *part2);
+
+/** @brief Finalize the @c D_800EEBE8 message buffer. */
+u8 *func_800B02AC(u8 *buf);
+
+/** @brief Display a message via the battle queue. */
+void func_800A4320(u8 *msg);
+
+/** @brief Store @c getMenuString(id) result into @c D_800EE424. */
+void func_800A432C(s32 stringId);
 
 #endif /* BATTLE_H */
