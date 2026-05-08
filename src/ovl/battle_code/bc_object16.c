@@ -16,9 +16,6 @@ extern s32 D_800FA5E8;
 extern s32 D_800FA5F0;
 extern s32 D_800EEC5C;
 
-void RotMatrix(SVECTOR *r, MATRIX *m);
-void CompMatrix(MATRIX *m0, MATRIX *m1, MATRIX *m2);
-
 s32 func_800B3698(s32 size);
 s32 func_800B36B8(s32 size);
 s32 func_800C6B1C(s32 idx);

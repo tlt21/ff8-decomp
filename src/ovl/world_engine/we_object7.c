@@ -56,8 +56,6 @@ extern WorldPos D_800C9868;
 extern MATRIX D_800C9838;
 
 extern s32 func_800A5DC8(s32 x, s32 y);
-extern void func_800406A4(MATRIX *m);
-extern void func_80040734(MATRIX *m);
 extern s8 func_800B01A0(s16 viewY, s16 viewX, TrackEntry *e, u16 *posOut, s8 *unk30Out, u8 *unk2COut);
 extern s32 func_8003F4A4(s32 x);
 extern s32 func_80041E84(s32 y, s32 x);
@@ -95,8 +93,8 @@ void func_800B3868(TrackObj *obj) {
     viewX = func_800A5DC8(D_800D23C0.x, D_800D23C0.y);
     viewY = func_800A5DC8(D_800C9868.x, D_800C9868.y);
 
-    func_800406A4(&D_800C9838);
-    func_80040734(&D_800C9838);
+    SetRotMatrix(&D_800C9838);
+    SetTransMatrix(&D_800C9838);
 
     for (i = 0, current = obj->entries; i < obj->count; i++, current++) {
         current->status = -1;

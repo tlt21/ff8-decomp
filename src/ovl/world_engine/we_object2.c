@@ -312,29 +312,26 @@ INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object2", func_8009F6EC);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object2", func_8009FDA4);
 
-extern void func_80040FE4(s32 a0, u8 *buf);
-extern void func_80040264(u8 *buf, s32 a1);
-extern void func_800406D4(u8 *buf);
+extern void func_80040264(MATRIX *m, s32 a1);
+extern void func_800406D4(MATRIX *m);
 
 /**
- * @brief Initialize, populate and finalize a 32-byte transform buffer on the stack.
+ * @brief Build a rotation matrix from angles, post-modify it, and finalize.
  *
- * Allocates a 0x20-byte stack buffer and runs a three-step pipeline:
- *  1. @c func_80040FE4(a0, buf) — seed the buffer from @p a0.
- *  2. @c func_80040264(buf, a1) — apply/combine @p a1 into the buffer.
- *  3. @c func_800406D4(buf) — finalize/commit the buffer.
+ * Three-step transform pipeline:
+ *  1. @c RotMatrix(angles, &m) — fill @c m with a rotation derived from
+ *     the @c SVECTOR pointed to by @p a0.
+ *  2. @c func_80040264(&m, a1) — apply/combine @p a1 into @c m.
+ *  3. @c func_800406D4(&m) — finalize/commit the matrix.
  *
- * @note Purpose uncertain — the pipeline matches a matrix/transform setup
- *       pattern used elsewhere in battle_code.
- *
- * @param a0 First input to the pipeline (seed).
+ * @param a0 Input @c SVECTOR with rotation angles.
  * @param a1 Second input (applied during step 2).
  */
-void func_8009FE80(s32 a0, s32 a1) {
-    u8 buf[0x20];
-    func_80040FE4(a0, buf);
-    func_80040264(buf, a1);
-    func_800406D4(buf);
+void func_8009FE80(SVECTOR *a0, s32 a1) {
+    MATRIX m;
+    RotMatrix(a0, &m);
+    func_80040264(&m, a1);
+    func_800406D4(&m);
 }
 
 extern void func_800A017C(s32 *vec);

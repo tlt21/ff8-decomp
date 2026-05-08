@@ -1,4 +1,5 @@
 #include "common.h"
+#include "psxsdk/libgte.h"
 
 extern u8 D_800EF72C[];
 extern u8 D_800F02C8[];
@@ -230,14 +231,14 @@ void func_800B6A9C(void) {
 }
 
 /**
- * @brief Process data through D_800F02C8 via stack buffer.
+ * @brief Compose @c D_800F02C8 with @p a0 via stack buffer and submit.
  *
- * @param a0 Input parameter for func_8003FC24.
+ * @param a0 Right-hand matrix passed to @c CompMatrix.
  */
 void func_800B6AC0(s32 a0) {
-    u8 buf[0x20];
-    func_8003FC24(D_800F02C8, a0, buf);
-    func_800B3650(buf);
+    MATRIX m;
+    CompMatrix((MATRIX *)D_800F02C8, (MATRIX *)a0, &m);
+    func_800B3650((u8 *)&m);
 }
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object9", func_800B6AF4);

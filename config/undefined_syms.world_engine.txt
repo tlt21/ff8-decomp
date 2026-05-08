@@ -13,6 +13,11 @@ ResetGraph = 0x800488D4;
 SetGeomOffset = 0x800408C4;
 SetBackColor = 0x80040884;
 SetColorMatrix = 0x80040704;
+CompMatrix = 0x8003FC24;
+ScaleMatrix = 0x80040564;
+SetRotMatrix = 0x800406A4;
+SetTransMatrix = 0x80040734;
+RotMatrix = 0x80040FE4;
 
 /* Data blobs in bin section that are called/referenced by real code */
 func_800C4CA4 = 0x800C4CA4;

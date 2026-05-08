@@ -1,4 +1,5 @@
 #include "common.h"
+#include "psxsdk/libgte.h"
 
 extern u8 D_800F1A5C[];
 extern u8 D_800F1A54[];
@@ -160,13 +161,13 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object12", func_800C07B4);
  * @return a1 if playback started, 0 if entry not found.
  */
 s32 func_800C0AE4(s32 a0, s32 a1) {
-    s32 buf[3];
+    VECTOR buf;
     s32 result = func_800C07B4((s16)a0);
     if (result != 0) {
-        buf[2] = result;
-        buf[1] = result;
-        buf[0] = result;
-        func_80040564(a1, buf);
+        buf.vz = result;
+        buf.vy = result;
+        buf.vx = result;
+        ScaleMatrix((MATRIX *)a1, &buf);
         return a1;
     }
     return 0;
@@ -184,16 +185,16 @@ s32 func_800C0AE4(s32 a0, s32 a1) {
  * @return a1 if playback started, 0 if entry not found.
  */
 s32 func_800C0B3C(s32 a0, s32 a1) {
-    s32 buf[3];
+    VECTOR buf;
     s32 result = func_800C07B4((s16)a0);
     if (result != 0) {
         s32 quotient;
         func_80040FA4(a1, a1);
         quotient = 0x1000000 / result;
-        buf[2] = quotient;
-        buf[1] = quotient;
-        buf[0] = quotient;
-        func_80040564(a1, buf);
+        buf.vz = quotient;
+        buf.vy = quotient;
+        buf.vx = quotient;
+        ScaleMatrix((MATRIX *)a1, &buf);
         return a1;
     }
     return 0;

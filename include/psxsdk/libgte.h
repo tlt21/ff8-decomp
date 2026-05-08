@@ -33,12 +33,14 @@ typedef struct {
     s16 vx, vy;
 } DVECTOR;
 
-/* --- GTE matrix operations --- */
+/* --- GTE matrix operations (signatures match PsyQ 4.6 LIBGTE.H) --- */
 
+MATRIX *RotMatrix(SVECTOR *r, MATRIX *m);
+MATRIX *CompMatrix(MATRIX *m0, MATRIX *m1, MATRIX *m2);
+MATRIX *ScaleMatrix(MATRIX *m, VECTOR *scale);
+MATRIX *ScaleMatrixL(MATRIX *m, VECTOR *scale);
 void SetRotMatrix(MATRIX *m);
 void SetTransMatrix(MATRIX *m);
-void ScaleMatrix(MATRIX *m, VECTOR *scale);
-void ScaleMatrixL(MATRIX *m, VECTOR *scale);
 
 /* --- GTE transform operations --- */
 
