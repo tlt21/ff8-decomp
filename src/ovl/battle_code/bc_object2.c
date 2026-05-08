@@ -10,31 +10,8 @@
 #include "gamestate.h"
 
 extern BattleSystem D_800ED148;
-extern u8 D_800EEBC4[];
-extern u8 D_800EEBBB[];
-extern u8 D_800EE456[];
-extern u8 D_800EE4C0[];
-extern u8 D_800EE476[];
-extern u8 D_800ED70C[];
-extern u8 D_800EEBBC[];
-extern u8 D_800EEBB9[];
-extern u8 D_800EEBB8[];
-extern u8 D_800EEBBA[];
-extern u8 D_800EEBC2[];
-extern u8 D_800ED160[];
 extern u8 D_800786D9[];
 
-s32 func_8009B79C(s32, s32);
-s32 func_8009B7BC(s32);
-void func_8009B924(s32, s32, s32);
-s32 func_800A09D0(s32);
-void func_800A4FC4(s32, u8 *);
-void func_800A5210(s32);
-s32 func_800B0574(s32, s32);
-s32 func_800B0600(s32, s32);
-s32 func_800B0F7C(s32);
-s32 func_800B0F9C(s32);
-s32 func_800A1760(s32);
 extern u8 *getMenuString(s32 id);
 extern u8 *getStatName(s32 statId);
 

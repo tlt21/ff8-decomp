@@ -592,8 +592,58 @@ typedef struct {
 extern BattleSceneData D_80078E00;
 
 /* ---------------------------------------------------------------- *
+ *  Battle data symbols (battle_code overlay region).
+ * ---------------------------------------------------------------- */
+
+extern u8 D_800ED160[];     /**< 0x800ED160: misc battle state. */
+extern u8 D_800ED70C[];     /**< 0x800ED70C: entity status table (stride 20). */
+extern u8 D_800EE456[];     /**< 0x800EE456: status flags byte. */
+extern u8 D_800EE476[];     /**< 0x800EE476: entity index latch. */
+extern u8 D_800EE4C0[];     /**< 0x800EE4C0: command queue buffer. */
+extern u8 D_800EEBB8[];     /**< 0x800EEBB8: misc state byte. */
+extern u8 D_800EEBB9[];     /**< 0x800EEBB9: misc state byte. */
+extern u8 D_800EEBBA[];     /**< 0x800EEBBA: misc state byte. */
+extern u8 D_800EEBBB[];     /**< 0x800EEBBB: misc state byte. */
+extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
+extern u8 D_800EEBC2[];     /**< 0x800EEBC2: misc state byte. */
+extern u8 D_800EEBC4[];     /**< 0x800EEBC4: status flags word (bit 0x4000000). */
+
+/* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle_code internals).
  * ---------------------------------------------------------------- */
+
+/** @brief Conditional add with overflow flag (clamped sum + carry). */
+s32 func_8009B79C(s32 a0, s32 a1);
+
+/** @brief Look up cached entity status byte. */
+s32 func_8009B7BC(s32 entityIdx);
+
+/** @brief Apply masked status update to an entity slot. */
+void func_8009B924(s32 a0, s32 a1, s32 a2);
+
+/** @brief Resolve a battle scene entry pointer by index. */
+s32 func_800A09D0(s32 idx);
+
+/** @brief Copy entity ability state into the buffer pointer. */
+void func_800A4FC4(s32 entityIdx, u8 *out);
+
+/** @brief Process a queued damage event for the entity. */
+void func_800A5210(s32 entityIdx);
+
+/** @brief Apply a status flag, ORing it into the flag word. */
+s32 func_800B0574(s32 a0, s32 a1);
+
+/** @brief Toggle masked status flag bits. */
+s32 func_800B0600(s32 a0, s32 a1);
+
+/** @brief Look up auxiliary ability flags by stat byte (low bits). */
+s32 func_800B0F7C(s32 stat);
+
+/** @brief Look up auxiliary ability flags by stat byte (high bits). */
+s32 func_800B0F9C(s32 stat);
+
+/** @brief Resolve battle scene context pointer. */
+s32 func_800A1760(s32 a0);
 
 /** @brief Apply a stat-effect probe; outputs (a1=stat, a2=count). */
 s32 func_800AF134(s32 entityIdx, u8 *outStat, u8 *outCount, s32 typeByte);
