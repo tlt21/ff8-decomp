@@ -290,17 +290,48 @@ typedef struct {
  *       bc_object7.c). The @c D_800ED148 extern therefore lives at file
  *       scope in each translation unit so each can pick the view it needs.
  */
+/** @brief 6-byte unsigned (x,y,z) triple in @c BattleSystem.unkCE4. */
+typedef struct {
+    u16 x;
+    u16 y;
+    u16 z;
+} BattleVec3u;
+
 typedef struct {
     /* 0x0000 */ BattleEntity entities[16];     /**< 16 × 0xD0 = 0xD00 bytes. */
-    /* 0x0D00 */ u8 padD00[0x5E0];              /**< Misc state fields not yet mapped. */
+    /* 0x0CE4 */                                /**< NOTE: unkCE4[] overlaps entities[15] tail; access via cast. */
+    /* 0x0D00 */ u8 padD00[0x14];               /**< First 0x14 bytes of post-entities region (continuation of unkCE4). */
+    /* 0x0D14 */ u8 unkD14[0x8];                /**< Hit-type byte table (8 entries). */
+    /* 0x0D1C */ u8 padD1C[0x40];               /**< Misc state. */
+    /* 0x0D5C */ u8 unkD5C[0x8];                /**< Per-trigger flag array (8 entries). */
+    /* 0x0D64 */ u8 padD64[0x528];              /**< Misc state. */
+    /* 0x128C */ s32 unk128C;                   /**< Cached userData for callback. */
+    /* 0x1290 */ u8 pad1290[0x48];              /**< Misc state. */
+    /* 0x12D8 */ s32 unk12D8;                   /**< Cached length argument for callback. */
+    /* 0x12DC */ u8 pad12DC[0x4];               /**< Misc state. */
     /* 0x12E0 */ s16 unk12E0;                   /**< Low 13 bits of a packed s16 field. */
-    /* 0x12E2 */ u8 pad12E2[0x2D];              /**< Misc state fields. */
+    /* 0x12E2 */ u8 pad12E2[0x6];               /**< Misc state. */
+    /* 0x12E8 */ u8 unk12E8;                    /**< Misc state byte. */
+    /* 0x12E9 */ u8 unk12E9;                    /**< Misc state byte (touched by 12EA-gated path). */
+    /* 0x12EA */ u8 unk12EA;                    /**< Misc state gate byte. */
+    /* 0x12EB */ u8 pad12EB[0x1];               /**< Misc state. */
+    /* 0x12EC */ u8 unk12EC;                    /**< Misc state byte (init to 0xFF). */
+    /* 0x12ED */ u8 unk12ED;                    /**< Misc state byte. */
+    /* 0x12EE */ u8 unk12EE;                    /**< Misc state byte. */
+    /* 0x12EF */ u8 pad12EF[0x9];               /**< Misc state. */
+    /* 0x12F8 */ u8 unk12F8;                    /**< Misc state counter. */
+    /* 0x12F9 */ u8 unk12F9;                    /**< Misc state gate byte. */
+    /* 0x12FA */ u8 pad12FA[0x3];               /**< Misc state. */
+    /* 0x12FD */ u8 unk12FD;                    /**< Misc state byte. */
+    /* 0x12FE */ u8 pad12FE[0x11];              /**< Misc state. */
     /* 0x130F */ s8 unk130F;                    /**< Upper 3 bits of a packed s16 field (sign-extended). */
     /* 0x1310 */ u8 pad1310[1];                 /**< Pad to actionType. */
     /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
     /* 0x1312 */ u8 actionByte0;                /**< Queued action arg 0 (stat ID for type 1). */
     /* 0x1313 */ u8 actionByte1;                /**< Queued action arg 1 (count for type 1). */
-    /* 0x1314 */ u8 pad1314[0xF];               /**< More misc state. */
+    /* 0x1314 */ u8 pad1314[0x5];               /**< More misc state. */
+    /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
+    /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
 } BattleSystem;
 
