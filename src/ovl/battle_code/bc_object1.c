@@ -254,12 +254,12 @@ void func_8009A1E0(void) {
  * func_800A59AC.
  */
 void func_8009A254(void) {
-    volatile BattleUnit *units = (volatile BattleUnit *)&D_800ED148;
+    volatile BattleEntity *units = (volatile BattleEntity *)&D_800ED148;
     s32 i;
     for (i = 0; i < 7; i++) {
-        if (units[i].flags & 1) {
-            if (units[i].flags & 0x10) {
-                if (!(units[i].flags & 0x80)) {
+        if (units[i].controlFlags & 1) {
+            if (units[i].controlFlags & 0x10) {
+                if (!(units[i].controlFlags & 0x80)) {
                     func_800A59AC(i, 0, 0);
                 }
             }
@@ -400,8 +400,8 @@ s32 func_8009A514(s32 a0, s32 a1) {
  * Best clean (struct-only) attempt:
  * @code
  * void func_8009A528(s32 idx, s32 off) {
- *     BattleUnit *units = (BattleUnit *)&D_800ED148;
- *     BattleUnit *entity = &units[idx];
+ *     BattleEntity *units = (BattleEntity *)&D_800ED148;
+ *     BattleEntity *entity = &units[idx];
  *     SoundCmd *cmd;
  *     func_8009AFF0(idx);
  *     func_800A1CFC(idx);
@@ -449,8 +449,8 @@ void func_8009A638(void) {
  * Best clean (struct-only) attempt — 84.24% match:
  * @code
  * void func_8009A6A8(s32 idx) {
- *     BattleUnit *units = (BattleUnit *)&D_800ED148;
- *     BattleUnit *entity = &units[idx];
+ *     BattleEntity *units = (BattleEntity *)&D_800ED148;
+ *     BattleEntity *entity = &units[idx];
  *     SoundCmd *cmd;
  *     func_800A240C(idx, entity->unk28, (s32)&entity->status);
  *     func_8009AFF0(idx);
@@ -482,17 +482,17 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object1", func_8009A6A8);
  * Best clean (struct-only) attempt:
  * @code
  * void func_8009A74C(void) {
- *     BattleUnit *units = (BattleUnit *)&D_800ED148;
+ *     BattleEntity *units = (BattleEntity *)&D_800ED148;
  *     s32 active_count = 0;
  *     s32 pos_idx;
  *     s32 i;
  *     for (i = 0; i < 3; i++) {
- *         if (units[i].unkCB != 0xFF) active_count++;
+ *         if (units[i].linkedIdx != 0xFF) active_count++;
  *     }
  *     func_8009B134(0xD, 0x80, 0);
  *     pos_idx = 0;
  *     for (i = 0; i < 3; i++) {
- *         if (units[i].unkCB != 0xFF) {
+ *         if (units[i].linkedIdx != 0xFF) {
  *             func_8009A6A8(i);
  *             units[i].pos.y = 0;
  *             if (active_count == 2) {
@@ -537,11 +537,11 @@ void func_8009A8B4(s32 idx) {
  * func_8009A8B4 to queue the damage sound.
  */
 void func_8009A928(void) {
-    volatile BattleUnit *units = (volatile BattleUnit *)&D_800ED148;
+    volatile BattleEntity *units = (volatile BattleEntity *)&D_800ED148;
     s32 i;
 
     for (i = 0; i < 3; i++) {
-        if (units[i].unkCB != 0xFF) {
+        if (units[i].linkedIdx != 0xFF) {
             func_8009A8B4(i);
         }
     }
@@ -559,22 +559,22 @@ void func_8009A928(void) {
  */
 void func_8009A990(s32 target) {
     s32 i;
-    BattleUnit *p;
+    BattleEntity *p;
 
     i = 0;
-    p = (BattleUnit *)&D_800ED148;
+    p = (BattleEntity *)&D_800ED148;
 top:
     if (p[1].key == target) {
-        if (p[1].type != 0) {
-            if (p[1].type == 2) {
+        if (((u8 *)&p[1])[0x7] != 0) {
+            if (((u8 *)&p[1])[0x7] == 2) {
                 if (!(p[0].status & 1)) {
-                    func_800A59AC(i, p[1].type, 0);
+                    func_800A59AC(i, ((u8 *)&p[1])[0x7], 0);
                 }
             } else {
-                func_800A59AC(i, p[1].type, 0);
+                func_800A59AC(i, ((u8 *)&p[1])[0x7], 0);
             }
             p[1].key = 0;
-            p[1].type = 0;
+            ((u8 *)&p[1])[0x7] = 0;
             return;
         }
     }
