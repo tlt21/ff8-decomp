@@ -1,5 +1,6 @@
 #include "common.h"
 #include "battle.h"
+#include "gf.h"
 
 extern u8 D_800EE464[];
 extern u8 D_800EE38C[];
@@ -529,46 +530,35 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A71C0);
  *
  * @param idx Battle slot index (0..6 covers the 7 active slots).
  */
-/* Slot offsets exposed only to the init-time view of a BattleEntity slot.
-   Same memory as the regular @c BattleEntity fields but accessed through
-   different sized loads/stores (32-bit flag words at @c 0x7C / @c 0x08
-   that overlap @c field64[] / @c key+pad09, and the 16-bit display
-   mirror at @c 0x80 that overlaps @c pad80[]). */
-#define SLOT_FLAGS(slot)      (*(s32 *)((u8 *)(slot) + 0x7C))
-#define SLOT_DISPLAY(slot)    (*(u16 *)((u8 *)(slot) + 0x80))
-#define SLOT_INIT_FLAGS(slot) (*(s32 *)((u8 *)(slot) + 0x08))
-
 void func_800A7518(s32 idx) {
-    BattleCharData *charData = (BattleCharData *)((u8 *)&g_battleChars + idx * 0x1D0);
-    BattleEntity   *slot     = &D_800ED158.slots[idx];
-    u8             *scene;
+    BattleCharData *charData = &g_battleChars.chars[idx];
+    BattleSlot     *slot     = (BattleSlot *)&D_800ED158.slots[idx];
     u8              charId;
     s32             i;
 
     charId = charData->characterId;
     if (charId == 0xFF) {
-        SLOT_FLAGS(slot) = 0;
+        slot->slotFlags  = 0;
         slot->linkedIdx2 = 0xFF;
         return;
     }
 
     {
         u16 dispStatus;
-        slot->linkedIdx2   = charId;
-        dispStatus         = charData->displayStatus;
-        SLOT_FLAGS(slot)   = 0x8801;
-        SLOT_DISPLAY(slot) = dispStatus;
+        slot->linkedIdx2  = charId;
+        dispStatus        = charData->displayStatus;
+        slot->slotFlags   = 0x8801;
+        slot->slotDisplay = dispStatus;
     }
 
-    scene = (u8 *)&D_80078E00;
-    if (scene[0x35C3 + charData->classId * 12] & 1) SLOT_FLAGS(slot) |= 0x1000;
-    if (scene[0x37A7 + slot->linkedIdx2 * 36]   & 1)  SLOT_FLAGS(slot) |= 0x100;
+    if (g_gfData.levelCurve12[charData->classId].field0B & 1) slot->slotFlags |= 0x1000;
+    if (g_gfData.xpCurves36[slot->linkedIdx2].field03   & 1)  slot->slotFlags |= 0x100;
 
-    SLOT_INIT_FLAGS(slot) = 0;
-    if (charData->statusFlags & 0x1000) SLOT_INIT_FLAGS(slot)  = 0x80;
-    if (charData->statusFlags & 0x4000) SLOT_INIT_FLAGS(slot) |= 0x20;
-    if (charData->statusFlags & 0x2000) SLOT_INIT_FLAGS(slot) |= 0x40;
-    if (charData->statusFlags & 0x8000) SLOT_INIT_FLAGS(slot) |= 0x02;
+    slot->initFlags = 0;
+    if (charData->statusFlags & 0x1000) slot->initFlags  = 0x80;
+    if (charData->statusFlags & 0x4000) slot->initFlags |= 0x20;
+    if (charData->statusFlags & 0x2000) slot->initFlags |= 0x40;
+    if (charData->statusFlags & 0x8000) slot->initFlags |= 0x02;
 
     func_800A7188((u8 *)slot);
     func_800A71A0((u8 *)slot);
@@ -578,10 +568,16 @@ void func_800A7518(s32 idx) {
         s32 fillVal;
         u8 *p;
 
-        if (!(*(s32 *)((u8 *)slot + 0x80) & 5)) {
+        /* The level-up sound test reads slot+0x80 as a 32-bit word (the write
+           above was 16-bit). Cast on the address-of slotDisplay to keep the
+           wider load that the matching codegen emits here. */
+        if (!(*(s32 *)&slot->slotDisplay & 5)) {
             if (charData->statusFlags & 0x10000) {
-                u8 *entity = (u8 *)&D_800ED158 - 0x10 + idx * 0xD0; /* &D_800ED148.entities[idx] */
-                *(volatile s32 *)(entity + 0x24) = *(volatile s32 *)(entity + 0x20);
+                /* &D_800ED148.entities[idx], expressed via D_800ED158 minus
+                   0x10 to match the addressing chosen by the original code. */
+                volatile BattleEntity *entity =
+                    (volatile BattleEntity *)((u8 *)&D_800ED158 - 0x10 + idx * 0xD0);
+                entity->field24 = entity->field20;
             } else {
                 func_800A559C(idx);
             }
@@ -637,16 +633,17 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A7934);
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object4", func_800A79A0);
 
 /**
- * @brief Two-level table lookup from entity to ability data.
+ * @brief Look up the per-class @c field09 byte for the entity at @p a0.
  *
- * Indexes into g_battleChars by a0*464, reads byte at offset 0x1BA,
- * then uses byte*12 to index into D_80078E00 at offset 0x35C1.
+ * Reads @c BattleCharData[a0].classId, then returns
+ * @c g_gfData.levelCurve12[classId].field09 (offset @c 0x35C1 in the
+ * shared @c D_80078E00 / @c g_gfData block).
  *
- * @param a0 Entity index (stride 464).
- * @return Byte value from the second-level table.
+ * @param a0 Entity index (stride 0x1D0 in @c g_battleChars).
+ * @return The @c field09 byte for that entity's class.
  */
 s32 func_800A7A44(s32 a0) {
-    u8 *table = (u8 *)&D_80078E00;
+    u8 *table = (u8 *)&g_gfData;
     u8 *base = (u8 *)&g_battleChars;
     s32 val = *(u8 *)(base + a0 * 464 + 0x1BA);
     return *(u8 *)(table + val * 12 + 0x35C1);

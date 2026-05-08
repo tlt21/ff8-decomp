@@ -257,7 +257,8 @@ typedef struct {
     u8 pad14[0x04];
     s32 flags;
     s32 flagsBackup;
-    u8 pad20[0x08];
+    s32 field20;
+    s32 field24;
     s32 field28;
     s32 field2C;
     u8 pad30[0x34];
@@ -279,6 +280,29 @@ typedef struct {
     u8 fieldCD;        /* 0xCD: stat byte used in case-0 damage formula (squared). */
     u8 padCE[0x02];
 } BattleEntity;
+
+/**
+ * @brief Slot-init view of a @c BattleEntity slot.
+ *
+ * Same @c 0xD0 byte block as @c BattleEntity but exposes the fields the
+ * battle slot init pass writes/reads at sizes that don't align with the
+ * canonical @c BattleEntity layout: a 32-bit @c initFlags word at
+ * @c 0x08 (overlaps @c key + @c pad09), a 32-bit @c slotFlags word at
+ * @c 0x7C (overlaps the tail of @c field64[14]), and a 16-bit
+ * @c slotDisplay at @c 0x80 (overlaps @c pad80[]).
+ *
+ * Cast at the access site: @c (BattleSlot *)&D_800ED158.slots[idx].
+ */
+typedef struct {
+    /* 0x00 */ u8  pad00[0x08];
+    /* 0x08 */ s32 initFlags;       /**< Init-time animation/render flag word. */
+    /* 0x0C */ u8  pad0C[0x70];
+    /* 0x7C */ s32 slotFlags;       /**< Battle slot flag word (0x8801 base). */
+    /* 0x80 */ u16 slotDisplay;     /**< Mirror of @c BattleCharData.displayStatus. */
+    /* 0x82 */ u8  pad82[0x39];
+    /* 0xBB */ u8  linkedIdx2;
+    /* 0xBC */ u8  padBC[0x14];
+} BattleSlot; /* 0xD0 */
 
 /**
  * @brief Battle system block at D_800ED148.

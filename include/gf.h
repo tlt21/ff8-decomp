@@ -101,7 +101,9 @@ typedef struct {
  */
 typedef struct {
     u16 lookupParam;  /**< +0x00: Lookup param (getBattleCharName/getCharNamePtr). */
-    u8 pad02[4];      /**< +0x02..+0x05: Unknown fields. */
+    u8 pad02;         /**< +0x02: Unknown. */
+    u8 field03;       /**< +0x03: Bit 0 enables @c BattleSlot.slotFlags @c 0x100 in @c func_800A7518. */
+    u8 pad04[2];      /**< +0x04..+0x05: Unknown. */
     u8 linearCoeff;   /**< +0x06: XP curve linear coefficient. */
     u8 quadDivisor;   /**< +0x07: XP curve quadratic divisor. */
     u8 constant;      /**< +0x08: XP curve constant term. */
@@ -151,7 +153,10 @@ typedef struct {
     u16 param0;    /**< +0x00: Lookup param (getLevelCurveData). */
     u8 pad02[5];   /**< +0x02..+0x06: Unknown. */
     u8 field07;    /**< +0x07: Used in func_80022028. */
-    u8 pad08[4];   /**< +0x08..+0x0B: Unknown. */
+    u8 pad08;      /**< +0x08: Unknown. */
+    u8 field09;    /**< +0x09: Returned directly by @c func_800A7A44 as a per-class lookup byte. */
+    u8 pad0A;      /**< +0x0A: Unknown. */
+    u8 field0B;    /**< +0x0B: Bit 0 enables @c BattleSlot.slotFlags @c 0x1000 in @c func_800A7518. */
 } LevelCurve12Entry; /* 12 bytes */
 
 /** @brief StatTable24Entry (stride 24, +0x3930 in GfData, ability id < 0x21) */
