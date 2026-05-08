@@ -62,7 +62,6 @@ typedef struct {
 
 
 extern volatile BattleState D_800ED148;
-extern u8 D_800ED157[];
 
 /* FIXME: D_800E19BC is conceptually an array of (s32 sector, s32 length)
    pairs (8-byte stride, two s32s per entry) used as CdRead arguments by
@@ -74,25 +73,11 @@ extern u8 D_800ED157[];
    with two offsets and broke the match. The magic 2 / +1 should go
    away if/when a struct-typed access form that produces the same
    codegen is found. */
-extern s32 D_800E19BC[];
-extern u16 D_800E3CA4[];
-extern u16 D_800E3CA8[];
-extern u16 D_800E3CB0[];
-extern u8 D_800EDE24[];
-extern u8 D_800EE24B[];
-extern u8 D_800EE28C[];
-extern u8 D_800EEBA8[];
-extern u8 D_800EEBB0[];
-extern u8 D_800EE449[];
-extern u8 D_800EE456[];
-extern u8 D_800EE4C1[];
 extern u8 D_80082C0A[];
 extern u8 D_80082C0F[];
 extern s16 D_8005F11C;
 
 extern u8 D_80098030[];
-extern u8 D_800E19B4[];
-extern u8 D_800ED1D8[];
 
 extern u32 jtbl_80098018[];
 

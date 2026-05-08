@@ -3,7 +3,6 @@
 extern u8 g_battleChars[];
 extern u8 D_800ED148[];
 extern u8 D_80082C0F[];
-extern u8 D_800EE449[];
 extern u8 D_800ED70C[];
 extern u8 D_800EE441[];
 extern u8 D_800EE9E8[];

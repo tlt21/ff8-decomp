@@ -676,11 +676,25 @@ typedef struct {
  *  Battle data symbols (battle_code overlay region).
  * ---------------------------------------------------------------- */
 
+extern u8 D_800ED157[];     /**< 0x800ED157: misc battle state. */
 extern u8 D_800ED160[];     /**< 0x800ED160: misc battle state. */
+extern u8 D_800ED1D8[];     /**< 0x800ED1D8: misc battle state. */
 extern u8 D_800ED70C[];     /**< 0x800ED70C: entity status table (stride 20). */
+extern s32 D_800E19BC[];    /**< 0x800E19BC: CdRead (sector,length) pair table. */
+extern u8 D_800E19B4[];     /**< 0x800E19B4: misc state byte. */
+extern u16 D_800E3CA4[];    /**< 0x800E3CA4: misc halfword table. */
+extern u16 D_800E3CA8[];    /**< 0x800E3CA8: misc halfword table. */
+extern u16 D_800E3CB0[];    /**< 0x800E3CB0: misc halfword table. */
+extern u8 D_800EDE24[];     /**< 0x800EDE24: misc state. */
+extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
+extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
+extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456[];     /**< 0x800EE456: status flags byte. */
 extern u8 D_800EE476[];     /**< 0x800EE476: entity index latch. */
 extern u8 D_800EE4C0[];     /**< 0x800EE4C0: command queue buffer. */
+extern u8 D_800EE4C1[];     /**< 0x800EE4C1: misc state byte. */
+extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
+extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */
 extern u8 D_800EEBB8[];     /**< 0x800EEBB8: misc state byte. */
 extern u8 D_800EEBB9[];     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA[];     /**< 0x800EEBBA: misc state byte. */
