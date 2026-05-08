@@ -465,32 +465,35 @@ s32 func_800A7154(void) {
 }
 
 /**
- * @brief Clear five bytes of a battle entity structure.
+ * @brief Clear five bytes around the animation-param region of a battle slot.
  *
- * Zeroes bytes at offsets 0x88, 0x89, 0x8A, 0xC7, and 0xC8 of the
- * given entity pointer.
+ * Zeroes the @c animParam3 halfword (offsets @c 0x88-0x89), the first
+ * byte of @c pad8A (@c 0x8A), and bytes @c 0xC7 / @c 0xC8 inside
+ * @c padBC[]. Order: @c 0x8A → @c 0x89 → @c 0x88 → @c 0xC7 → @c 0xC8.
  *
- * @param entity Pointer to entity data.
+ * @param slot Battle slot to clear.
  */
-void func_800A7188(u8 *entity) {
-    entity[0x8A] = 0;
-    entity[0x89] = 0;
-    entity[0x88] = 0;
-    entity[0xC7] = 0;
-    entity[0xC8] = 0;
+void func_800A7188(BattleEntity *slot) {
+    u8 *p = (u8 *)slot;
+    p[0x8A] = 0;
+    p[0x89] = 0;
+    p[0x88] = 0;
+    p[0xC7] = 0;
+    p[0xC8] = 0;
 }
 
 /**
- * @brief Clear 8 consecutive words starting at offset 0x24.
+ * @brief Clear 8 consecutive words starting at @c slot+0x24.
  *
- * Zeroes words at offsets 0x24, 0x28, 0x2C, 0x30, 0x34, 0x38, 0x3C, 0x40
- * from the given base pointer.
+ * Zeroes 8 @c s32 words at offsets @c 0x24, @c 0x28, @c 0x2C, @c 0x30,
+ * @c 0x34, @c 0x38, @c 0x3C, @c 0x40 — i.e. @c field24, @c field28,
+ * @c field2C, and the first 0x14 bytes of @c pad30[].
  *
- * @param base Pointer to entity or data structure.
+ * @param slot Battle slot whose mid-region words are zeroed.
  */
-void func_800A71A0(u8 *base) {
+void func_800A71A0(BattleEntity *slot) {
     s32 i = 7;
-    base += 0x1C;
+    u8 *base = (u8 *)slot + 0x1C;
     top:
         *(s32 *)(base + 0x24) = 0;
         i--;
@@ -560,8 +563,8 @@ void func_800A7518(s32 idx) {
     if (charData->statusFlags & 0x2000) slot->slot8.initFlags |= 0x40;
     if (charData->statusFlags & 0x8000) slot->slot8.initFlags |= 0x02;
 
-    func_800A7188((u8 *)slot);
-    func_800A71A0((u8 *)slot);
+    func_800A7188(slot);
+    func_800A71A0(slot);
     func_800A554C(idx);
 
     {
