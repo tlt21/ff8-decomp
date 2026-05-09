@@ -3,6 +3,7 @@
 #include "battle.h"
 #include "field.h"
 #include "psxsdk/libcd.h"
+#include "psxsdk/libetc.h"
 
 /** Initializes the CD subsystem: clears callbacks and pauses the drive. */
 void func_800C40F8(void) {
@@ -22,16 +23,16 @@ void func_800C40F8(void) {
  * current buffer.
  */
 typedef struct StreamState {
-    u8 **buffers;                /* 0x00: NULL-terminated array of destination buffers */
+    u8 *volatile *buffers;       /* 0x00: NULL-terminated array of destination buffers (slots are volatile pointers) */
     u32 pad_04;
     volatile s32 blocksPerBuf;   /* 0x08: blocks to read into each buffer (reload for remaining) */
     u32 pad_0C;
     volatile s32 remaining;      /* 0x10: blocks remaining in current buffer */
-    s32 field_14;                /* 0x14 */
-    s32 field_18;                /* 0x18: VSync() snapshot */
+    volatile s32 field_14;       /* 0x14 */
+    volatile s32 field_18;       /* 0x18: VSync() snapshot */
     volatile s32 expectedSeq;    /* 0x1C: expected sequence number */
     volatile s32 blockIdx;       /* 0x20: current block index within buffer */
-    u8  bufIdx;                  /* 0x24: current buffer index */
+    volatile u8 bufIdx;          /* 0x24: current buffer index */
     volatile u8 status;          /* 0x25: status flag (0 idle, 2 error/done) */
 } StreamState;
 
@@ -103,7 +104,59 @@ void func_800C4130(u8 event, void *ctx) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object13", func_800C42D8);
+/**
+ * @brief Begin streaming the next CD buffer (or restart after seek).
+ *
+ * Disables any in-flight read by clearing both CD callbacks, checks the CD
+ * status, and either re-seeks to the saved sequence number (when @p doSeek
+ * is set) or resumes from the drive's current position. Installs
+ * @c func_800C4130 as the ready callback and kicks off a mode-6
+ * multi-sector read.
+ *
+ * @param doSeek When non-zero, re-seek to the saved @c expectedSeq before
+ *               starting; when zero, start from the drive's current spot.
+ * @return Number of blocks queued in the new buffer (@c blocksPerBuf -
+ *         @c blockIdx); @c -1 if the CD subsystem reported an error.
+ */
+s32 func_800C42D8(s32 doSeek) {
+    u8 stackBuf[16];
+
+    CdSyncCallback(NULL);
+    CdReadyCallback(NULL);
+
+    if (CdStatus() & 0x10) {
+        CdControlF(1, NULL);
+        D_800E3E70.field_18 = VSync(-1);
+        D_800E3E70.remaining = -1;
+        return D_800E3E70.remaining;
+    }
+
+    if (doSeek != 0) {
+        u8 *pPos = &stackBuf[8];
+        CdControl(9, NULL, NULL);
+        CdIntToPos(D_800E3E70.expectedSeq, (CdlLOC *)pPos);
+        if (CdControl(2, pPos, NULL) == 0) {
+            D_800E3E70.remaining = -1;
+            return D_800E3E70.remaining;
+        }
+    }
+
+    CdFlush();
+    stackBuf[0] = 0xA0;
+    if (CdMode() != 0xA0) {
+        if (CdControl(0xE, &stackBuf[0], NULL) == 0) {
+            D_800E3E70.remaining = -1;
+            return D_800E3E70.remaining;
+        }
+    }
+
+    D_800E3E70.expectedSeq = CdPosToInt((CdlLOC *)CdLastPos());
+    CdReadyCallback((CdlCB)func_800C4130);
+    CdControlF(6, NULL);
+    D_800E3E70.remaining = D_800E3E70.blocksPerBuf - D_800E3E70.blockIdx;
+    D_800E3E70.field_14 = VSync(-1);
+    return D_800E3E70.remaining;
+}
 
 /** Resets playback state and reinitializes subsystem.
  * @return Always returns 1.
@@ -115,8 +168,77 @@ s32 func_800C4450(void) {
     return 1;
 }
 
+/**
+ * @brief Initialize the multi-sector streaming engine and start the first
+ *        buffer.
+ *
+ * Initializes the @c StreamState header from the caller's arguments and
+ * kicks off the first read via @c func_800C42D8.
+ *
+ * @param startSeq      Starting sector sequence number (logical block).
+ * @param blocksPerBuf  Blocks to read into each buffer slot (reload value
+ *                      for @c remaining when advancing).
+ * @param buffers       NULL-terminated array of destination buffer pointers.
+ * @return @c 1 if streaming kicked off successfully, @c 0 on failure.
+ *
+ * @verbatim
+ * s32 func_800C4480(s32 startSeq, s32 blocksPerBuf, u8 **buffers) {
+ *     if (CdSync(1, NULL) == 0)
+ *         return 0;
+ *
+ *     D_800E3E70.buffers = buffers;
+ *     D_800E3E70.blocksPerBuf = blocksPerBuf;
+ *     D_800E3E70.bufIdx = 0;
+ *     D_800E3E70.expectedSeq = startSeq;
+ *     D_800E3E70.remaining = 0;
+ *     D_800E3E70.field_14 = 0;
+ *     D_800E3E70.field_18 = VSync(-1);
+ *     D_800E3E70.blockIdx = 0;
+ *     D_800E3E70.status = 1;
+ *     CdSyncCallback(NULL);
+ *     CdReadyCallback(NULL);
+ *     if (CdStatus() & 0xC0)
+ *         CdControlB(9, NULL, NULL);
+ *
+ *     return func_800C42D8(1) > 0;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object13", func_800C4480);
 
+/**
+ * @brief Query streaming status; optionally block until the current buffer
+ *        completes.
+ *
+ * @param nowait When non-zero, return immediately with the current state;
+ *               when zero, busy-wait until the buffer queue drains or
+ *               @c status leaves the @c streaming state.
+ * @retval  1   Streaming, current buffer slot still active.
+ * @retval  0   Idle, or current buffer slot drained.
+ * @retval -1   Error / reset state, or @c status changed mid-wait.
+ *
+ * @verbatim
+ * s32 func_800C4558(s32 nowait) {
+ *     StreamState *s = &D_800E3E70;
+ *     s32 status = s->status;
+ *
+ *     if (status != 1) {
+ *         if (status < 2)  return 0;
+ *         if (status == 2) return -1;
+ *         return 0;
+ *     }
+ *     if (nowait != 0) {
+ *         if (s->buffers[s->bufIdx] == NULL) return 0;
+ *         return 1;
+ *     }
+ *     if (s->buffers[s->bufIdx] == NULL) return 0;
+ *     while (s->status == 1) {
+ *         if (s->buffers[s->bufIdx] == NULL) return 0;
+ *     }
+ *     return -1;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object13", func_800C4558);
 
 /** Exchanges the callback pointer, returning the previous value.
@@ -310,4 +432,66 @@ void func_800C4A74(void) {
     }
 }
 
+extern u8 D_8007809A;
+extern s32 D_80082C14;
+extern void setTransitionPhase7(void);
+
+/**
+ * @brief Per-step world-engine tick — duplicate of @c func_800BD804 from
+ *        the field engine.
+ *
+ * Drives every per-step accumulator on the field state for the world map:
+ *   - @c stepCounter (mirrored to @c D_80082C14).
+ *   - @c packedFlagsStepAcc — fires @c func_800C4A74 every @c 0x2800 steps.
+ *   - @c hpRegenStepAcc — fires GF and party HP regen every @c 8 steps.
+ *   - @c seedExpStepAcc — fires the SeeD level-up tick every @c 0x6000 steps,
+ *     then clamps @c seedExp to @c [100, 0xC1C].
+ *   - @c levelUpDisplayTimer — counts down each step; fires
+ *     @c setTransitionPhase7 the frame it reaches @c 0.
+ *   - @c angeloLearnStepAcc — fires the Angelo trick learn tick every
+ *     @c 0x250 steps.
+ *
+ * The HP regen, SeeD level-up, timer and Angelo branches each gate on
+ * @c D_8007809A or @c stateFlags bits.
+ *
+ * @param stepDelta  Step delta to add to all accumulators this tick.
+ *
+ * @verbatim
+ * void func_800C4AE4(s32 stepDelta) {
+ *     g_seedState->hpRegenStepAcc += stepDelta;
+ *     g_seedState->stepCounter += stepDelta;
+ *     g_seedState->angeloLearnStepAcc += stepDelta;
+ *     g_seedState->packedFlagsStepAcc = (u16)(g_seedState->packedFlagsStepAcc + stepDelta);
+ *     D_80082C14 = g_seedState->stepCounter;
+ *     if (g_seedState->packedFlagsStepAcc >= 0x2800u) {
+ *         g_seedState->packedFlagsStepAcc = 0;
+ *         func_800C4A74();
+ *     }
+ *     if (g_seedState->hpRegenStepAcc >= 8) {
+ *         g_seedState->hpRegenStepAcc = 0;
+ *         func_800C48C0();
+ *         func_800C492C();
+ *     }
+ *     if (D_8007809A & 1) return;
+ *     if (!(g_seedState->stateFlags & 8)) {
+ *         g_seedState->seedExpStepAcc += stepDelta;
+ *         if ((u32)g_seedState->seedExpStepAcc >= 0x6000u) {
+ *             g_seedState->seedExpStepAcc = 0;
+ *             func_800C4688();
+ *         }
+ *         if ((s16)g_seedState->seedExp < 100)         g_seedState->seedExp = 100;
+ *         else if ((s16)g_seedState->seedExp >= 0xC1C) g_seedState->seedExp = 0xC1C;
+ *     }
+ *     if ((s16)g_seedState->levelUpDisplayTimer >= 0) {
+ *         if ((s16)g_seedState->levelUpDisplayTimer == 0) setTransitionPhase7();
+ *         g_seedState->levelUpDisplayTimer--;
+ *     }
+ *     if (D_8007809A & 0x10) return;
+ *     if ((u32)g_seedState->angeloLearnStepAcc >= 0x250u) {
+ *         g_seedState->angeloLearnStepAcc = 0;
+ *         func_800C49CC();
+ *     }
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object13", func_800C4AE4);

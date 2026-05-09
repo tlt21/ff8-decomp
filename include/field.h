@@ -55,7 +55,10 @@ typedef struct {
  * fields are added as they are identified in decomped code.
  */
 typedef struct {
-    /* 0x00 */ u8 pad00[0x10];
+    /* 0x00 */ u32 pad00;
+    /* 0x04 */ s32 stepCounter;         /**< Total step delta accumulator, mirrored to D_80082C14. */
+    /* 0x08 */ s32 seedExpStepAcc;      /**< Step accumulator: fires the SeeD level-up tick at @c 0x6000. */
+    /* 0x0C */ s32 hpRegenStepAcc;      /**< Step accumulator: fires HP regen ticks at @c 8. */
     /* 0x10 */ u16 seedExp;             /**< SeeD experience (clamped to [100, 3100]; level = exp/100). */
     /* 0x12 */ u16 prevKillSum;         /**< Last frame's total enemy-kill count across all 8 chars. */
     /* 0x14 */ u8 pad14[0x54];
@@ -63,7 +66,8 @@ typedef struct {
     /* 0x6C */ s32 soundHandle0;        /**< Sound channel handle 0. */
     /* 0x70 */ s32 soundHandle1;        /**< Sound channel handle 1 (-1 = inactive). */
     /* 0x74 */ u8 packedFlags[0x40];    /**< Packed 2-bit-per-entry flag table (256 entries, indexed by 8-bit key). */
-    /* 0xB4 */ u8 padB4[0x04];
+    /* 0xB4 */ u16 packedFlagsStepAcc;  /**< Step accumulator: fires packed-flags processing at @c 0x2800. */
+    /* 0xB6 */ u16 padB6;
     /* 0xB8 */ u16 levelUpDisplayTimer; /**< Frames remaining for the SeeD-rank-up notification (set to 150). */
     /* 0xBA */ u16 prevSeedExp;         /**< Snapshot of @c seedExp from the previous tick (for rank-change detection). */
     /* 0xBC */ u8 partyOrderA[3];       /**< Bench list (members not in active party). */
@@ -76,6 +80,8 @@ typedef struct {
     /* 0xCA */ s8 audioChannel2State;   /**< Audio channel 2 state byte; -1 = reset/inactive. */
     /* 0xCB */ u8 padCB[0x0B];
     /* 0xD6 */ u8 soundLoadComplete;    /**< Set to 1 after sound bank loading finishes. */
+    /* 0xD7 */ u8 padD7[0x1D];
+    /* 0xF4 */ s32 angeloLearnStepAcc;  /**< Step accumulator: fires the Angelo trick learn tick at @c 0x250. */
 } FieldEngineState;
 
 /**

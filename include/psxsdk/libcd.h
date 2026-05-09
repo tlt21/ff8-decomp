@@ -21,7 +21,13 @@ s32 CdControlB(u8 com, u8 *param, u8 *result);
 s32 CdControlF(u8 com, u8 *param);
 s32 CdGetSector(void *madr, s32 size);
 s32 CdPosToInt(CdlLOC *p);
+void CdIntToPos(s32 i, CdlLOC *p);
 CdlCB CdSyncCallback(CdlCB func);
 CdlCB CdReadyCallback(CdlCB func);
+s32 CdSync(s32 mode, u8 *result);
+s32 CdStatus(void);
+s32 CdMode(void);
+u8 *CdLastPos(void);
+void CdFlush(void);
 
 #endif /* LIBCD_H */
