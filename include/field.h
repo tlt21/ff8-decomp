@@ -49,10 +49,14 @@ typedef struct {
 } FieldEntity;              /* size >= 0x24D */
 
 /**
- * @brief Field engine global state (pointed to by g_seedState).
+ * @brief 256-byte misc3 region of @c GameState — held at @c g_gameState+0xD60
+ * and aliased through the @c g_seedState pointer.
  *
- * Large runtime struct for field map state. Only partially mapped;
- * fields are added as they are identified in decomped code.
+ * Despite the name, this region tracks general field/world state — step
+ * accumulators that drive periodic ticks, SeeD experience and rank
+ * bookkeeping, sound channel handles, the packed 2-bit flag table, party
+ * ordering, audio channel state, etc. Only partially mapped; fields are
+ * added as their usages are identified.
  */
 typedef struct {
     /* 0x00 */ u32 pad00;
@@ -78,11 +82,20 @@ typedef struct {
     /* 0xC8 */ s8 audioChannel1State;   /**< Audio channel 1 state byte; -1 = reset/inactive. */
     /* 0xC9 */ u8 soundBankSelector;    /**< Sound bank toggle (0 or 1). */
     /* 0xCA */ s8 audioChannel2State;   /**< Audio channel 2 state byte; -1 = reset/inactive. */
-    /* 0xCB */ u8 padCB[0x0B];
+    /* 0xCB */ u8 padCB[0x06];          /**< 0xCB..0xD0 */
+    /* 0xD1 */ u8 fieldD1;              /**< Bit 0 toggled by fe_object6 helper. */
+    /* 0xD2 */ u8 sfxActiveMask;        /**< Per-slot SFX active bitmask (set on play, cleared on completion). */
+    /* 0xD3 */ u8 sfxStartMask;         /**< Per-slot SFX start bitmask (set on play). */
+    /* 0xD4 */ u8 padD4[0x02];
     /* 0xD6 */ u8 soundLoadComplete;    /**< Set to 1 after sound bank loading finishes. */
-    /* 0xD7 */ u8 padD7[0x1D];
+    /* 0xD7 */ u8 padD7;
+    /* 0xD8 */ u16 fieldD8;             /**< Mirrored from D_800704A8+0x108 by fe_object9 dialog helpers. */
+    /* 0xDA */ u8 padDA[0x18];          /**< 0xDA..0xF1 */
+    /* 0xF2 */ u8 fieldF2;              /**< Set to popped field index by fe_object7 dispatch handler. */
+    /* 0xF3 */ u8 fieldF3;              /**< Mirrored to D_80082C10 when stateFlags bit 0x800 is set. */
     /* 0xF4 */ s32 angeloLearnStepAcc;  /**< Step accumulator: fires the Angelo trick learn tick at @c 0x250. */
-} FieldEngineState;
+    /* 0xF8 */ u8 padF8[0x08];
+} SeedState; /* 0x100 = 256 bytes */
 
 /**
  * @brief Eline (event line) — opcode handler view of the script context.
@@ -149,9 +162,6 @@ typedef struct {
 
 /** @brief SeeD salary lookup table indexed by SeeD level (exp / 100). */
 extern u16 g_seedSalaryTable[];
-
-/** @brief Field-engine "skip" flag byte; bits gate per-step ticks. */
-extern u8 D_8007809A;
 
 /** @brief Read the 2-bit packed flag at the given key (256-entry table). */
 extern s32 getPackedField2Bit(s32 key);

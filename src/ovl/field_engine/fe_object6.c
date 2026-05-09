@@ -2,8 +2,8 @@
 #include "field.h"
 #include "gamestate.h"
 
+extern SeedState *g_seedState;
 extern u8 D_80070652;
-extern u8 *g_seedState;
 extern u8 D_800704A8[];
 extern u8 D_800704CA;
 extern u8 D_8007064A;
@@ -589,7 +589,7 @@ s32 func_800B49D8(u8 *a0) {
 s32 func_800B49E8(void) {
     *(u8 *)D_800704A8 = 5;
     *(u16 *)(D_800704A8 + 2) = 0;
-    *(u8 *)(D_800704A8 + 0x1AB) = *(u8 *)(g_seedState + 0xD1);
+    *(u8 *)(D_800704A8 + 0x1AB) = g_seedState->fieldD1;
     return 3;
 }
 
@@ -700,9 +700,9 @@ s32 func_800B4ED8(u8 *a0) {
     *(u8 *)(a0 + 0x184) = idx - 1;
     val = *(s32 *)(a0 + (s8)idx * 4);
     if (val != 0) {
-        *(u8 *)(g_seedState + 0xD1) = *(u8 *)(g_seedState + 0xD1) | 0x01;
+        g_seedState->fieldD1 |= 0x01;
     } else {
-        *(u8 *)(g_seedState + 0xD1) = *(u8 *)(g_seedState + 0xD1) & ~0x01;
+        g_seedState->fieldD1 &= ~0x01;
     }
     return 2;
 }
@@ -715,12 +715,10 @@ s32 func_800B4ED8(u8 *a0) {
  * Otherwise, sets bit 2.
  */
 void func_800B4F40(void) {
-    u8 *ptr = g_seedState;
-
-    if (*(s32 *)(ptr + 0x68) & 0x200) {
-        *(u8 *)(ptr + 0xD1) = *(u8 *)(ptr + 0xD1) & 0xFD;
+    if (g_seedState->stateFlags & 0x200) {
+        g_seedState->fieldD1 &= 0xFD;
     } else {
-        *(u8 *)(ptr + 0xD1) = *(u8 *)(ptr + 0xD1) | 0x2;
+        g_seedState->fieldD1 |= 0x2;
     }
 }
 

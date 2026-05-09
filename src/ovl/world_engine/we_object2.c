@@ -5,7 +5,7 @@
 
 extern u8 D_800780D8[];
 extern u8 D_800D23D8[];
-extern FieldEngineState *g_seedState;
+extern SeedState *g_seedState;
 extern s32 D_800C9E68;
 extern s32 D_800C9E70;
 

@@ -5,7 +5,7 @@
 #include "sound.h"
 
 extern u8 D_800DE4FD[];
-extern FieldEngineState *g_seedState;
+extern SeedState *g_seedState;
 
 /**
  * @brief Pop value from script stack and branch to one of two handlers.

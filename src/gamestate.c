@@ -8,7 +8,7 @@
 extern u8 D_8007809B[];
 extern u8 g_chocoboWorld;
 extern u8 D_80085218;
-extern FieldEngineState *g_seedState;
+extern SeedState *g_seedState;
 extern u8 D_8005F388[];
 extern u8 D_80063388[];
 extern s32 D_80085220;

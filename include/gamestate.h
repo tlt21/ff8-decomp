@@ -21,6 +21,7 @@
 
 #include "common.h"
 #include "character.h"
+#include "field.h"
 
 /* ======================================================================== */
 /* GF Save Data                                                             */
@@ -324,7 +325,7 @@ typedef struct {
     /* 0xAF4 */ SaveMainData  mainData;                     /**< Party/items/battle state (580 bytes). */
     /* 0xD38 */ u8            battleParty[4];              /**< Battle party member IDs (mirrors party.party). */
     /* 0xD3C */ u8            padD3C[0x24];                /**< Battle vars / misc (continued). */
-    /* 0xD60 */ u8            padD60[0x100];               /**< Steps, SeeD rank, counters. */
+    /* 0xD60 */ SeedState     seedState;                   /**< Steps, SeeD rank, counters (@c &g_gameState.seedState == @c g_seedState). */
     /* 0xE60 */ u8            padE60[0x400];               /**< Field script vars, TT rules. */
     /* 0x1260 */ u8           pad1260[0x80];               /**< World map position/vehicles. */
     /* 0x12E0 */ TripleTriadData cards;                    /**< Triple Triad data (128 bytes). */
