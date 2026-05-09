@@ -18,8 +18,6 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D6D00);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D6D80);
 
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D6E34);
-
 /**
  * @brief Return the address of D_800EE9E8.
  *
@@ -104,36 +102,6 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7110);
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D71DC);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D72C8);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D741C);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D74A4);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D75D4);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7604);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7884);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7A74);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7B14);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7C24);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D7D84);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D8034);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D8264);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D8374);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D8484);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D84D4);
-
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D8564);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object19", func_800D85B4);
 
