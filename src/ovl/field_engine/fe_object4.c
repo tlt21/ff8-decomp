@@ -488,14 +488,13 @@ s32 func_800AF070(u8 *a0) {
 INCLUDE_ASM("asm/ovl/field_engine/nonmatchings/fe_object4", func_800AF0B4);
 
 /**
- * Calls fieldRandom with the object pointer, masks result to byte,
- * stores at offset 0x140, returns 2.
+ * Stores a random byte (0..0xFF) into the entity's @c result register.
  *
- * @param a0 Pointer to the script/object structure.
+ * @param entity Script entity.
  * @return 2 (continue processing).
  */
-s32 func_800AF0E0(u8 *a0) {
-    *(s32 *)(a0 + 0x140) = fieldRandom(a0) & 0xFF;
+s32 func_800AF0E0(FieldEntity *entity) {
+    entity->result = fieldRandom() & 0xFF;
     return 2;
 }
 

@@ -2,6 +2,7 @@
 #include "gamestate.h"
 #include "battle.h"
 #include "field.h"
+#include "sound.h"
 #include "psxsdk/libcd.h"
 #include "psxsdk/libetc.h"
 
@@ -39,7 +40,6 @@ typedef struct StreamState {
 extern StreamState D_800E3E70;
 extern void (*D_800E3E60)(s32, void *);
 extern FieldEngineState *g_seedState;
-extern u16               g_seedSalaryTable[];
 
 extern void func_80047C3C(u8 *msg);
 extern u8   D_800987C0;
@@ -383,8 +383,6 @@ void func_800C492C(void) {
     }
 }
 
-extern void sndPlaySfx(s32 sfxId, s32 a1, s32 a2, s32 a3);
-
 /**
  * @brief Tick the currently-learning Angelo trick's points; unlock + play SFX at 0.
  *
@@ -414,10 +412,6 @@ void func_800C49CC(void) {
     }
 }
 
-extern s32 getPackedField2Bit(s32);
-extern s32 fieldRandom(void);
-extern void func_800383B8(s32, s32);
-
 /** Scans all 256 entries and processes active ones. */
 void func_800C4A74(void) {
     s32 i;
@@ -432,9 +426,7 @@ void func_800C4A74(void) {
     }
 }
 
-extern u8 D_8007809A;
 extern s32 D_80082C14;
-extern void setTransitionPhase7(void);
 
 /**
  * @brief Per-step world-engine tick — duplicate of @c func_800BD804 from

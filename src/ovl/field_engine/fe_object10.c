@@ -2,10 +2,10 @@
 #include "field.h"
 #include "gamestate.h"
 #include "character.h"
+#include "sound.h"
 
 extern u8 D_800DE4FD[];
 extern FieldEngineState *g_seedState;
-extern u16               g_seedSalaryTable[];
 
 /**
  * @brief Pop value from script stack and branch to one of two handlers.

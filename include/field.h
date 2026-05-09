@@ -147,4 +147,22 @@ typedef struct {
 /** @brief Read the top s32 from the eline's bytecode stack without popping. */
 #define PEEK(eline) (((s32 *)(eline))[(eline)->stackPtr])
 
+/** @brief SeeD salary lookup table indexed by SeeD level (exp / 100). */
+extern u16 g_seedSalaryTable[];
+
+/** @brief Field-engine "skip" flag byte; bits gate per-step ticks. */
+extern u8 D_8007809A;
+
+/** @brief Read the 2-bit packed flag at the given key (256-entry table). */
+extern s32 getPackedField2Bit(s32 key);
+
+/** @brief Field-engine PRNG; consumed by random encounter / step ticks. */
+extern s32 fieldRandom(void);
+
+/** @brief Update one packed-flag table slot from a step tick. */
+extern void func_800383B8(s32 key, s32 status);
+
+/** @brief Trigger SeeD rank-up notification (palette transition phase 7). */
+extern void setTransitionPhase7(void);
+
 #endif /* FIELD_H */

@@ -243,4 +243,14 @@ typedef struct {
     /* 0x03 */ u8 pad03[13];
 } SfxSlot; /* 0x10 = 16 bytes */
 
+/**
+ * @brief Play a one-shot SFX.
+ *
+ * @param sfxId  Sound effect id (rank-up = 0x5B..0x5D, Angelo learn = 0x83, etc.).
+ * @param a1     Channel / mode flag (typically 0).
+ * @param a2     Volume (typically 0x80).
+ * @param a3     Pan (typically 0x7F).
+ */
+extern void sndPlaySfx(s32 sfxId, s32 a1, s32 a2, s32 a3);
+
 #endif /* SOUND_H */
