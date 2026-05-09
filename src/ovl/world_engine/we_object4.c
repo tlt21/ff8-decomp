@@ -2,30 +2,6 @@
 #include "psxsdk/libgpu.h"
 #include "world.h"
 
-/** @brief One slot of a worldmap OT (ordering table), stride 0x60. */
-typedef struct {
-    P_TAG link;          /**< 0x00: P_TAG with low-24 next-prim addr. */
-    u8    pad[0x58];     /**< 0x08..0x5F: rest of the slot (stride 0x60). */
-} OTSlot;
-
-/** @brief Per-bone prim pointer table embedded inside an entity buffer. */
-typedef struct {
-    u8  pad00[0x70];
-    u32 primList[1];     /**< +0x70: per-bone prim addr, indexed by bone id. */
-} EntityModel;
-
-extern EntityModel D_800CA040;          /* Canonical entity (cond=0). */
-extern s16         D_800C53B8[];        /* Bone-id table (3 bones used). */
-extern OTSlot      D_800D3E98[2][3];    /* Primary slot-B[cond][bone]. */
-extern OTSlot      D_800D40D8[2][3];    /* Secondary slot-B[cond][bone]. */
-
-/* Slot-A arrays: each slot-B is paired with a slot-A 0x48 bytes earlier
- * in memory. The macro keeps the toolchain emitting one named %hi/%lo
- * pair per primary symbol while the function body still reads as a
- * normal struct array access. */
-#define D_800D3E50  (*(OTSlot (*)[2][3])((u8 *)D_800D3E98 - 0x48))
-#define D_800D4090  (*(OTSlot (*)[2][3])((u8 *)D_800D40D8 - 0x48))
-
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object4", func_800A64DC);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object4", func_800A688C);

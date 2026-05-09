@@ -234,6 +234,30 @@ extern u8 *D_800D2288;
 extern Slot *D_800D226C;
 extern TransformEntry *D_800D2128;
 
+/** @brief One slot of a worldmap OT (ordering table), stride 0x60. */
+typedef struct {
+    P_TAG link;          /**< 0x00: P_TAG with low-24 next-prim addr. */
+    u8    pad[0x58];     /**< 0x08..0x5F: rest of the slot (stride 0x60). */
+} OTSlot;
+
+/** @brief Entity model with a per-bone prim pointer table at @c +0x70. */
+typedef struct {
+    u8  pad00[0x70];
+    u32 primList[1];     /**< +0x70: per-bone prim addr, indexed by bone id. */
+} EntityModel;
+
+extern EntityModel D_800CA040;          /**< Canonical worldmap entity model. */
+extern s16         D_800C53B8[];        /**< Bone-id table (used by we_object4). */
+extern OTSlot      D_800D3E98[2][3];    /**< Primary worldmap OT slot-B[cond][bone]. */
+extern OTSlot      D_800D40D8[2][3];    /**< Secondary worldmap OT slot-B[cond][bone]. */
+
+/* Slot-A arrays: each slot-B is paired with a slot-A 0x48 bytes earlier
+ * in memory. The macros keep the toolchain emitting one named %hi/%lo
+ * pair per primary symbol while call sites still read as struct array
+ * accesses (e.g. @c &D_800D3E50[cond][i].link). */
+#define D_800D3E50  (*(OTSlot (*)[2][3])((u8 *)D_800D3E98 - 0x48))
+#define D_800D4090  (*(OTSlot (*)[2][3])((u8 *)D_800D40D8 - 0x48))
+
 extern ScriptOp *func_800AF004(u8 *base, s32 flag);
 extern s32 func_800AF28C(ScriptOp *p);
 extern s32 func_800BEFC4(void);
