@@ -127,54 +127,57 @@ store:
  * snapshots @c D_801D3340[D_801D3358] to @c D_801D335C; bit-0x10 sets
  * @c D_801D3359=3.
  *
- * Decompiled (matches at score=0 in permuter scratch
- * @c permuter/func_8009BAF4/base.c) but not integrated as C:
- * the original toolchain placed gcc's switch jump table at fixed
- * overlay offset @c 0x11C inside @c be_dispatch's .text region, and
- * the standard splat / linker layout places gcc-generated rodata at
- * the end of the binary, so the linked output diverges from the
- * original even though the function's instructions are identical.
- *
- * @verbatim
- * void func_8009BAF4(void) {
- *     s32 state = (s32)*(u8 *)&D_801D3338;
- *
- *     switch (state) {
- *     case 0:
- *     case 1:
- *         D_801D332C = D_801C2EC8[state];
- *         D_801D332E = D_801C2EB8[state];
- *         D_801D3330 = D_801C2EC0[state];
- *         break;
- *     case 2:
- *         D_801D332C = D_801C2EC8[0] | D_801C2EC8[1];
- *         D_801D332E = D_801C2EB8[0] | D_801C2EB8[1];
- *         D_801D3330 = D_801C2EC0[0] | D_801C2EC0[1];
- *         break;
- *     }
- *     if (D_801D3359 == 1) {
- *         s32   idx = D_801D3358 * 4;
- *         void *p   = D_801D3340 + idx;
- *         switch (D_801D3358) {
- *         case 0: break;
- *         case 1: func_8009B690(p, idx); break;
- *         case 2: func_8009B7B4(p, idx); break;
- *         case 3: func_8009B8D8(p, idx); break;
- *         case 4:
- *         case 5: func_8009BA4C(p);      break;
- *         }
- *         func_8009B4CC(D_801D3358, (u32 *)(D_801D3340 + D_801D3358 * 4));
- *         if (!(D_801D3334 & 1) && (D_801D3330 & 0xC0)) {
- *             D_801D3359 = 2;
- *             memcpy(&D_801D335C, D_801D3340 + D_801D3358 * 4, 4);
- *             return;
- *         }
- *         if (!(D_801D3334 & 2) && (D_801D3330 & 0x10)) D_801D3359 = 3;
- *     }
- * }
- * @endverbatim
+ * @note The switch dispatcher's jump table lives at the fixed overlay
+ *       offset @c 0x11C inside the @c be_dispatch region. The splat
+ *       yaml carves a @c be_object2 .rodata subsegment there with
+ *       @c linker_section_order: .text so the linker places
+ *       @c be_object2.o(.rodata) (which contains the gcc-generated
+ *       jtbl) at exactly that offset.
  */
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009BAF4);
+void func_8009BAF4(void) {
+    s32 state = (s32)*(u8 *)&D_801D3338;
+
+    switch (state) {
+    case 0:
+    case 1:
+        D_801D332C = D_801C2EC8[state];
+        D_801D332E = D_801C2EB8[state];
+        D_801D3330 = D_801C2EC0[state];
+        break;
+    case 2:
+        D_801D332C = D_801C2EC8[0] | D_801C2EC8[1];
+        D_801D332E = D_801C2EB8[0] | D_801C2EB8[1];
+        D_801D3330 = D_801C2EC0[0] | D_801C2EC0[1];
+        break;
+    }
+
+    if (D_801D3359 == 1) {
+        s32   idx = D_801D3358 * 4;
+        void *p   = D_801D3340 + idx;
+
+        switch (D_801D3358) {
+        case 0: break;
+        case 1: func_8009B690(p, idx); break;
+        case 2: func_8009B7B4(p, idx); break;
+        case 3: func_8009B8D8(p, idx); break;
+        case 4:
+        case 5: func_8009BA4C(p);      break;
+        }
+
+        func_8009B4CC(D_801D3358, (u32 *)(D_801D3340 + D_801D3358 * 4));
+
+        if (!(D_801D3334 & 1)) {
+            if (D_801D3330 & 0xC0) {
+                D_801D3359 = 2;
+                memcpy(&D_801D335C, D_801D3340 + D_801D3358 * 4, 4);
+                return;
+            }
+        }
+        if (!(D_801D3334 & 2) && (D_801D3330 & 0x10)) {
+            D_801D3359 = 3;
+        }
+    }
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009BD24);
 
