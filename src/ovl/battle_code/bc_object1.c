@@ -1517,11 +1517,10 @@ void func_8009B878(s32 a0, u16 *a1, s32 *a2, s32 a3) {
  * @param a2 Bitmask of status effects to apply.
  */
 void func_8009B924(s32 slot, s32 clearMask, s32 applyMask) {
-    BattleEntity *entities;
     s32 bit;
     s32 i;
 
-    ((BattleEntity *)&D_800ED148)[slot].status &= ~clearMask;
+    D_800ED148.entities[slot].status &= ~clearMask;
 
     for (bit = 1, i = 0; i < 14; i++, bit <<= 1) {
         if (applyMask & bit) {
@@ -1530,7 +1529,7 @@ void func_8009B924(s32 slot, s32 clearMask, s32 applyMask) {
         }
     }
 
-    ((BattleEntity *)&D_800ED148)[slot].flags &= ~applyMask;
+    D_800ED148.entities[slot].flags &= ~applyMask;
 
     for (bit = 1, i = 0; i < 14; i++, bit <<= 1) {
         if (applyMask & bit)
@@ -1538,8 +1537,8 @@ void func_8009B924(s32 slot, s32 clearMask, s32 applyMask) {
     }
 
     func_8009B878(slot,
-        &((BattleEntity *)&D_800ED148)[slot].status,
-        (s32 *)&((BattleEntity *)&D_800ED148)[slot].flags, 1);
+        (u16 *)&D_800ED148.entities[slot].status,
+        (s32 *)&D_800ED148.entities[slot].flags, 1);
 }
 
 /**
