@@ -22,17 +22,20 @@
 
 
 /*
- * Volatile-qualified alias for @c D_800ED148.
+ * Volatile-qualified view of @c D_800ED148 for this TU only.
  *
  * The header declares @c D_800ED148 without @c volatile (the common case
  * across battle_code/battle_engine TUs). bc_object1.c, however, contains
  * state-machine and accessor functions whose original codegen depends on
  * @c volatile semantics — without it gcc 2.7.2 folds @c lui+addiu+lbu
  * into @c lui+lbu, dropping an instruction per accessor and shifting
- * everything downstream. Use @c D_800ED148_v at each access site where
- * the order-sensitive / non-foldable codegen is wanted.
+ * everything downstream.
+ *
+ * Declare a second extern with the @c volatile qualifier that aliases the
+ * same linker symbol via GCC's @c __asm__ name attribute, then use
+ * @c D_800ED148_v at the access sites that want the unfolded codegen.
  */
-#define D_800ED148_v (*(volatile BattleSystem *)&D_800ED148)
+extern volatile BattleSystem D_800ED148_v __asm__("D_800ED148");
 
 
 /* FIXME: D_800E19BC is conceptually an array of (s32 sector, s32 length)
