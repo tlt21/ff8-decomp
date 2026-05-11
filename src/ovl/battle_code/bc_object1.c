@@ -50,7 +50,9 @@ extern volatile BattleSystem D_800ED148;
 extern u8 D_80098030[];
 
 /* File-local forward declarations (defined later in this TU,
-   called from earlier code). Cross-TU prototypes live in battle.h. */
+   called from earlier code). Cross-TU prototypes live in battle.h
+   unless overlay-conflicting (same address, different function in
+   another overlay) — those stay file-local. */
 void func_80027448(void);
 void func_8009A254(void);
 void func_8009A308(void);
@@ -59,6 +61,8 @@ void func_8009A3BC(void);
 void func_8009A42C(s32, s32);
 void func_8009A4A4(void);
 void func_8009A528(s32, s32);
+void func_8009A638(void);    /* overlay-conflict: also in world_engine */
+void func_8009A8B4(s32);     /* overlay-conflict: also in battle_render */
 void func_8009A6A8(s32);
 void func_8009A74C(void);
 void func_8009A928(void);
@@ -90,6 +94,8 @@ void func_8009B478(void);
 void func_8009B520(void);
 void func_8009B59C(s32, s32 *, s32 *);
 void func_8009B654(void);
+void func_8009B690(void);   /* overlay-conflict: also in battle_engine */
+s32 func_8009B74C(s32, s32); /* overlay-conflict: also in field_engine */
 s32 func_8009B7F4(s32, s32);
 void func_8009B878(s32, u16 *, s32 *, s32);
 s32 func_8009BA5C(s32, s32);
@@ -658,7 +664,7 @@ void func_8009AB54(s32 a0) {
     s32 dur = a0;
     s32 off;
     s32 base;
-    off = func_8009B3D0((s32)func_8009AAC4) << 4;
+    off = func_8009B3D0(func_8009AAC4) << 4;
     base = (s32)D_800EE28C;
     *(u16 *)(off + base + 0x8) = dur;
 }
@@ -1187,12 +1193,12 @@ s32 func_8009B390(u8 *a0, s32 a1) {
  * @param arg0 Callback function pointer.
  * @return Allocated slot index (sign-extended to s16).
  */
-s32 func_8009B3D0(s32 arg0) {
+s32 func_8009B3D0(void *callback) {
     s32 base;
     unsigned long slot;
     base = (s32)D_800EE24B;
     slot = func_8009B2A4((u8 *)base, (u8 *)(base + 0x1F3), 0x10);
-    *((s32 *)((((s32)D_800EE24B) + ((2 * slot) * 8)) + 0x41)) = arg0;
+    *((s32 *)((((s32)D_800EE24B) + ((2 * slot) * 8)) + 0x41)) = (s32)callback;
     return (s16)slot;
 }
 

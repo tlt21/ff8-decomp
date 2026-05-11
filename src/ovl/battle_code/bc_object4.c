@@ -10,6 +10,7 @@ void func_800B0754(s32, s32, s32, s32);
 void decrementItemByType(s32);
 s32 func_800AA4E8(void);
 void func_800E1850(void);
+s32 func_8009B74C(s32, s32); /* overlay-conflict: also in field_engine */
 extern u8 D_800EEBC8[];
 void func_800A8578(void);
 

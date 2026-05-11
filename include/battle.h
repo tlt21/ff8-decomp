@@ -803,12 +803,6 @@ extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). 
 /** @brief Test if bit @p a1 is set in mask @p a0. */
 s32 func_8009A514(s32 a0, s32 a1);
 
-/** @brief Queue attack animations for all active party members. */
-void func_8009A638(void);
-
-/** @brief Queue a damage/heal visual effect sound for an entity slot. */
-void func_8009A8B4(s32 idx);
-
 /** @brief Set the battle round timer based on the speed setting. */
 void func_8009AD7C(void);
 
@@ -831,19 +825,13 @@ s32 func_8009B15C(void);
 void func_8009B320(s32 a0, u8 *a1, u8 *a2);
 
 /** @brief Allocate a task queue slot and store the callback pointer. */
-s32 func_8009B3D0(s32 callback);
+s32 func_8009B3D0(void *callback);
 
 /** @brief Issue a CD or memory read for a sound bank entry, arming the completion callback. */
 void func_8009B5C4(s32 idx, s32 dst, s32 dir, s32 userData);
 
-/** @brief Yield execution (wrapper for @c func_800393C8). */
-void func_8009B690(void);
-
 /** @brief Yield execution (second wrapper for @c func_800393C8). */
 void func_8009B6B0(void);
-
-/** @brief Probability check using the random shuffle buffer. */
-s32 func_8009B74C(s32 a0, s32 a1);
 
 /** @brief Conditional add with overflow flag (clamped sum + carry). */
 s32 func_8009B79C(s32 a0, s32 a1);

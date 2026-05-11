@@ -5,7 +5,6 @@
 extern u8 D_800E3CEC[];
 void func_800AB054(void);
 void func_800AB1AC(void);
-s32 func_8009B3D0(void *);
 s32 func_800B0398(s32);
 extern u8 D_8007809A[];
 s32 func_800B0F9C(s32);
@@ -168,13 +167,13 @@ s32 func_800A9784(u16 offset, s32 base) {
 }
 
 /**
- * @brief Compute func_8009B15C(a0) modulo a0.
+ * @brief Return a random number modulo @p a0.
  *
- * @param a0 Divisor and argument to func_8009B15C.
- * @return Remainder of func_8009B15C(a0) / a0.
+ * @param a0 Divisor (also the modulo bound).
+ * @return Remainder of @c func_8009B15C() / @p a0.
  */
 s32 func_800A97A4(s32 a0) {
-    return func_8009B15C(a0) % a0;
+    return func_8009B15C() % a0;
 }
 
 /**
