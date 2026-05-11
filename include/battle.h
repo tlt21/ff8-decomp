@@ -714,7 +714,30 @@ extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456[];     /**< 0x800EE456: status flags byte. */
 extern u8 D_800EE476[];     /**< 0x800EE476: entity index latch. */
-extern u8 D_800EE4C0[];     /**< 0x800EE4C0: command queue buffer. */
+/**
+ * @brief Battle command queue / scratch buffer at @c 0x800EE4C0.
+ *
+ * Used by the bc_object2 / bc_object4 / bc_object8 paths to stage
+ * incoming command bytes (@c unk00 / @c unk01) plus flag state (the
+ * @c flags5 / @c flags6 byte pair) and a couple of derived values
+ * (@c unk0C, @c statusCode). Fields with @c unkXX names have known
+ * offsets but unconfirmed semantics; @c padNN regions cover bytes
+ * that haven't been mapped yet.
+ */
+typedef struct {
+    /* 0x00 */ u8 unk00;         /**< Command byte 0 (copied from status[0] during init). */
+    /* 0x01 */ u8 unk01;         /**< Command byte 1 (copied from status[1] during init). */
+    /* 0x02 */ u8 pad02[3];
+    /* 0x05 */ u8 flags5;        /**< Flag byte; bits 0x01 and 0x20 are set by various paths. */
+    /* 0x06 */ u8 flags6;        /**< Flag byte; bits 0x01/0x02/0x04/0x10 mark command-completion states. */
+    /* 0x07 */ u8 pad07[5];
+    /* 0x0C */ u32 unk0C;        /**< Scaled by 3/2 when the active entity has controlFlag bit 0x20. */
+    /* 0x10 */ u8 pad10[0xC];
+    /* 0x1C */ u16 statusCode;   /**< Status/command code; compared against 0x49 in func_8009D68C. */
+    /* 0x1E */ u8 pad1E[0x22];
+} BattleCmdBuf;                  /* 0x40 */
+
+extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
 extern u8 D_800EE4C1[];     /**< 0x800EE4C1: misc state byte. */
 extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
 extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */

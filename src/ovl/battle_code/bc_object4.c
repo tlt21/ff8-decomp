@@ -135,7 +135,7 @@ void func_800A6310(s32 a0) {
     status = base + 0x5C4;
     base[0x1300] = 0;
     base[0x5C1] = 0;
-    buf = D_800EE4C0;
+    buf = (u8 *)&D_800EE4C0;
     buf[0] = status[0];
     buf[1] = status[1];
     *(u16 *)(buf + 0x1C) = *(u16 *)(status + 4);

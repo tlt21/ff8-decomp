@@ -87,7 +87,7 @@ void func_8009BE24(s32 a0) {
     u8 *entity = (u8 *)base + a0 * 0xD0;
     s32 val = *(u8 *)(entity + 0xD2) + *(u8 *)D_800EEBBC;
     if (func_8009B79C(val, 0xFF)) {
-        s32 buf = (s32)D_800EE4C0;
+        s32 buf = (s32)&D_800EE4C0;
         *(u8 *)((u8 *)base + 0x1307) = 1;
         *(u8 *)(buf + 6) |= 2;
     } else {
@@ -357,7 +357,7 @@ void func_8009CF38(s32 attackerIdx, s32 targetIdx, s32 power, s32 type) {
         case 1:
             if (D_800ED148.entities[targetIdx].controlFlags & 0x10000) {
                 dmg = 0;
-                D_800EE4C0[6] |= 4;
+                D_800EE4C0.flags6 |= 4;
             } else {
                 dmg = D_800ED148.entities[targetIdx].field28 * power / 16;
             }
@@ -417,7 +417,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009D594);
  * equals 0x49, sets bit 0x10 in D_800EE4C0[6].
  */
 void func_8009D68C(void) {
-    s32 base = (s32)D_800EE4C0;
+    s32 base = (s32)&D_800EE4C0;
     u8 val = *(u8 *)(base + 6);
     if (!(val & 4)) {
         if (*(u16 *)(base + 0x1C) == 0x49) {
@@ -564,7 +564,7 @@ s32 func_8009F428(s32 a0) {
  * @return Always 0.
  */
 s32 func_8009F46C(s32 entityIdx) {
-    s32 ctrl = (s32)D_800EE4C0;
+    s32 ctrl = (s32)&D_800EE4C0;
     u8 *base;
     u8 *entity;
     *(u8 *)(ctrl + 5) |= 1;
@@ -705,7 +705,7 @@ void func_800A0978(s32 entityIdx) {
     asm("");
     entity = base + entityIdx * 0xD0;
     if (*(u16 *)(entity + 0x90) & 0x20) {
-        s32 ctrl = (s32)D_800EE4C0;
+        s32 ctrl = (s32)&D_800EE4C0;
         u32 val = *(u32 *)(ctrl + 0xC);
         *(u32 *)(ctrl + 0xC) = (val * 3) >> 1;
     }

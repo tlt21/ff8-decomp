@@ -29,7 +29,6 @@ extern u8 D_800EF020[];
 extern u8 D_800EEFB0[];
 extern u8 D_800EF724[];
 extern u8 D_800EE454[];
-extern u8 D_800EE4C0[];
 s32 func_800AE788(void);
 s32 func_800AA4E0(void);
 extern u8 D_800EEED0[];
@@ -77,7 +76,7 @@ void func_800B1828(s32 a0) {
         return;
     }
     {
-        u8 *data = D_800EE4C0;
+        u8 *data = (u8 *)&D_800EE4C0;
         if (data[1] != 0xF4) {
             return;
         }
