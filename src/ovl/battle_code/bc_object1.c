@@ -91,7 +91,7 @@ void func_8009B0F8(s32);
 SoundCmd *func_8009B134(s32, s32, s32);
 s32 func_8009B15C(void);
 void func_8009B198(s32);
-void func_8009B208(u8 *, u8 *, s32);
+void func_8009B208(TaskLink *, u8 *, s32);
 s32 func_8009B238(u8 *, s32);
 s32 func_8009B270(u8 *, s32);
 s32 func_8009B2A4(u8 *, u8 *, s32);
@@ -1068,29 +1068,25 @@ void func_8009B198(s32 a0) {
 }
 
 /**
- * @brief Clear a color buffer array and set terminator.
+ * @brief Reset a task-link table and its head index.
  *
- * Zeros out a0[0..2] for each of a2 entries (4-byte stride), then
- * stores 0xFF into a1[0] as a terminator.
- * @param a0 Pointer to color buffer entries.
- * @param a1 Pointer to terminator byte.
- * @param a2 Number of entries to clear.
+ * Zeros @c fwd / @c bwd / @c unk2 in each of @p count link nodes, then
+ * stores @c 0xFF into @p head as the end-of-list sentinel.
+ *
+ * @param links Pointer to the @c TaskLink array (typically
+ *              @c D_800ED148.taskLinks).
+ * @param head  Pointer to the head-index byte (typically
+ *              @c &D_800ED148.taskHead).
+ * @param count Number of link nodes to clear.
  */
-void func_8009B208(u8 *a0, u8 *a1, s32 a2) {
-    s32 i = 0;
-    if (a2 > 0) {
-top:
-        a0[2] = 0;
-        a0[1] = 0;
-        a0[0] = 0;
-        asm("");
-        i++;
-        if (i < a2) {
-            a0 += 4;
-            goto top;
-        }
+void func_8009B208(TaskLink *links, u8 *head, s32 count) {
+    s32 i;
+    for (i = 0; i < count; i++) {
+        links[i].unk2 = 0;
+        links[i].bwd = 0;
+        links[i].fwd = 0;
     }
-    *a1 = 0xFF;
+    *head = 0xFF;
 }
 
 /**
@@ -1250,7 +1246,7 @@ void func_8009B428(void) {
     register s32 base asm("$16") = D_800EE24B;
     s32 i;
 
-    func_8009B208((u8 *)base, (u8 *)(base + 0x1F3), 0x10);
+    func_8009B208((TaskLink *)base, (u8 *)(base + 0x1F3), 0x10);
 
     i = 15;
     base += -0x1013;
