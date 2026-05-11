@@ -1458,9 +1458,7 @@ s32 func_8009B7F4(s32 a0, s32 a1) {
     s32 max;
 
     if (D_800EE4C1[0] == 0xED) {
-        s32 base = (s32)&D_800ED148;
-        s32 offset = ((a1 * 2 + a1) * 4 + a1) * 16;
-        if (*(s32 *)(base + offset + 0x28) == 0) {
+        if (D_800ED148.entities[a1].field28 == 0) {
             return 0;
         }
     }
