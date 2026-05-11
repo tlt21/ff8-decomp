@@ -27,4 +27,21 @@ typedef struct {
  */
 extern volatile s32 D_8008514C;
 
+/** @brief Argument passed to the post-transition overlay entry (set by func_8003646C). */
+extern s32 D_80085210;
+/** @brief Currently-loaded overlay dependency ID. */
+extern u8  D_8008520A;
+/** @brief Snapshot of @c g_battleAnims.field703 saved across transition. */
+extern u8  D_8008520B;
+/** @brief Cleared at the start of a transition (purpose unknown). */
+extern u8  D_8008520C;
+
+/* --- overlay.c routines --- */
+
+extern void resetOverlayQueue(void);
+extern void loadDefaultOverlay(void);
+extern s32  pollCdReadStatus(void);
+extern void saveAndClearFramebuffer(s32 a0);
+extern void loadOverlayWithTimCallback(s32 a0, s32 a1);
+
 #endif /* OVERLAY_H */

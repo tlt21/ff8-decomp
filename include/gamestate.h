@@ -335,4 +335,8 @@ typedef struct {
 /** @brief Main game state (BSS at 0x80077378). */
 extern GameState g_gameState;
 
+/* --- Memory card busy flag (D_80085218) --- */
+extern void setMcBusy(void);
+extern u32  isMcBusy(void);
+
 #endif /* GAMESTATE_H */

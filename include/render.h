@@ -59,4 +59,11 @@ void transformMeshVertices(MeshRenderCtx *mesh);
 PolyGT4 *renderMeshGrid(ScreenVert *vertices, PolyGT4 *primBuf, s32 *ot,
                          s32 intensity, s32 perVertex);
 
+/* --- render flag bitmask (render.c) --- */
+
+/** @brief Global render-flag bitmask cleared and inspected during transitions. */
+extern s32 D_8008513C;
+
+void setRenderFlag(u8 val);
+
 #endif /* RENDER_H */

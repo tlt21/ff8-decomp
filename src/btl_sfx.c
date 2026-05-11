@@ -414,10 +414,11 @@ void setSfxEntityType(s32 idx, s32 val) {
 /**
  * @brief Read the entity type of the battle entity linked to an SFX entry.
  * @param idx SFX entry index.
+ * @return The entity type byte of the linked battle entity.
  */
-void readSfxEntityType(s32 idx) {
+s32 readSfxEntityType(s32 idx) {
     SfxEntry *entry = &g_sfxEntries.entries[idx];
-    getBattleEntityType(entry->entityIdx);
+    return getBattleEntityType(entry->entityIdx);
 }
 
 

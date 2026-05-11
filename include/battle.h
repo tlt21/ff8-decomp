@@ -76,15 +76,26 @@ typedef struct {
     /* 0x1DC */ u16 clipRight;              /**< Clip region right edge. */
     /* 0x1DE */ u16 clipBottom;             /**< Clip region bottom edge. */
     /* 0x1E0 */ u8 defaultColor;             /**< Default color value for entity init. */
-    /* 0x1E1 */ u8 pad1E1[0x45F];            /**< Unknown. */
+    /* 0x1E1 */ u8 pad1E1[0x59];             /**< Unknown. */
+    /* 0x23A */ s16 field23A;                /**< Saved as SFX volume across transition. */
+    /* 0x23C */ u8 pad23C[0x14];             /**< Unknown. */
+    /* 0x250 */ u16 field250;                /**< Saved/cleared across transition. */
+    /* 0x252 */ u8 field252;                 /**< Saved/cleared across transition. */
+    /* 0x253 */ u8 pad253[0x3ED];            /**< Unknown. */
     /* 0x640 */ DisplayListBuf bufs[2];         /**< Double-buffered GPU display lists (2 × 0x58). */
     /* 0x6F0 */ DisplayListBuf *active;      /**< Pointer to active display list buffer. */
     /* 0x6F4 */ s32 halfSize;                /**< Half of total VRAM size. */
     /* 0x6F8 */ u8 pad6F8[4];                /**< Unknown. */
     /* 0x6FC */ s32 field6FC;                /**< Cleared during GPU init. */
-    /* 0x700 */ u8 pad700[0x274];            /**< Unknown. */
+    /* 0x700 */ u8 pad700[3];                /**< Unknown. */
+    /* 0x703 */ u8 field703;                 /**< Saved/cleared across transition. */
+    /* 0x704 */ u8 pad704[0x270];            /**< Unknown. */
     /* 0x974 */ s32 palette[3];              /**< RGB888 palette (0x40BBGGRR). */
-    /* 0x980 */ u8 pad980[0x42];             /**< Unknown. */
+    /* 0x980 */ u8 pad980[0x30];             /**< Unknown. */
+    /* 0x9B0 */ u8 field9B0;                 /**< Saved/cleared across transition. */
+    /* 0x9B1 */ u8 pad9B1[0xF];              /**< Unknown. */
+    /* 0x9C0 */ u8 field9C0;                 /**< Saved/cleared across transition. */
+    /* 0x9C1 */ u8 pad9C1[1];                /**< Unknown. */
     /* 0x9C2 */ s16 field9C2;               /**< Set to 0x4611 during GPU init. */
     /* 0x9C4 */ s16 cdStreamCounter;         /**< CD stream counter. */
     /* 0x9C6 */ u8 pad9C6[2];                /**< Unknown. */
@@ -839,5 +850,16 @@ extern u8  D_801D3340[];   /**< Per-substate parameter table (stride 4). */
 extern u8  D_801D3358;     /**< Substate index (0..5). */
 extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
 extern s16 D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
+
+/* --- Battle animation lifecycle --- */
+extern void initBattleTransition(void);
+extern void activateBattleAnim(s32 idx);
+
+/* --- Battle SFX channel control --- */
+extern s32  readSfxEntityType(s32 idx);
+extern void setSfxEntityType(s32 idx, s32 val);
+extern void setSfxEntryVolume(s32 idx, s32 val);
+extern void setSfxPitch(s32 idx, s32 val);
+extern void setSfxField2F(s32 idx, s32 val);
 
 #endif /* BATTLE_H */
