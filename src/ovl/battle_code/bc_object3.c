@@ -516,9 +516,9 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object3", func_800A4A74);
 void func_800A4B68(s32 arg0) {
     s16 tmp = arg0;
     s32 tmp2 = arg0 & 0xE000;
-    ((BattleSystem *)&D_800ED148)->unk12E0 = (tmp &= 0x1FFF);
+    D_800ED148.unk12E0 = (tmp &= 0x1FFF);
     tmp = ((u32)tmp2) >> 0xD;
-    ((BattleSystem *)&D_800ED148)->unk130F = (s8)tmp;
+    D_800ED148.unk130F = (s8)tmp;
 }
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object3", func_800A4B88);

@@ -347,7 +347,7 @@ void func_800B0600(s32 a0, s32 a1) {
 s32 func_800B0668(s32 a0, s32 a1) {
     s32 bitPos = func_800B054C(a1);
     if (bitPos < 14) {
-        if (((BattleSystem *)&D_800ED148)->entities[a0].field64.perBit[bitPos] == -0x457) {
+        if (D_800ED148.entities[a0].field64.perBit[bitPos] == -0x457) {
             return 1;
         }
     }
@@ -368,7 +368,7 @@ void func_800B06DC(s32 arg0) {
     BattleSystem *sys;
     s32 idx;
     func_800A4C84(arg0 & 0xFFFF);
-    sys = (BattleSystem *)&D_800ED148;
+    sys = &D_800ED148;
     if (sys->entities[0].pad0E == 0) {
         func_8009AE08(5);
         func_800AE524(sys->unk5C0 - 1);
@@ -413,7 +413,7 @@ s32 func_800B0794(s32 a0, s32 a1) {
         return 1;
     }
     if (a1 & 0x1000) {
-        ((BattleSystem *)&D_800ED148)->entities[a0].status |= 4;
+        D_800ED148.entities[a0].status |= 4;
         func_800A2520(a0);
     }
     return 0;

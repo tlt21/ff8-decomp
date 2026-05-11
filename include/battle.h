@@ -674,7 +674,7 @@ extern BattleSceneData D_80078E00;
 extern BattleConfig g_battleConfig;
 
 /** @brief The battle system block at @c 0x800ED148. */
-extern volatile BattleSystem D_800ED148;
+extern BattleSystem D_800ED148;
 
 /** @brief Battle slot data block at @c D_800ED158 (alias for D_800ED148+0x10). */
 typedef struct {

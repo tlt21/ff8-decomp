@@ -21,6 +21,20 @@
 #include "gf.h"
 
 
+/*
+ * Volatile-qualified alias for @c D_800ED148.
+ *
+ * The header declares @c D_800ED148 without @c volatile (the common case
+ * across battle_code/battle_engine TUs). bc_object1.c, however, contains
+ * state-machine and accessor functions whose original codegen depends on
+ * @c volatile semantics — without it gcc 2.7.2 folds @c lui+addiu+lbu
+ * into @c lui+lbu, dropping an instruction per accessor and shifting
+ * everything downstream. Use @c D_800ED148_v at each access site where
+ * the order-sensitive / non-foldable codegen is wanted.
+ */
+#define D_800ED148_v (*(volatile BattleSystem *)&D_800ED148)
+
+
 /* FIXME: D_800E19BC is conceptually an array of (s32 sector, s32 length)
    pairs (8-byte stride, two s32s per entry) used as CdRead arguments by
    the music/sound loader. The two callers below index it with `idx * 2`
@@ -163,12 +177,12 @@ void func_80099FE8(void) {
     func_80027448();
     func_8009B428();
 
-    D_800ED148.unk5C3 = 1;
-    D_800ED148.entities[0].state = 0;
-    D_800ED148.unk12EC = 0xFF;
-    D_800ED148.entities[0].timer = 0xFF;
+    D_800ED148_v.unk5C3 = 1;
+    D_800ED148_v.entities[0].state = 0;
+    D_800ED148_v.unk12EC = 0xFF;
+    D_800ED148_v.entities[0].timer = 0xFF;
     g_battleConfig.result = BATTLE_RESULT_UNDETERMINED;
-    D_800ED148.unk1319 = 0xFF;
+    D_800ED148_v.unk1319 = 0xFF;
 
     for (i = 0; i < 3; i++) {
         g_battleConfig.unk4[i] = 0xFF;
@@ -272,7 +286,7 @@ void func_8009A254(void) {
  * @return The byte at offset 0x12E9 in the battle state array.
  */
 u32 func_8009A2E0(void) {
-    return D_800ED148.unk12E9;
+    return D_800ED148_v.unk12E9;
 }
 
 /**
@@ -280,7 +294,7 @@ u32 func_8009A2E0(void) {
  * @return The byte at offset 0x12EA in the battle state array.
  */
 u32 func_8009A2F4(void) {
-    return D_800ED148.unk12EA;
+    return D_800ED148_v.unk12EA;
 }
 
 /**
@@ -292,13 +306,13 @@ u32 func_8009A2F4(void) {
  * func_800B26B8 to finalize the animation phase.
  */
 void func_8009A308(void) {
-    if (D_800ED148.unk12EA != 0) {
+    if (D_800ED148_v.unk12EA != 0) {
         while (func_800CEDA4() != 0) {
-            D_800ED148.unk12E9 = 1;
+            D_800ED148_v.unk12E9 = 1;
             func_8009B690();
         }
     }
-    D_800ED148.unk12E9 = 0;
+    D_800ED148_v.unk12E9 = 0;
     func_8009B690();
     func_800B26B8();
 }
@@ -367,7 +381,7 @@ void func_8009A4A4(void) {
     s32 i;
 
     for (i = 0; i < 8; i++) {
-        if (D_800ED148.unkD5C[i]) {
+        if (D_800ED148_v.unkD5C[i]) {
             func_8009A42C(cmdId, i);
             cmdId++;
         }
@@ -392,7 +406,7 @@ s32 func_8009A514(s32 a0, s32 a1) {
  * Snapshots entity state via func_8009AFF0 and func_800A1CFC, then plays
  * sound 0x67 targeting the entity. Stores idx + flag (cmd->unk2.b.lo = 1,
  * .b.hi = 1 if entity flags bit 1 set, else 0). Then copies the @p off-th
- * hit-type byte (D_800ED148.unkD14) into entity->unkCB and the @p off-th
+ * hit-type byte (D_800ED148_v.unkD14) into entity->unkCB and the @p off-th
  * position ((*(BattleVec3u (*)[0x8])((u8 *)&D_800ED148 + 0xCE4))) into entity->pos.
  * @param idx Entity slot index.
  * @param off Source entity index for the hit-type / position lookup.
@@ -409,7 +423,7 @@ s32 func_8009A514(s32 a0, s32 a1) {
  *     cmd->unk0 = idx;
  *     cmd->unk2.b.lo = 1;
  *     cmd->unk2.b.hi = (entity->flags & 2) ? 1 : 0;
- *     entity->unkCB = D_800ED148.unkD14[off];
+ *     entity->unkCB = D_800ED148_v.unkD14[off];
  *     entity->pos.x = (*(BattleVec3u (*)[0x8])((u8 *)&D_800ED148 + 0xCE4))[off].x;
  *     entity->pos.y = (*(BattleVec3u (*)[0x8])((u8 *)&D_800ED148 + 0xCE4))[off].y;
  *     entity->pos.z = (*(BattleVec3u (*)[0x8])((u8 *)&D_800ED148 + 0xCE4))[off].z;
@@ -431,7 +445,7 @@ void func_8009A638(void) {
     s32 i;
 
     for (i = 0; i < 8; i++) {
-        if (D_800ED148.unkD5C[i]) {
+        if (D_800ED148_v.unkD5C[i]) {
             func_8009A528(cmdId, i);
             cmdId++;
         }
@@ -597,7 +611,7 @@ void func_8009AA2C(void) {
         return;
     }
 
-    if (D_800ED148.unk12F9 != 1) {
+    if (D_800ED148_v.unk12F9 != 1) {
         sentinel = 0xFF;
         if (func_800AE730() == sentinel) {
             return;
@@ -607,12 +621,12 @@ void func_8009AA2C(void) {
         }
     }
     {
-        s32 count = D_800ED148.unk12F8;
+        s32 count = D_800ED148_v.unk12F8;
         if (count != 0) {
             i = 0;
             do {
                 func_8009A990(i);
-                count = D_800ED148.unk12F8;
+                count = D_800ED148_v.unk12F8;
                 i++;
             } while (i < count);
         }
@@ -666,7 +680,7 @@ void func_8009AB54(s32 a0) {
  * func_800AED9C, func_800AEB50.
  */
 void func_8009AB98(void) {
-    if (D_800ED148.entities[0].unk0 == 0) {
+    if (D_800ED148_v.entities[0].unk0 == 0) {
         func_800AECD4();
         func_800AED30();
         func_800AEC04();
@@ -681,7 +695,7 @@ void func_8009AB98(void) {
  * Writes value 3 to D_800ED148 offset 0x4 (entity state field).
  */
 void func_8009ABE4(void) {
-    D_800ED148.entities[0].state = 3;
+    D_800ED148_v.entities[0].state = 3;
 }
 
 /**
@@ -691,7 +705,7 @@ void func_8009ABE4(void) {
  *
  */
 void func_8009ABFC(void) {
-    D_800ED148.entities[0].state = 1;
+    D_800ED148_v.entities[0].state = 1;
 }
 
 /**
@@ -710,7 +724,7 @@ void func_8009AC14(void) {
  * func_800A30E4 (animation), and func_800A79A0 (state reset).
  */
 void func_8009AC34(void) {
-    *(s32 *)&D_800ED148.entities[0].unk0 = 0;
+    *(s32 *)&D_800ED148_v.entities[0].unk0 = 0;
     func_8009AA2C();
     func_800A30E4();
     func_800A79A0();
@@ -724,11 +738,11 @@ void func_8009AC34(void) {
  * calls func_800AF8A4 with it.
  */
 void func_8009AC68(void) {
-    D_800ED148.entities[0].unk0 = 0;
+    D_800ED148_v.entities[0].unk0 = 0;
     func_8009AA2C();
     func_800A30E4();
     func_800A79A0();
-    func_800AF8A4(D_800ED148.entities[0].entityRef);
+    func_800AF8A4(D_800ED148_v.entities[0].entityRef);
 }
 
 /**
@@ -778,7 +792,7 @@ void func_8009ACEC(void) {
  *
  * Reads D_800EE449 (speed setting 0-3) and maps to frame counts:
  * 0 or 3 -> 60, 1 -> 30, 2 -> 40. Schedules a timer via func_8009AB54
- * (passing frames - 15) and stores the frame count into D_800ED148.entities[0].timer.
+ * (passing frames - 15) and stores the frame count into D_800ED148_v.entities[0].timer.
  */
 void func_8009AD7C(void) {
     s32 frames;
@@ -797,7 +811,7 @@ void func_8009AD7C(void) {
             break;
     }
     func_8009AB54(frames - 15);
-    D_800ED148.entities[0].timer = frames;
+    D_800ED148_v.entities[0].timer = frames;
 }
 
 /**
@@ -813,7 +827,7 @@ void func_8009AD7C(void) {
 void func_8009AE08(s32 cmd) {
     switch (cmd) {
         case 5:
-            *(s32 *)&D_800ED148.entities[0].unk0 = 1;
+            *(s32 *)&D_800ED148_v.entities[0].unk0 = 1;
             break;
         case 6:
             func_8009AF14((s32)func_8009AC14);
@@ -842,16 +856,16 @@ void func_8009AE08(s32 cmd) {
  * the current flag into the last-played slot.
  */
 void func_8009AE9C(void) {
-    if (D_800ED148.unk12E8 != 2) {
-        if (D_800ED148.unk12ED != D_800ED148.unk12EE) {
-            if (D_800ED148.unk12ED == 1) {
+    if (D_800ED148_v.unk12E8 != 2) {
+        if (D_800ED148_v.unk12ED != D_800ED148_v.unk12EE) {
+            if (D_800ED148_v.unk12ED == 1) {
                 func_8009B134(0x6C, 0xF0, 0);
             } else {
                 func_8009B134(0x6D, 0xF0, 0);
             }
         }
     }
-    D_800ED148.unk12EE = D_800ED148.unk12ED;
+    D_800ED148_v.unk12EE = D_800ED148_v.unk12ED;
 }
 
 /**
@@ -1324,7 +1338,7 @@ void func_8009B59C(s32 idx, s32 *out1, s32 *out2) {
  * dispatches the read: cdRead when direction is 0 (load from disc), or
  * func_80038868 otherwise (alternate transfer path). Both calls register
  * func_8009B654 as the completion callback. The user data and the data
- * length are cached in D_800ED148.unk128C / unk12D8 for the callback to
+ * length are cached in D_800ED148_v.unk128C / unk12D8 for the callback to
  * pick up later.
  * @param idx Index into D_800E19BC (each entry is two s32s).
  * @param dst Destination buffer / target address.
@@ -1342,8 +1356,8 @@ void func_8009B5C4(s32 idx, s32 dst, s32 dir, s32 userData) {
     } else {
         func_80038868(sector, length, dst, (s32)func_8009B654);
     }
-    D_800ED148.unk128C = userData;
-    D_800ED148.unk12D8 = length;
+    D_800ED148_v.unk128C = userData;
+    D_800ED148_v.unk12D8 = length;
 }
 
 /**
@@ -1354,9 +1368,9 @@ void func_8009B5C4(s32 idx, s32 dst, s32 dir, s32 userData) {
  * pointer from D_800ED148+0x12D8.
  */
 void func_8009B654(void) {
-    s32 callback = D_800ED148.unk128C;
+    s32 callback = D_800ED148_v.unk128C;
     if (callback != 0) {
-        ((void (*)(s32))callback)(D_800ED148.unk12D8);
+        ((void (*)(s32))callback)(D_800ED148_v.unk12D8);
     }
 }
 
