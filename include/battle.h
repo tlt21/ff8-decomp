@@ -809,11 +809,11 @@ void func_800A432C(s32 stringId);
 typedef struct {
     /* 0x00 */ u8  pad00[0xC];
     /* 0x0C */ u16 frame;            /**< Frame counter, increments each tick. */
-    /* 0x0E */ u8  pad0E[0x2];
+    /* 0x0E */ s16 delay;            /**< Wait counter; skip render until 0 (used by @c func_800CDF3C). */
     /* 0x10 */ s16 posX;             /**< Translation X. */
     /* 0x12 */ s16 posY;             /**< Translation Y. */
     /* 0x14 */ s16 posZ;             /**< Translation Z. */
-    /* 0x16 */ u8  pad16[0x2];
+    /* 0x16 */ u16 cmdWord;          /**< Per-particle prim cmd word (used by @c func_800CDF3C). */
     /* 0x18 */ u16 angle;            /**< Y rotation angle. */
     /* 0x1A */ u16 angVel;           /**< Angular velocity (decays by >>4 each tick). */
     /* 0x1C */ s16 sizeX;            /**< Scale X (also reused as Z). */

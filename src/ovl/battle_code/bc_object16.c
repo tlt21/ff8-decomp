@@ -154,7 +154,86 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object16", func_800CDB94);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object16", func_800CDD30);
 
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object16", func_800CDF3C);
+/**
+ * @brief Render a wait-gated particle and step its motion.
+ *
+ * Variant of @c func_800CD35C used by particles with a per-entry @c delay
+ * counter and a per-entry prim cmd word. While @c delay is positive, decrements
+ * it and returns @c 0 each tick without rendering (skipped entirely when
+ * bit @c 0 of @c D_800EEC5C is set). Otherwise builds the rotation/scale
+ * matrix from @c angle/posXYZ/sizeX/sizeY, composes it with @c D_800F02C8,
+ * allocates a 0x58-byte prim, sets its dispatch index (3 instead of 4),
+ * cmd word from @c p->cmdWord, and flags @c 0x233 (vs @c 0x230). When
+ * @c frame >= 4 (vs 8 in @c func_800CD35C) clears the BG color and writes
+ * depth @c (frame-4)*409 plus OR's @c 0xC0 into flags. Submits the packet
+ * via @c func_800CBC68 and frees the slot.
+ *
+ * If the global skip bit is clear, advances the particle: @c sizeX += sizeXVel,
+ * @c sizeY += sizeYVel, @c sizeYVel -= sizeYVel/3 (signed div, not @c >>3).
+ * Then increments @c frame and returns @c 2 once @c (frame+1) > 14 to signal
+ * expiration, @c 0 otherwise.
+ *
+ * @param p Particle entry to render and step.
+ * @return @c 2 when the particle has expired, @c 0 otherwise.
+ */
+s32 func_800CDF3C(ParticleEntry *p) {
+    SVECTOR     rot;
+    MATRIX      m;
+    VECTOR      scale;
+    EffectPrim *prim;
+
+    if (p->delay > 0) {
+        if (D_800EEC5C & 1) {
+            return 0;
+        }
+        p->delay = p->delay - 1;
+        return 0;
+    }
+
+    rot.vx = 0;
+    rot.vy = p->angle;
+    rot.vz = 0;
+    RotMatrix(&rot, &m);
+
+    m.t[0]   = p->posX;
+    m.t[1]   = p->posY;
+    m.t[2]   = p->posZ;
+    scale.vx = p->sizeX;
+    scale.vy = p->sizeY;
+    scale.vz = p->sizeX;
+    ScaleMatrix(&m, &scale);
+    CompMatrix(&D_800F02C8, &m, &m);
+    SetRotMatrix(&m);
+    SetTransMatrix(&m);
+
+    prim = (EffectPrim *)func_800B3698(0x58);
+    prim->dispatch = (s32 *)func_800C6B1C(3);
+    prim->cmd      = p->cmdWord;
+    prim->flags    = 0x233;
+
+    if ((s16)p->frame >= 4) {
+        prim->bgB = 0;
+        prim->bgG = 0;
+        prim->bgR = 0;
+        prim->depth = ((s16)p->frame - 4) * 409;
+        prim->flags |= 0xC0;
+    }
+
+    D_800FA5F0 = func_800CBC68((s32)prim, D_800FA5E8 + 0x44, 2, D_800FA5F0);
+    func_800B36B8(0x58);
+
+    if (!(D_800EEC5C & 1)) {
+        p->sizeX    = p->sizeX + p->sizeXVel;
+        p->sizeY    = p->sizeY + p->sizeYVel;
+        p->sizeYVel = p->sizeYVel - p->sizeYVel / 3;
+        {
+            u32 newFrame = p->frame + 1;
+            p->frame = newFrame;
+            return ((s16)newFrame > 14) << 1;
+        }
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object16", func_800CE158);
 
