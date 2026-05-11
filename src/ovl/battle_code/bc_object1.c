@@ -1373,7 +1373,6 @@ void func_8009B6B0(void) {
  */
 void func_8009B6D0(s32 a0, s32 a1) {
     s32 temp;
-    s32 temp2;
     s32 new_var;
     a0 = (a0 & 0xFFFF) << 7;
     new_var = a0;
@@ -1423,8 +1422,7 @@ s32 func_8009B79C(s32 a0, s32 a1) {
  * @return Random value in [1, a0].
  */
 s32 func_8009B7BC(s32 a0) {
-    s32 mod = a0;
-    return func_8009B15C() % mod + 1;
+    return func_8009B15C() % a0 + 1;
 }
 
 /**
