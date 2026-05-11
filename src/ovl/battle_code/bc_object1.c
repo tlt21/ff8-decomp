@@ -72,6 +72,7 @@ void func_8009A990(s32);
 void func_8009AA2C(void);
 void func_8009AAC4(s32);
 void func_8009AB54(s32);
+void func_8009AB98(void);
 void func_8009ABE4(void);
 void func_8009ABFC(void);
 void func_8009AC14(void);
@@ -350,8 +351,6 @@ void func_8009A3F4(void) {
     }
 }
 
-/**
- * @brief Queue a hit-reaction sound for a specific entity.
 /**
  * @brief Queue an attack-hit sound for a slot with a custom hit-type lookup.
  *
