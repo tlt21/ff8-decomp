@@ -336,7 +336,8 @@ typedef struct {
     u8 linkedIdx;
     u8 padCC[0x01];
     u8 fieldCD;        /* 0xCD: stat byte used in case-0 damage formula (squared). */
-    u8 padCE[0x02];
+    u8 padCE;
+    u8 fieldCF;        /* 0xCF: stat byte averaged with arg2 in func_8009DEF0 mode-7. */
 } BattleEntity;
 
 /**
@@ -746,8 +747,8 @@ extern u8 D_800EEBB9[];     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA[];     /**< 0x800EEBBA: misc state byte. */
 extern u8 D_800EEBBB[];     /**< 0x800EEBBB: misc state byte. */
 extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
-extern u8 D_800EEBC2[];     /**< 0x800EEBC2: misc state byte. */
-extern u8 D_800EEBC4[];     /**< 0x800EEBC4: status flags word (bit 0x4000000). */
+extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
+extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
 
 /* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle_code internals).

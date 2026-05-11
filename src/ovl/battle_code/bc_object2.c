@@ -14,6 +14,11 @@ extern u8 D_800786D9[];
 extern u8 *getMenuString(s32 id);
 extern u8 *getStatName(s32 statId);
 
+s32 func_8009D594(void);
+s32 func_8009D508(s32 a0, s32 a1);
+s32 func_8009DCCC(s32 a0, s32 a1, s32 a2);
+void func_8009DD2C(s32 a0, s32 a1, u16 a2, s32 a3);
+
 /**
  * @brief Look up entity ability flags with index-based table lookup.
  *
@@ -394,7 +399,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009D228);
 s32 func_8009D420(s32 a0, s32 a1) {
     s32 base;
     s32 flags;
-    if (!(*(s32 *)D_800EEBC4 & 0x4000000)) {
+    if (!(D_800EEBC4 & 0x4000000)) {
         base = (s32)&D_800ED148;
         flags = *(u16 *)(base + a1 * 0xD0 + 0x90);
         if (flags & 0x4) {
@@ -434,7 +439,71 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009DCCC);
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009DD2C);
 
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009DEF0);
+/**
+ * @brief Compute and dispatch a battle-action effect value.
+ *
+ * Returns early (0) if the action is gated by @c func_8009D594. Otherwise
+ * sets @c D_800EE4C0.flags6 bit 0x01, calls @c func_8009D508; on failure
+ * raises bit 0x04 in @c flags6 and returns 0. Then by mode (@p arg3):
+ *
+ *   - mode 7: take @c func_8009CF18 as a scale @c cf, average the
+ *     attacker's @c fieldCF with @p arg2, scale by @p arg2 and @c cf, and
+ *     divide by 256 to get the action's effect value @c s1.
+ *   - mode 8: scale the target's @c field2C by @p arg2 and divide by 16.
+ *
+ * After computing @c s1, if the target has @c flags & 0x40 and @c s1 is
+ * non-zero, raise @c D_800EE4C0.flags5 bit 0x20 and halve @c s1. If the
+ * target's @c status has bit 0x4 set, clear @c s1 entirely. Finally hand
+ * off to @c func_8009DCCC (which returns the final value) and dispatch
+ * via @c func_8009DD2C with @c D_800EEBC2 / @c D_800EEBC4 as the status
+ * code / flags word, then return the computed @c s1.
+ *
+ * @param arg0 Attacker entity index (used by @c func_8009D508, the
+ *             mode-7 attacker-side scale, and @c func_8009DCCC).
+ * @param arg1 Target entity index.
+ * @param arg2 Scale value.
+ * @param arg3 Mode (7 or 8 produce a non-zero @c s1; other values leave
+ *             @c s1 uninitialized, matching the original codegen).
+ * @return     The post-dispatch effect value from @c func_8009DCCC.
+ */
+s32 func_8009DEF0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    s32 s1;
+    s32 t;
+    s32 cf;
+
+    if (func_8009D594() != 0) {
+        return 0;
+    }
+    D_800EE4C0.flags6 |= 1;
+    if (func_8009D508(arg0, arg1) != 0) {
+        D_800EE4C0.flags6 |= 4;
+        return 0;
+    }
+
+    switch (arg3) {
+    case 7:
+        cf = func_8009CF18();
+        t = (D_800ED148.entities[arg0].fieldCF + arg2) / 2;
+        t *= arg2;
+        s1 = (t * cf) / 256;
+        break;
+    case 8:
+        s1 = (D_800ED148.entities[arg1].field2C * arg2) / 16;
+        break;
+    }
+
+    if ((D_800ED148.entities[arg1].flags & 0x40) && s1 != 0) {
+        D_800EE4C0.flags5 |= 0x20;
+        s1 >>= 1;
+    }
+    if (D_800ED148.entities[arg1].status & 0x4) {
+        s1 = 0;
+    }
+
+    s1 = func_8009DCCC(arg0, arg1, s1);
+    func_8009DD2C(arg1, arg2, D_800EEBC2, D_800EEBC4);
+    return s1;
+}
 
 INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object2", func_8009E110);
 
