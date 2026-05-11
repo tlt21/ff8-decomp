@@ -738,6 +738,8 @@ typedef struct {
  * ---------------------------------------------------------------- */
 
 extern s16 D_8005F11C;      /**< 0x8005F11C: misc sound state (used by bc_object1 / fe_object7). */
+extern u16 D_80082C0A;      /**< 0x80082C0A: input/effect flag word; bit 1 gates timed sound, bit 2 gates vibrate. */
+extern u8  D_80082C0F;      /**< 0x80082C0F: deferred trigger gate byte (non-zero suppresses processing). */
 extern u8 D_800ED157[];     /**< 0x800ED157: misc battle state. */
 extern u8 D_800ED160[];     /**< 0x800ED160: misc battle state. */
 extern u8 D_800ED1D8[];     /**< 0x800ED1D8: misc battle state. */

@@ -47,9 +47,6 @@ extern volatile BattleSystem D_800ED148;
    with two offsets and broke the match. The magic 2 / +1 should go
    away if/when a struct-typed access form that produces the same
    codegen is found. */
-extern u8 D_80082C0A[];
-extern u8 D_80082C0F[];
-
 extern u8 D_80098030[];
 
 /* File-local forward declarations (defined later in this TU,
@@ -327,7 +324,7 @@ void func_8009A3BC(void) {
  * setCameraVibrateState(1) to trigger controller vibration.
  */
 void func_8009A3F4(void) {
-    if (*(u16 *)D_80082C0A & 4) {
+    if (D_80082C0A & 4) {
         setCameraVibrateIntensity(0x1000);
         setCameraVibrateState(1);
     }
@@ -601,7 +598,7 @@ void func_8009AA2C(void) {
     s32 sentinel;
     s32 i;
 
-    if (D_80082C0F[0] != 0) {
+    if (D_80082C0F != 0) {
         return;
     }
 
@@ -968,7 +965,7 @@ void func_8009B088(s32 a0, s32 a1, s32 a2, s32 a3) {
  * @param a0 Duration parameter for the timed sound.
  */
 void func_8009B0F8(s32 a0) {
-    if (!(*(u16 *)D_80082C0A & 2)) {
+    if (!(D_80082C0A & 2)) {
         sndCmdC1(D_8005F11C, a0, 0);
     }
 }

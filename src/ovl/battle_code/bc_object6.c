@@ -1,7 +1,6 @@
 #include "common.h"
 #include "battle.h"
 
-extern u8 D_80082C0F[];
 extern u8 D_800EE441[];
 extern u8 D_80077EBC[];
 s32 func_800A980C(void);
@@ -404,7 +403,7 @@ void func_800AEC04(void) {
  * func_8009AF14 with func_8009AD7C as the callback.
  */
 void func_800AEC98(void) {
-    *(u8 *)D_80082C0F = 1;
+    D_80082C0F = 1;
     *(u8 *)D_800EE449 = 3;
     func_8009AF14(func_8009AD7C);
 }
@@ -418,7 +417,7 @@ void func_800AEC98(void) {
  */
 void func_800AECD4(void) {
     s32 base;
-    if (*(u8 *)D_80082C0F != 0) {
+    if (D_80082C0F != 0) {
         return;
     }
     base = (s32)&D_800ED148;
@@ -441,7 +440,7 @@ void func_800AECD4(void) {
  * calls func_800AEACC(0) and func_800AEC98.
  */
 void func_800AED30(void) {
-    if (*(u8 *)D_80082C0F != 0) {
+    if (D_80082C0F != 0) {
         return;
     }
     if (*(u8 *)D_800EE441 == 1) {
@@ -475,7 +474,7 @@ INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object6", func_800AED9C);
  */
 void func_800AEE64(void) {
     func_80048BB8(0);
-    *(u8 *)D_80082C0F = 5;
+    D_80082C0F = 5;
     {
         volatile u8 *base = (u8 *)&D_800ED148;
         base[0xC] = 0;
