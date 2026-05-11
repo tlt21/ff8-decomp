@@ -706,9 +706,15 @@ extern u8 D_800ED1D8[];     /**< 0x800ED1D8: misc battle state. */
 extern u8 D_800ED70C[];     /**< 0x800ED70C: entity status table (stride 20). */
 extern s32 D_800E19BC[];    /**< 0x800E19BC: CdRead (sector,length) pair table. */
 extern u8 D_800E19B4[];     /**< 0x800E19B4: misc state byte. */
-extern u16 D_800E3CA4[];    /**< 0x800E3CA4: misc halfword table. */
-extern u16 D_800E3CA8[];    /**< 0x800E3CA8: misc halfword table. */
-extern u16 D_800E3CB0[];    /**< 0x800E3CB0: misc halfword table. */
+/** @brief 4-byte (x,z) position pair used by @c func_8009A74C battle slot layout tables. */
+typedef struct {
+    u16 x;
+    u16 z;
+} BattlePosXZ;
+
+extern u16 D_800E3CA4[];          /**< 0x800E3CA4: solo-slot (x,z) position (single entry, 2 halfwords). */
+extern BattlePosXZ D_800E3CA8[];  /**< 0x800E3CA8: 2-active-slot layout (2 entries). */
+extern BattlePosXZ D_800E3CB0[];  /**< 0x800E3CB0: 3-active-slot layout (3 entries). */
 extern u8 D_800EDE24[];     /**< 0x800EDE24: misc state. */
 extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
 extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */

@@ -495,48 +495,55 @@ void func_8009A6A8(s32 idx) {
 /**
  * @brief Lay out party-side battle slots and play the start-of-encounter sound.
  *
- * Counts active entities in the first 3 slots (those with @c unkCB != 0xFF),
- * plays sound 0xD at volume 0x80, then iterates the same 3 slots calling
- * func_8009A6A8 for each active one. For each, clears @c pos.y and sets
- * @c pos.x / @c pos.z from a lookup table chosen by the active count:
- * @c D_800E3CA4 (count == 1), @c D_800E3CA8 (count == 2),
- * @c D_800E3CB0 (count == 3). Other counts leave the position fields alone.
+ * Counts active entities in the first 3 slots (those with @c linkedIdx
+ * != @c 0xFF), plays sound @c 0xD at volume @c 0x80, then iterates the same
+ * 3 slots calling @c func_8009A6A8 for each active one. For each, clears
+ * @c animParam2 (y) and sets @c animParam1 (x) / @c animParam3 (z) from a
+ * lookup table chosen by the active count: @c D_800E3CA4 (count == 1),
+ * @c D_800E3CA8 (count == 2), @c D_800E3CB0 (count == 3). Other counts
+ * leave the position fields alone.
  *
- * Best clean (struct-only) attempt:
- * @code
- * void func_8009A74C(void) {
- *     BattleEntity *units = (BattleEntity *)&D_800ED148;
- *     s32 active_count = 0;
- *     s32 pos_idx;
- *     s32 i;
- *     for (i = 0; i < 3; i++) {
- *         if (units[i].linkedIdx != 0xFF) active_count++;
- *     }
- *     func_8009B134(0xD, 0x80, 0);
- *     pos_idx = 0;
- *     for (i = 0; i < 3; i++) {
- *         if (units[i].linkedIdx != 0xFF) {
- *             func_8009A6A8(i);
- *             units[i].pos.y = 0;
- *             if (active_count == 2) {
- *                 units[i].pos.x = D_800E3CA8[pos_idx * 2];
- *                 units[i].pos.z = D_800E3CA8[pos_idx * 2 + 1];
- *                 pos_idx++;
- *             } else if (active_count == 1) {
- *                 units[i].pos.x = D_800E3CA4[0];
- *                 units[i].pos.z = D_800E3CA4[1];
- *             } else if (active_count == 3) {
- *                 units[i].pos.x = D_800E3CB0[pos_idx * 2];
- *                 units[i].pos.z = D_800E3CB0[pos_idx * 2 + 1];
- *                 pos_idx++;
- *             }
- *         }
- *     }
- * }
- * @endcode
- * Permuter ~69%; depends on func_8009A6A8 matching first.
+ * @note Caching @c &D_800ED148.entities[i] into a local @c BattleEntity*
+ * inside the loop is required for matching codegen (same pattern as
+ * @c func_8009A6A8).
  */
-INCLUDE_ASM("asm/ovl/battle_code/nonmatchings/bc_object1", func_8009A74C);
+void func_8009A74C(void) {
+    s32 activeCount;
+    s32 posIdx;
+    s32 i;
+
+    activeCount = 0;
+    for (i = 0; i < 3; i++) {
+        if (D_800ED148.entities[i].linkedIdx != 0xFF) {
+            activeCount++;
+        }
+    }
+    func_8009B134(0xD, 0x80, 0);
+    posIdx = 0;
+    for (i = 0; i < 3; i++) {
+        BattleEntity *e = &D_800ED148.entities[i];
+        if (e->linkedIdx != 0xFF) {
+            func_8009A6A8(i);
+            e->animParam2 = 0;
+            switch (activeCount) {
+            case 1:
+                e->animParam1 = D_800E3CA4[0];
+                e->animParam3 = D_800E3CA4[1];
+                break;
+            case 2:
+                e->animParam1 = D_800E3CA8[posIdx].x;
+                e->animParam3 = D_800E3CA8[posIdx].z;
+                posIdx++;
+                break;
+            case 3:
+                e->animParam1 = D_800E3CB0[posIdx].x;
+                e->animParam3 = D_800E3CB0[posIdx].z;
+                posIdx++;
+                break;
+            }
+        }
+    }
+}
 
 /**
  * @brief Queue a damage/heal visual effect sound for an entity slot.
