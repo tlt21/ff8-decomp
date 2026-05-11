@@ -180,7 +180,7 @@ void func_80099FE8(void) {
     func_8009B428();
 
     D_800ED148.unk5C3 = 1;
-    D_800ED148.entities[0].state = 0;
+    D_800ED148.entities[0].state.word = 0;
     D_800ED148.unk12EC = 0xFF;
     D_800ED148.entities[0].timer = 0xFF;
     g_battleConfig.result = BATTLE_RESULT_UNDETERMINED;
@@ -236,7 +236,7 @@ void func_8009A160(void) {
     func_8009B134(0x70, 0x80, 0);
     func_8009AF14(&func_8009ABE4);
     state = &D_800ED148;
-    state->entities[0].state = 2;
+    state->entities[0].state.word = 2;
 }
 
 /**
@@ -256,7 +256,7 @@ void func_8009A1E0(void) {
     func_800B1ACC();
     func_800B2084();
     func_800B2024();
-    D_800ED148.entities[0].state = 4;
+    D_800ED148.entities[0].state.word = 4;
 }
 
 /**
@@ -592,16 +592,16 @@ void func_8009A990(s32 target) {
     p = (BattleEntity *)&D_800ED148;
 top:
     if (p[1].slot8.byteView.trigKey == target) {
-        if (((u8 *)&p[1])[0x7] != 0) {
-            if (((u8 *)&p[1])[0x7] == 2) {
+        if (p[1].state.bytes.trigType != 0) {
+            if (p[1].state.bytes.trigType == 2) {
                 if (!(p[0].status & 1)) {
-                    func_800A59AC(i, ((u8 *)&p[1])[0x7], 0);
+                    func_800A59AC(i, p[1].state.bytes.trigType, 0);
                 }
             } else {
-                func_800A59AC(i, ((u8 *)&p[1])[0x7], 0);
+                func_800A59AC(i, p[1].state.bytes.trigType, 0);
             }
             p[1].slot8.byteView.trigKey = 0;
-            ((u8 *)&p[1])[0x7] = 0;
+            p[1].state.bytes.trigType = 0;
             return;
         }
     }
@@ -708,7 +708,7 @@ void func_8009AB98(void) {
  * Writes value 3 to D_800ED148 offset 0x4 (entity state field).
  */
 void func_8009ABE4(void) {
-    D_800ED148.entities[0].state = 3;
+    D_800ED148.entities[0].state.word = 3;
 }
 
 /**
@@ -718,7 +718,7 @@ void func_8009ABE4(void) {
  *
  */
 void func_8009ABFC(void) {
-    D_800ED148.entities[0].state = 1;
+    D_800ED148.entities[0].state.word = 1;
 }
 
 /**

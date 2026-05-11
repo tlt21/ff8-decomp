@@ -284,7 +284,12 @@ typedef struct {
 
 typedef struct {
     s32 unk0;             /* 0x00: 4-byte field (semantics unknown). */
-    s32 state;            /* 0x04: state machine value. Byte 3 (offset 0x07) is also accessed as a "trigger type" code via raw cast. */
+    /* 0x04: state machine value. Byte 3 (offset 0x07) is also accessed
+       as a "trigger type" code (read by @c func_8009A990). */
+    union {
+        s32 word;
+        struct { u8 b0; u8 b1; u8 b2; u8 trigType; } bytes;
+    } state;
     /* 0x08: byte view exposes @c trigKey (pending-trigger key matched
        against arg). Word view (@c initFlags) is a 4-byte init-time
        animation/render flag word written by @c func_800A7518. */
