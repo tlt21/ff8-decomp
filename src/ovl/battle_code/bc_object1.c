@@ -1478,31 +1478,28 @@ s32 func_8009B7F4(s32 a0, s32 a1) {
 /**
  * @brief Apply status effect flags to entity based on linked data.
  *
- * For entities with index >= 3, checks linked entity data at offset
- * 0xF7 for status immunity flags. Bit 0 controls the 0x40 flag on
- * status (u16 at a1), bit 1 controls the 0x2000 flag on ability
- * flags (s32 at a2). The a3 parameter determines set vs clear.
+ * For entities with index >= 3, reads
+ * @c entities[a0].linkedPtr->data->immunityFlags. Bit 0 gates the
+ * @c 0x40 flag on @c *a1 (status u16), bit 1 gates the @c 0x2000 flag
+ * on @c *a2 (ability flags s32). @p a3 selects set vs clear.
+ *
  * @param a0 Entity slot index.
  * @param a1 Pointer to entity status u16.
  * @param a2 Pointer to entity ability flags s32.
  * @param a3 Mode: 0 = clear flags, nonzero = set flags.
  */
 void func_8009B878(s32 a0, u16 *a1, s32 *a2, s32 a3) {
-    s32 base;
-    s32 offset;
-    u8 *linked;
+    BattleEntityData *linked;
     s32 status;
     s32 flags;
 
     if (a0 < 3) {
         return;
     }
-    base = (s32)&D_800ED148;
-    offset = ((a0 * 2 + a0) * 4 + a0) * 16;
-    linked = *(u8 **)(*(s32 *)(offset + base + 0x10));
+    linked = D_800ED148.entities[a0].linkedPtr->data;
     status = *a1;
     if (status & 0x40) {
-        if (*(u8 *)(linked + 0xF7) & 1) {
+        if (linked->immunityFlags & 1) {
             if (a3 != 0) {
                 *a1 = status | 0x40;
             } else {
@@ -1512,7 +1509,7 @@ void func_8009B878(s32 a0, u16 *a1, s32 *a2, s32 a3) {
     }
     flags = *a2;
     if (flags & 0x2000) {
-        if (*(u8 *)(linked + 0xF7) & 2) {
+        if (linked->immunityFlags & 2) {
             if (a3 == 0) {
                 *a2 = flags & ~0x2000;
             } else {
