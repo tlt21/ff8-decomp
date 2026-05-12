@@ -1,20 +1,7 @@
 #include "common.h"
 #include "world.h"
 
-/**
- * @brief Per-actor 36-byte state record indexed by actor id.
- *
- * Used by the dialogue/animation orchestrator. Only @c unk02 and @c flag1E
- * are accessed by func_800B7080 — full layout uncertain.
- */
-typedef struct {
-    u8 pad00[2];
-    s8 unk02;            /**< 0x02: signed counter / clamp value. */
-    u8 pad03[0x1B];
-    s8 flag1E;           /**< 0x1E: -1 disables actor; otherwise active. */
-    u8 pad1F[5];
-    /* 0x24 */
-} ActorRecord;
+/* ActorRecord now lives in world.h (shared across world_engine TUs). */
 
 /**
  * @brief 0x34-byte tracking entry — one world-space target with screen-space
@@ -48,8 +35,6 @@ typedef struct {
     u8 pad03[0x15];
     TrackEntry *entries; /**< 0x18: pointer to the entry array. */
 } TrackObj;
-
-extern ActorRecord D_800DD6A8[];
 
 extern WorldPos D_800D23C0;
 extern WorldPos D_800C9868;
@@ -144,6 +129,30 @@ INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B6034);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B63C0);
 
+/**
+ * @brief Walk a sorted @c KeyframeNode list to find the entry matching
+ * an actor's current phase, optionally writing an interpolation factor.
+ *
+ * Reads the actor's mode byte from @c D_800D23D8 and, combined with
+ * @c unk03 / @c unk1F / @c flag1E, decides whether to:
+ * - skip past leading @c -2 / @c -1 sentinels (modes 0 / 2);
+ * - search forward for the first keyframe with @c time @>= @p cached
+ *   and write a 0x1000-scaled interpolation factor to @p out (modes -1 / 1).
+ *
+ * When the matching entry is a @c -2 sentinel, decrements the next
+ * entry's u16 time into @c D_800C987C.
+ *
+ * @param list   Keyframe list head (stride 0x20).
+ * @param cached Current time / progress value to interpolate against.
+ * @param out    Optional output for the 0..0x1000 interpolation factor.
+ * @param actor  Actor record (used to look up the mode byte).
+ * @return The list pointer advanced past the matched/inserted-at node.
+ *
+ * @note 90.93% match in permuter scratch at @c permuter/func_800B674C/base.c.
+ * Remaining gap: gcc 2.8.0 register-allocation differences in the dir
+ * dispatch and search loop (single-instruction @c addiu @c -1 vs
+ * @c addu @c t1, and v0/v1 swap in the loop body).
+ */
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B674C);
 
 INCLUDE_ASM("asm/ovl/world_engine/nonmatchings/we_object7", func_800B6968);

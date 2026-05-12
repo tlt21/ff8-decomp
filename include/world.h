@@ -186,6 +186,37 @@ typedef struct {
 } ScriptOp;
 
 /**
+ * @brief Per-actor 36-byte state record indexed by actor id.
+ *
+ * Used by the dialogue/animation orchestrator.  Currently mapped fields:
+ * @c unk02 / @c unk03 (counters), @c flag1E (-1 disables actor), and
+ * @c unk1F (signed phase byte read by @c func_800B674C).
+ */
+typedef struct {
+    /* 0x00 */ u8 pad00[2];
+    /* 0x02 */ s8 unk02;            /**< Signed counter / clamp value. */
+    /* 0x03 */ u8 unk03;            /**< Byte counter (range-checked against 1..2). */
+    /* 0x04 */ u8 pad04[0x1A];
+    /* 0x1E */ s8 flag1E;           /**< -1 disables actor; otherwise active. */
+    /* 0x1F */ s8 unk1F;            /**< Signed phase byte (-1, 0, 1). */
+    /* 0x20 */ u8 pad20[4];
+} ActorRecord;                       /* 0x24 bytes */
+
+/**
+ * @brief 32-byte node in a sorted keyframe list traversed by @c func_800B674C.
+ *
+ * The first halfword is a time/key value with sentinels @c -1 (end of
+ * list) and @c -2 (skip / continuation).  Remaining 30 bytes hold the
+ * keyframe payload, format-dependent on caller.
+ */
+typedef struct {
+    /* 0x00 */ s16 time;
+    /* 0x02 */ u8 pad02[0x1E];
+} KeyframeNode;                      /* 0x20 bytes */
+
+extern ActorRecord D_800DD6A8[];
+
+/**
  * @brief 12-byte transform track (translation + y-rotation).
  *
  * Two of these live inside @c Slot at offsets 0x18 (track A) and 0x24
