@@ -173,6 +173,24 @@ extern u8  D_800D23D8[];
 extern s32 D_800DCB48;
 
 /**
+ * @brief Struct view over @c D_800D23D8 (world-state flag buffer).
+ *
+ * Documents the per-byte layout observed in callers: an opcode-param
+ * byte at offset 0, a per-actor mode byte array starting at offset 2,
+ * and a bit-flag byte at offset 0x66.  Use via
+ * @c ((WorldFlags *)D_800D23D8)->field — the global itself stays
+ * declared as @c u8[] so older callers that still index it as a byte
+ * array keep working.
+ */
+typedef struct {
+    /* 0x00 */ u8 opParam;            /**< Set from script opcode @c param. */
+    /* 0x01 */ u8 pad01;
+    /* 0x02 */ u8 actorMode[0x64];    /**< Per-actor mode byte. */
+    /* 0x66 */ u8 flags;              /**< Bit flags (bits 0x20, 0x40 used). */
+    /* 0x67 */ u8 pad67;
+} WorldFlags;
+
+/**
  * @brief Two-halfword script opcode entry (4 bytes).
  *
  * The world-engine script consists of a u32 array of segment offsets
