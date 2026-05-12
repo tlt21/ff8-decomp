@@ -954,6 +954,39 @@ extern u8  D_801D3358;     /**< Substate index (0..5). */
 extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
 extern s16 D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
 
+/** @brief Battle-engine display-node spawner state (used by func_8009FED0). */
+extern s32 D_801C2EB0;     /**< Display-list head pointer. */
+extern s32 D_801C2EB4;     /**< Current display node tail. */
+extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
+extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
+extern s32 D_801D3EB8;     /**< Phase mirror counter (running scale). */
+extern s32 D_801D44FC;     /**< Current battle slot index (must be < 0x6E). */
+extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
+
+/**
+ * @brief 40-byte display node allocated by @c func_80098B80 and chained
+ * via @c func_80041274 / @c func_800406A4 / @c func_80040734.
+ */
+typedef struct {
+    /* 0x00 */ s16 angle;             /**< Rotation/animation angle. */
+    /* 0x02 */ s16 phase;             /**< Phase counter (mirror of @c D_801D3EB8). */
+    /* 0x04 */ s16 unk04;             /**< Always zeroed at init. */
+    /* 0x06 */ u8 pad06[2];
+    /* 0x08 */ u8 subNode[0x14];      /**< Sub-node passed to chain calls. */
+    /* 0x1C */ s32 charType;          /**< Set to @c 0x44 ('D'). */
+    /* 0x20 */ s32 scale;             /**< Scale factor (computed or 0x18). */
+    /* 0x24 */ s32 unk24;             /**< Set to 0x200. */
+} DispNode;                            /* 0x28 bytes */
+
+extern s32  func_80023B14(s32 idx);
+extern s32  func_8003ED64();
+extern void func_80041274();
+extern void func_800406A4();
+extern void func_80040734();
+extern s32  func_80098B80(s32 size);
+extern void func_80098BA0(s32 size);
+extern s32  func_8009AE6C();
+
 /* --- Battle animation lifecycle --- */
 extern void initBattleTransition(void);
 extern void activateBattleAnim(s32 idx);

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "battle.h"
 
 /**
  * @brief Script-action entry in the D_801D3EC0 2x5 table.
@@ -272,7 +273,88 @@ s32 func_8009FC90(ScriptCtx *ctx) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object3", func_8009FED0);
+/**
+ * @brief Per-frame display-node spawn for some D_801D44FC-driven animation.
+ *
+ * Validates the current slot index in D_801D44FC, allocates a 40-byte
+ * @c DispNode via @c func_80098B80, and initializes it based on the
+ * current phase counter (@c D_801D3EB0 / @c D_801D3EB8):
+ * - phase < 10:  rotating-arc setup, angle scaled via @c func_8003ED64
+ * - phase < 300: simple static node (scale = 0x18)
+ * - else:        squashed angle via @c func_8003ED64 + phase mirror
+ *
+ * On any failure (slot out of range or @c func_80023B14 returns negative),
+ * sets @c D_80182E64 = @c -1 and returns 0.
+ *
+ * @return Always 0.
+ */
+s32 func_8009FED0(void) {
+    DispNode *node;
+    s32 cur;
+
+    if ((u32)D_801D44FC < 0x6E) {
+        if (func_80023B14(D_801D44FC) >= 0) {
+            node = (DispNode *)func_80098B80(0x28);
+            if (D_80182E64 != D_801D44FC) {
+                D_801D3EB8 = 0;
+                D_801D3EB0 = 0;
+            }
+            cur = D_801D3EB0;
+            if (cur < 0xA) {
+                s32 newCur = cur + 1;
+                s32 v = (newCur << 12) / 10;
+                D_801D3EB0 = newCur;
+                D_801D3EB4 = v;
+                D_801D3EB4 = func_8003ED64(v / 4);
+                node->unk04 = 0;
+                node->phase = 0;
+                node->angle = 0;
+                func_80041274(node, node->subNode);
+                {
+                    s32 r = D_801D3EB4;
+                    node->charType = 0x44;
+                    node->unk24 = 0x200;
+                    node->scale = (-(r * 88) >> 12) + 0x70;
+                }
+            } else if (cur < 0x12C) {
+                D_801D3EB0 = cur + 1;
+                node->unk04 = 0;
+                node->phase = 0;
+                node->angle = 0;
+                func_80041274(node, node->subNode);
+                node->charType = 0x44;
+                node->scale = 0x18;
+                node->unk24 = 0x200;
+            } else {
+                s32 newScale = D_801D3EB8 + 0x20;
+                s32 rounded;
+                s32 v;
+                D_801D3EB8 = newScale;
+                rounded = newScale + (s32)((u32)newScale >> 31);
+                v = func_8003ED64(rounded >> 1);
+                v = -v;
+                if (v < 0) v += 7;
+                node->angle = v >> 3;
+                node->unk04 = 0;
+                node->phase = (u16)D_801D3EB8;
+                func_80041274(node, node->subNode);
+                node->charType = 0x44;
+                node->scale = 0x18;
+                node->unk24 = 0x200;
+            }
+            func_800406A4(node->subNode);
+            func_80040734(node->subNode);
+            D_801C2EB4 = func_8009AE6C((u8)D_801D44FC, 0x13, D_801C2EB0 + 0xC, D_801C2EB4);
+            func_80098BA0(0x28);
+            D_80182E64 = D_801D44FC;
+        } else {
+            D_80182E64 = -1;
+        }
+    } else {
+        D_80182E64 = -1;
+    }
+    return 0;
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object3", func_800A00EC);
 
