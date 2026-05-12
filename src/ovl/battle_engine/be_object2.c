@@ -325,7 +325,7 @@ s32 applyPlusRule(TTCell board[][TT_BOARD_COLS]) {
         for (col = 1; col < 4; col++) {
             cell = &board[row][col];
             if (cell->flags & 0x4) {
-                cellCard = &gCardStats[cell->cardId];
+                cellCard = &g_tripleTriadCardStats[cell->cardId];
                 cellOwner = cell->owner;
 
                 for (i = 0; i < 21; i++) {
@@ -340,7 +340,7 @@ s32 applyPlusRule(TTCell board[][TT_BOARD_COLS]) {
                     neighbor = &board[row + offset->dy][nbrCol];
                     if (neighbor->flags & 0x2) {
                         edgeSum = cellCard->sides[i] +
-                                  gCardStats[neighbor->cardId].sides[i ^ 1];
+                                  g_tripleTriadCardStats[neighbor->cardId].sides[i ^ 1];
                         bucket = &sumHist[edgeSum];
                         bucket->count++;
                         bucket->dirMask |= 1 << i;

@@ -1012,7 +1012,7 @@ extern void setSfxField2F(s32 idx, s32 val);
 typedef struct {
     /* 0x00 */ u16 flags;     /**< bit 0x2=occupied, 0x4=just placed, 0x100=in combo this turn,
                                   bits 0x8/0x10/0x20/0x40 = captured-from-direction marks. */
-    /* 0x02 */ u8  cardId;    /**< Index into @c gCardStats. */
+    /* 0x02 */ u8  cardId;    /**< Index into @c g_tripleTriadCardStats. */
     /* 0x03 */ u8  pad03;
     /* 0x04 */ u8  owner;     /**< Player 0 or 1. */
     /* 0x05 */ u8  pad05[3];
@@ -1040,10 +1040,9 @@ typedef struct {
 /** @brief Number of columns per row, including the 1-cell sentinel border. */
 #define TT_BOARD_COLS  5
 
-extern TTCard D_801827E4[];       /**< Card stats table (~110 cards). */
+extern TTCard g_tripleTriadCardStats[];    /**< Card stats table (~110 cards). */
 extern TTDir  D_80182D44[4];      /**< Neighbor offsets: UP, DOWN, LEFT, RIGHT
                                        (ordered so @c i^1 = opposite direction). */
-#define gCardStats   D_801827E4
 #define gDirOffsets  D_80182D44
 
 #endif /* BATTLE_H */
