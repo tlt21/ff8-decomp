@@ -45,7 +45,58 @@ void setBattleObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009A970);
+/**
+ * @brief Emit a 24x16 TSPRT overlay sprite at the entity's screen position.
+ *
+ * Builds a single textured sprite primitive (combined DR_TPAGE + SPRT in
+ * one packet, 24 bytes) at @c (entity->spriteX + 0xB4, entity->spriteY + 0x68)
+ * and links it into the OT @p ot via @c AddPrim. The @p variant selector
+ * picks between two adjacent textures sharing the same tpage:
+ *  - @c variant @c > @c 0: U=0,  CLUT=0x3A80
+ *  - @c variant @c <= @c 0: U=24, CLUT=0x3AC0
+ *
+ * The function increments and returns the output buffer pointer so the
+ * caller can chain further primitives. The single-iteration do-while
+ * mirrors the original (likely a degenerate loop body retained for
+ * scheduling reasons).
+ *
+ * @param entity   Sub-entity providing screen-space anchor (only @c spriteX
+ *                 and @c spriteY are read).
+ * @param variant  Texture selector — positive selects the first texture/CLUT.
+ * @param ot       OT bucket pointer used by @c AddPrim.
+ * @param out      Output primitive buffer (pre-allocated by caller).
+ * @return         Pointer to the next free TSPRT slot in @p out.
+ */
+TSPRT *func_8009A970(BattleSubEntity *entity, s32 variant, void *ot, TSPRT *out) {
+    s32 i = 0;
+
+    do {
+        out->tag      = 0x05000000;
+        out->drawMode = 0xE100060C;
+        *(u32 *)&out->r0 = 0x64808080;
+        out->x0 = entity->spriteX + 0xB4;
+        {
+            s32 y0 = entity->spriteY;
+            out->w  = 24;
+            out->h  = 16;
+            out->y0 = y0 + 0x68;
+        }
+        if (variant > 0) {
+            out->u0   = 0;
+            out->clut = 0x3A80;
+        } else {
+            out->u0   = 24;
+            out->clut = 0x3AC0;
+        }
+        out->v0 = 0x48;
+
+        AddPrim(ot, out);
+        out++;
+        i++;
+    } while (i <= 0);
+
+    return out;
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009AA68);
 

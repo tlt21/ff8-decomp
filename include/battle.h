@@ -1017,6 +1017,24 @@ typedef struct {
     /* 0x24 */ s32 unk24;             /**< Set to 0x200. */
 } DispNode;                            /* 0x28 bytes */
 
+/**
+ * @brief Animation sub-entity reached via @c BattleObjectCtl.entity (offset 0xC).
+ *
+ * Holds the runtime state for a single animated/positioned overlay element
+ * driven by the be_object2 dispatch layer (e.g. Triple Triad card UI, score
+ * indicators). Only the fields actually touched by decomped functions are
+ * named; the rest is padding pending decomp of the remaining callers.
+ *
+ * @note Size and several fields are still uncertain; refine as more
+ *       functions in this overlay get decomped.
+ */
+typedef struct {
+    /* 0x00 */ u8  pad00[0x14];
+    /* 0x14 */ u16 spriteX;       /**< Base screen X (added to +0xB4 by @c func_8009A970). */
+    /* 0x16 */ u16 pad16;
+    /* 0x18 */ u16 spriteY;       /**< Base screen Y (added to +0x68 by @c func_8009A970). */
+} BattleSubEntity;
+
 extern s32  func_80023B14(s32 idx);
 extern s32  func_8003ED64();
 extern void func_80041274();
@@ -1025,6 +1043,7 @@ extern void func_80040734();
 extern s32  func_80098B80(s32 size);
 extern void func_80098BA0(s32 size);
 extern s32  func_8009AE6C();
+extern TSPRT *func_8009A970(BattleSubEntity *entity, s32 variant, void *ot, TSPRT *out);
 
 /* --- Battle animation lifecycle --- */
 extern void initBattleTransition(void);
