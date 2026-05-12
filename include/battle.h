@@ -1024,11 +1024,14 @@ extern void setSfxField2F(s32 idx, s32 val);
  *               placer and the captured neighbors).
  */
 typedef struct {
-    /* 0x00 */ u16 flags;     /**< See @c TT_CELL_* flag table below. */
-    /* 0x02 */ u8  cardId;    /**< Index into @c g_tripleTriadCardStats. */
+    /* 0x00 */ u16 flags;       /**< See @c TT_CELL_* flag table below. */
+    /* 0x02 */ u8  cardId;      /**< Index into @c g_tripleTriadCardStats. */
     /* 0x03 */ u8  pad03;
-    /* 0x04 */ u8  owner;     /**< Player 0 or 1. */
-    /* 0x05 */ u8  pad05[3];
+    /* 0x04 */ u8  owner;       /**< Player 0 or 1. */
+    /* 0x05 */ u8  pad05;
+    /* 0x06 */ s8  elementMod;  /**< FF8 Elemental rule: +1/-1 added to each edge if card's
+                                     element matches/differs from cell's element. */
+    /* 0x07 */ u8  pad07;
 } TripleTriadBoardSlot;
 
 /** @brief Bits in @c TripleTriadBoardSlot.flags. */

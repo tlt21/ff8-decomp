@@ -285,7 +285,74 @@ void func_8009C978(s32 a0, s32 a1, s32 a2, s32 a3) {
     result[3] = a1;
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C9D4);
+/**
+ * @brief Triple Triad basic-capture rule (with FF8 Elemental modifier).
+ *
+ * Runs unconditionally after Same/Plus. For each newly-placed card
+ * (@c TT_CELL_JUST_PLACED), checks the 4 neighbors and captures any
+ * weaker-edge neighbor of a different owner. Each edge value is adjusted
+ * by the cell's @c elementMod (signed +1/-1 from the Elemental rule), so
+ * the actual comparison is @c (myEdge + myElementMod) vs
+ * @c (nbrEdge + nbrElementMod).
+ *
+ * Already-flipped neighbors from Same/Plus are skipped automatically via
+ * the same-owner check.
+ *
+ * @param board The 5x5 Triple Triad board.
+ * @return Number of cards captured this call.
+ */
+s32 applyBasicCapture(TripleTriadBoard *board) {
+    s32 captureCount;
+    s32 row, col, dir;
+    s32 nbrCol, nbrRow;
+    u8 cellOwner, myEdge, nbrEdge;
+    s8 cellMod, nbrMod;
+    TripleTriadBoardSlot *cell;
+    TripleTriadBoardSlot *neighbor;
+    TripleTriadCard *cellCard;
+    TripleTriadCard *neighborCard;
+    TripleTriadDirection *dirOffset;
+
+    captureCount = 0;
+
+    for (row = 1; row <= 3; row++) {
+        for (col = 1; col <= 3; col++) {
+            cell = &board->cells[row][col];
+            if (!(cell->flags & TT_CELL_JUST_PLACED))
+                continue;
+
+            cellOwner = cell->owner;
+            cellCard  = &g_tripleTriadCardStats[cell->cardId];
+
+            for (dir = 0; dir < TT_DIR_COUNT; dir++) {
+                dirOffset = &g_tripleTriadDirectionOffsets[dir];
+                nbrCol = col + dirOffset->dx;
+                nbrRow = row + dirOffset->dy;
+                neighbor = &board->cells[nbrRow][nbrCol];
+
+                if (!(neighbor->flags & TT_CELL_OCCUPIED))
+                    continue;
+                neighborCard = &g_tripleTriadCardStats[neighbor->cardId];
+                if (neighbor->owner == cellOwner)
+                    continue;
+
+                myEdge  = cellCard->sides[dir];
+                cellMod = cell->elementMod;
+                nbrEdge = neighborCard->sides[dir ^ 1];
+                nbrMod  = neighbor->elementMod;
+
+                if (!((myEdge + cellMod) > (nbrEdge + nbrMod)))
+                    continue;
+
+                neighbor->owner = cellOwner;
+                neighbor->flags |= 1 << (dir + 3);   /* captured-from-dir bit */
+                captureCount++;
+            }
+        }
+    }
+
+    return captureCount;
+}
 
 /**
  * @brief Triple Triad Same-rule resolver (including the Same-Wall extension).
