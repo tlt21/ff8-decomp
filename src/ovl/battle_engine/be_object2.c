@@ -287,12 +287,109 @@ void func_8009C978(s32 a0, s32 a1, s32 a2, s32 a3) {
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C9D4);
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009CB10);
+/**
+ * @brief Triple Triad Same-rule resolver (including the Same-Wall extension).
+ *
+ * Walks the 3x3 active play area; for each newly-placed card
+ * (@c TT_CELL_JUST_PLACED), counts how many neighbors have a matching edge
+ * value (or, if Same-Wall is enabled, a rank-A edge facing a wall sentinel).
+ * If at least 2 matches occur, captures all weaker-or-equal-edge neighbors
+ * (different owner) — flipping the owner and recording the direction in the
+ * @c flags field.
+ *
+ * @param board The 5x5 Triple Triad board (typically @c &g_tripleTriadBoard).
+ * @return Number of cards captured this call.
+ */
+s32 applySameRule(TripleTriadBoard *board) {
+    s32 captureCount;
+    s32 row, col, dir;
+    s32 matchCount;
+    s32 nbrCol, nbrRow;
+    u8 cellOwner, myEdge, neighborOpposingEdge;
+    TripleTriadBoardSlot *cell;
+    TripleTriadBoardSlot *neighbor;
+    TripleTriadCard *myCardStats;
+    TripleTriadCard *neighborStats;
+    TripleTriadDirection *dirOffset;
+
+    captureCount = 0;
+
+    for (row = 1; row <= 3; row++) {
+        for (col = 1; col <= 3; col++) {
+            cell = &board->cells[row][col];
+
+            if (!(cell->flags & TT_CELL_JUST_PLACED))
+                continue;
+
+            cellOwner   = cell->owner;
+            myCardStats = &g_tripleTriadCardStats[cell->cardId];
+            matchCount  = 0;
+
+            for (dir = 0; dir < TT_DIR_COUNT; dir++) {
+                dirOffset = &g_tripleTriadDirectionOffsets[dir];
+                nbrCol = col + dirOffset->dx;
+                nbrRow = row + dirOffset->dy;
+                neighbor = &board->cells[nbrRow][nbrCol];
+
+                if (g_tripleTriadRules & TT_RULE_SAME_WALL) {
+                    if (myCardStats->sides[dir] == TT_RANK_A) {
+                        if (neighbor->flags & TT_CELL_WALL) {
+                            matchCount++;
+                            continue;
+                        }
+                    }
+                }
+
+                if (!(neighbor->flags & TT_CELL_OCCUPIED))
+                    continue;
+
+                neighborStats        = &g_tripleTriadCardStats[neighbor->cardId];
+                myEdge               = myCardStats->sides[dir];
+                neighborOpposingEdge = neighborStats->sides[dir ^ 1];
+
+                if (myEdge == neighborOpposingEdge) {
+                    neighbor->flags |= TT_CELL_SAME_MATCHED;
+                    matchCount++;
+                }
+            }
+
+            if (matchCount < 2)
+                continue;
+
+            /* Same rule fired: capture all weaker-or-equal neighbors */
+            for (dir = 0; dir < TT_DIR_COUNT; dir++) {
+                dirOffset = &g_tripleTriadDirectionOffsets[dir];
+                nbrCol = col + dirOffset->dx;
+                nbrRow = row + dirOffset->dy;
+                neighbor = &board->cells[nbrRow][nbrCol];
+
+                if (!(neighbor->flags & TT_CELL_OCCUPIED))
+                    continue;
+                neighborStats = &g_tripleTriadCardStats[neighbor->cardId];
+                if (neighbor->owner == cellOwner)
+                    continue;
+
+                myEdge               = myCardStats->sides[dir];
+                neighborOpposingEdge = neighborStats->sides[dir ^ 1];
+
+                if (myEdge < neighborOpposingEdge)
+                    continue;
+
+                neighbor->owner = cellOwner;
+                neighbor->flags |= 1 << (dir + 3);   /* captured-from-dir bit */
+                cell->flags     |= TT_CELL_SAME_MATCHED;
+                captureCount++;
+            }
+        }
+    }
+
+    return captureCount;
+}
 
 /**
  * @brief Triple Triad Plus-rule resolver.
  *
- * Walks the 3x3 active play area; for each newly-placed card (@c flags & 0x4),
+ * Walks the 3x3 active play area; for each newly-placed card (@c TT_CELL_JUST_PLACED),
  * builds a histogram of @c (myEdge + neighborOppositeEdge) sums across the
  * 4 cardinal neighbors. If any sum is hit by >=2 neighbors, the Plus rule
  * fires and those neighbors are captured (owner flipped, capture-direction
@@ -324,7 +421,7 @@ s32 applyPlusRule(TripleTriadBoardSlot board[][TT_BOARD_COLS]) {
     for (row = 1; row < 4; row++) {
         for (col = 1; col < 4; col++) {
             cell = &board[row][col];
-            if (cell->flags & 0x4) {
+            if (cell->flags & TT_CELL_JUST_PLACED) {
                 cellCard = &g_tripleTriadCardStats[cell->cardId];
                 cellOwner = cell->owner;
 
@@ -338,7 +435,7 @@ s32 applyPlusRule(TripleTriadBoardSlot board[][TT_BOARD_COLS]) {
                     offset = &g_tripleTriadDirectionOffsets[i];
                     nbrCol = col + offset->dx;
                     neighbor = &board[row + offset->dy][nbrCol];
-                    if (neighbor->flags & 0x2) {
+                    if (neighbor->flags & TT_CELL_OCCUPIED) {
                         edgeSum = cellCard->sides[i] +
                                   g_tripleTriadCardStats[neighbor->cardId].sides[i ^ 1];
                         bucket = &sumHist[edgeSum];
@@ -356,14 +453,14 @@ s32 applyPlusRule(TripleTriadBoardSlot board[][TT_BOARD_COLS]) {
                         offset = &g_tripleTriadDirectionOffsets[i];
                         nbrCol = col + offset->dx;
                         neighbor = &board[row + offset->dy][nbrCol];
-                        if ((neighbor->flags & 0x2) &&
+                        if ((neighbor->flags & TT_CELL_OCCUPIED) &&
                             ((sumHist[winningSum].dirMask >> i) & 1)) {
-                            neighbor->flags |= 0x100;
+                            neighbor->flags |= TT_CELL_PLUS_COMBO;
                             if (neighbor->owner != cellOwner) {
                                 neighbor->owner = cellOwner;
-                                neighbor->flags |= 1 << (i + 3);
+                                neighbor->flags |= 1 << (i + 3);   /* captured-from-dir bit */
                                 captures++;
-                                cell->flags |= 0x100;
+                                cell->flags |= TT_CELL_PLUS_COMBO;
                             }
                         }
                     }

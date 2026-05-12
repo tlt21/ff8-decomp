@@ -1024,12 +1024,24 @@ extern void setSfxField2F(s32 idx, s32 val);
  *               placer and the captured neighbors).
  */
 typedef struct {
-    /* 0x00 */ u16 flags;     /**< See flag-bit table above. */
+    /* 0x00 */ u16 flags;     /**< See @c TT_CELL_* flag table below. */
     /* 0x02 */ u8  cardId;    /**< Index into @c g_tripleTriadCardStats. */
     /* 0x03 */ u8  pad03;
     /* 0x04 */ u8  owner;     /**< Player 0 or 1. */
     /* 0x05 */ u8  pad05[3];
 } TripleTriadBoardSlot;
+
+/** @brief Bits in @c TripleTriadBoardSlot.flags. */
+#define TT_CELL_WALL          0x0001  /**< Sentinel border slot (rank-A vs wall triggers Same-Wall). */
+#define TT_CELL_OCCUPIED      0x0002  /**< A card has been placed in this slot. */
+#define TT_CELL_JUST_PLACED   0x0004  /**< Placed this turn; triggers rule evaluation. */
+#define TT_CELL_CAP_FROM_BASE 0x0008  /**< Shift left by @c dir (0..3) for captured-from-direction bit. */
+#define TT_CELL_CAP_FROM_UP   0x0008
+#define TT_CELL_CAP_FROM_DOWN 0x0010
+#define TT_CELL_CAP_FROM_LEFT 0x0020
+#define TT_CELL_CAP_FROM_RIGHT 0x0040
+#define TT_CELL_SAME_MATCHED  0x0080  /**< Matched in Same-rule pass 1, or "Same fired here" on the placer. */
+#define TT_CELL_PLUS_COMBO    0x0100  /**< Involved in a Plus-rule combo this turn. */
 
 /**
  * @brief Per-card stat block (8 bytes) — one entry of @c g_tripleTriadCardStats.
@@ -1082,8 +1094,40 @@ typedef struct {
 
 /** @brief Number of columns per row, including the 1-cell sentinel border. */
 #define TT_BOARD_COLS  5
+/** @brief Number of rows in the board, including sentinel borders. */
+#define TT_BOARD_ROWS  5
+
+/**
+ * @brief Full 5x5 Triple Triad board (rows × cols, 200 bytes total).
+ *
+ * The active play area is at rows/cols 1..3; the 0th and 4th rows/cols
+ * are sentinel slots with @c flags=0 used to keep neighbor lookups
+ * branch-free at the edges of the play area.
+ */
+typedef struct {
+    /* 0x00 */ TripleTriadBoardSlot cells[TT_BOARD_ROWS][TT_BOARD_COLS];
+} TripleTriadBoard;
+
+/** @brief 4-cardinal direction indices into @c g_tripleTriadDirectionOffsets and
+ *         @c TripleTriadCard.sides[]. The pairing @c dir^1 yields the opposite. */
+typedef enum {
+    TT_DIR_UP    = 0,
+    TT_DIR_DOWN  = 1,
+    TT_DIR_LEFT  = 2,
+    TT_DIR_RIGHT = 3,
+    TT_DIR_COUNT = 4
+} TripleTriadDir;
+
+/** @brief Rank value that triggers the Same-Wall rule when facing a wall. */
+#define TT_RANK_A          0x0A
+
+/** @brief Bits in @c g_tripleTriadRules controlling which optional rules are active. */
+#define TT_RULE_SAME       0x02   /**< Same rule enabled. */
+#define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
+#define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */
 
 extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats table (~110 cards). */
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
+extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
 
 #endif /* BATTLE_H */

@@ -47,7 +47,7 @@ extern u8 D_801C2DD0[];
 extern u8 D_8012E66C[];
 extern u8 D_80158680[];
 extern u8 D_801A2CE6;
-extern s32 D_801A2C54;
+extern s32 g_tripleTriadRules;
 
 /** @brief Call func_80098C44 with D_801D3C58 and a0. */
 void func_8009E248(s32 a0) {
@@ -183,7 +183,7 @@ extern s32 func_8009FAF8(s32 a0);
  * State 0: warmup. Calls func_800A030C(0xF) once, ticks 15 frames.
  * State 1: setup. Calls func_8009FAF8(counter) per counter, polls
  *          func_80098D28 until ready; tries counter 0..1, then branches
- *          to state 2 (if D_801A2C54 & 1) or state 4.
+ *          to state 2 (if g_tripleTriadRules & 1) or state 4.
  * State 2: clear sweep. Every 5 ticks, marks queued actions in
  *          D_801D3EC0[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
@@ -223,7 +223,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
                 ctx->subState = 0;
                 break;
             }
-            if (D_801A2C54 & 1) {
+            if (g_tripleTriadRules & 1) {
                 ctx->state = 2;
                 ctx->subState = 0;
                 break;
