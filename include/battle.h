@@ -998,4 +998,52 @@ extern void setSfxEntryVolume(s32 idx, s32 val);
 extern void setSfxPitch(s32 idx, s32 val);
 extern void setSfxField2F(s32 idx, s32 val);
 
+/* ======================================================================== */
+/* Triple Triad (card mini-game, played inside the battle overlay)          */
+/* ======================================================================== */
+
+/**
+ * @brief Cell in the Triple Triad board.
+ *
+ * Stored in a 5-wide grid with the 3x3 active play area at rows/cols 1..3
+ * and a 1-cell sentinel border (always flags=0) so neighbor lookups at the
+ * edges fall through without bounds checks.
+ */
+typedef struct {
+    /* 0x00 */ u16 flags;     /**< bit 0x2=occupied, 0x4=just placed, 0x100=in combo this turn,
+                                  bits 0x8/0x10/0x20/0x40 = captured-from-direction marks. */
+    /* 0x02 */ u8  cardId;    /**< Index into @c gCardStats. */
+    /* 0x03 */ u8  pad03;
+    /* 0x04 */ u8  owner;     /**< Player 0 or 1. */
+    /* 0x05 */ u8  pad05[3];
+} TTCell;
+
+/** @brief Card stats entry (8 bytes per card, indexed by cardId). */
+typedef struct {
+    /* 0x00 */ u8 sides[4];   /**< Edge ranks 1..10 in order {top, bottom, left, right}.
+                                  Layout is chosen so @c i^1 yields the opposite edge. */
+    /* 0x04 */ u8 pad04[4];   /**< Element / level / other metadata. */
+} TTCard;
+
+/** @brief 4-cardinal neighbor offset. */
+typedef struct {
+    /* 0x00 */ s16 dx;
+    /* 0x02 */ s16 dy;
+} TTDir;
+
+/** @brief One slot in the per-cell edge-sum histogram (Plus rule). */
+typedef struct {
+    /* 0x00 */ u8 count;      /**< How many neighbors produced this edge sum. */
+    /* 0x01 */ u8 dirMask;    /**< Bitmask of which neighbor directions hit this sum. */
+} TTSumBucket;
+
+/** @brief Number of columns per row, including the 1-cell sentinel border. */
+#define TT_BOARD_COLS  5
+
+extern TTCard D_801827E4[];       /**< Card stats table (~110 cards). */
+extern TTDir  D_80182D44[4];      /**< Neighbor offsets: UP, DOWN, LEFT, RIGHT
+                                       (ordered so @c i^1 = opposite direction). */
+#define gCardStats   D_801827E4
+#define gDirOffsets  D_80182D44
+
 #endif /* BATTLE_H */

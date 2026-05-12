@@ -289,7 +289,91 @@ INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C9D4);
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009CB10);
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009CD38);
+/**
+ * @brief Triple Triad Plus-rule resolver.
+ *
+ * Walks the 3x3 active play area; for each newly-placed card (@c flags & 0x4),
+ * builds a histogram of @c (myEdge + neighborOppositeEdge) sums across the
+ * 4 cardinal neighbors. If any sum is hit by >=2 neighbors, the Plus rule
+ * fires and those neighbors are captured (owner flipped, capture-direction
+ * bit set in @c flags) provided they aren't already on the placer's side.
+ *
+ * The 5-wide board layout with a 1-cell sentinel border means neighbor
+ * lookups at the edges fall through cleanly without bounds checks.
+ *
+ * @param board The 5xN Triple Triad board (typically @c D_801D3398).
+ * @return Number of cards captured this call.
+ */
+s32 applyPlusRule(TTCell board[][TT_BOARD_COLS]) {
+    s32 winningSum;
+    s32 captures;
+    s32 row, col, i;
+    s32 maxCount;
+    s32 edgeSum;
+    s32 nbrCol;
+    u8 cellOwner;
+    TTSumBucket *bucket;
+    TTCell *cell;
+    TTCell *neighbor;
+    TTCard *cellCard;
+    TTDir *offset;
+    TTSumBucket sumHist[21];   /* indexed by edge-sum value (0..20) */
+
+    captures = 0;
+
+    for (row = 1; row < 4; row++) {
+        for (col = 1; col < 4; col++) {
+            cell = &board[row][col];
+            if (cell->flags & 0x4) {
+                cellCard = &gCardStats[cell->cardId];
+                cellOwner = cell->owner;
+
+                for (i = 0; i < 21; i++) {
+                    sumHist[i].count = 0;
+                    sumHist[i].dirMask = 0;
+                }
+
+                maxCount = 0;
+                for (i = 0; i < 4; i++) {
+                    offset = &gDirOffsets[i];
+                    nbrCol = col + offset->dx;
+                    neighbor = &board[row + offset->dy][nbrCol];
+                    if (neighbor->flags & 0x2) {
+                        edgeSum = cellCard->sides[i] +
+                                  gCardStats[neighbor->cardId].sides[i ^ 1];
+                        bucket = &sumHist[edgeSum];
+                        bucket->count++;
+                        bucket->dirMask |= 1 << i;
+                        if (bucket->count > maxCount) {
+                            maxCount = bucket->count;
+                            winningSum = edgeSum;
+                        }
+                    }
+                }
+
+                if (maxCount >= 2) {
+                    for (i = 0; i < 4; i++) {
+                        offset = &gDirOffsets[i];
+                        nbrCol = col + offset->dx;
+                        neighbor = &board[row + offset->dy][nbrCol];
+                        if ((neighbor->flags & 0x2) &&
+                            ((sumHist[winningSum].dirMask >> i) & 1)) {
+                            neighbor->flags |= 0x100;
+                            if (neighbor->owner != cellOwner) {
+                                neighbor->owner = cellOwner;
+                                neighbor->flags |= 1 << (i + 3);
+                                captures++;
+                                cell->flags |= 0x100;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return captures;
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009CF5C);
 
