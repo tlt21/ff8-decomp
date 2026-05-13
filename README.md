@@ -1,6 +1,11 @@
-## Final Fantasy VIII Decompilation Project
+<p align="left">
+  <a href="https://github.com/roengstrom/ff8-decomp">
+    <img src="images/logo.png" alt="Final Fantasy VIII Decompilation Project" width="600">
+  </a>
+</p>
 
-A decompilation of Final Fantasy VIII (PS1, USA — `SLUS_008.92`).
+## About
+This is a work-in-progress decompilation project of Final Fantasy VIII (PS1, USA — `SLUS_008.92`).
 
 ## Progress
 
