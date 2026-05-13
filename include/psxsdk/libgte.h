@@ -50,6 +50,10 @@ void SetFarColor(s32 rfc, s32 gfc, s32 bfc);
 
 VECTOR *ApplyMatrixLV(MATRIX *m, VECTOR *v0, VECTOR *v1);
 s32 RotTransPers(SVECTOR *v0, s32 *sxy, s32 *p, s32 *flag);
+s32 RotTransPers4(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *v3,
+                  s32 *sxy0, s32 *sxy1, s32 *sxy2, s32 *sxy3,
+                  s32 *p, s32 *flag);
+s32 NormalClip(s32 sxy0, s32 sxy1, s32 sxy2);
 
 /* --- GTE color/lighting --- */
 

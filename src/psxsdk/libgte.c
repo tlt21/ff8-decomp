@@ -215,7 +215,7 @@ INCLUDE_ASM("asm/nonmatchings/psxsdk/libgte", RotTransPers3);
 
 INCLUDE_ASM("asm/nonmatchings/psxsdk/libgte", RotTrans);
 
-INCLUDE_ASM("asm/nonmatchings/psxsdk/libgte", func_80040EA4);
+INCLUDE_ASM("asm/nonmatchings/psxsdk/libgte", NormalClip);
 
 INCLUDE_ASM("asm/nonmatchings/psxsdk/libgte", RotTransPers4);
 

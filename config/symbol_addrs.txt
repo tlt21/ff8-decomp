@@ -871,6 +871,7 @@ SquareSL0 = 0x80040DB4;
 RotTransPers = 0x80040DE4;
 RotTransPers3 = 0x80040E14;
 RotTrans = 0x80040E74;
+NormalClip = 0x80040EA4;
 RotTransPers4 = 0x80040ED4;
 RotColorDpq = 0x80040F54;
 TransposeMatrix = 0x80040FA4;

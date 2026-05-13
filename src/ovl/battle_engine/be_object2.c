@@ -9,6 +9,13 @@ extern u8 D_801D3C58[];
 extern s32 D_801D3328;
 extern s32 func_8009BDC0();
 
+/* SVECTOR tables used by the card render path (func_8009AE6C). */
+extern SVECTOR D_80182C30[4];   /* main card-face quad corners */
+extern SVECTOR D_80182C50[4];   /* outer border quad corners */
+extern SVECTOR D_80182C70[4];   /* per-corner offsets used per rank digit */
+extern SVECTOR D_80182C90[4];   /* per-rank digit center positions */
+extern SVECTOR D_80182CD0[4];   /* element marker quad corners */
+
 /* Substate handlers dispatched from func_8009BAF4. Same names exist in
  * the battle_code overlay with different signatures; keep these as
  * file-local externs so the two overlays don't collide. */
@@ -194,6 +201,172 @@ void func_8009AD00(void) {
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009AD24);
 
+/**
+ * @brief Render one Triple Triad card (up to 4 ranks + element marker +
+ *        body shading + gradient border, or a single back-face quad).
+ *
+ * Allocates a 60-byte @c CardRenderWork buffer and projects the card
+ * outline through the GTE via @c RotTransPers4. If the projected normal
+ * is backfacing (@c NormalClip returns negative), emits a single
+ * textured POLY_FT4 with the card-back UVs. Otherwise:
+ *  - @c flags @c & @c 0x02 — emit 4 POLY_FT4s for the rank digits.
+ *  - @c flags @c & @c 0x10 (and @c card->element @c != @c 0) — emit
+ *    one POLY_FT4 for the element marker.
+ *  - Always emit the card-body shading POLY_FT4 with per-card UVs and
+ *    a POLY_G4 gradient border (palette picked by @c flags @c & @c 0x20
+ *    / @c 0x01).
+ *
+ * @verbatim
+ * void *func_8009AE6C(u8 cardId, s32 flags, void *ot, void *out) {
+ *     CardRenderWork *work;
+ *     TripleTriadCard *card;
+ *     POLY_FT4 *ftPrim;
+ *     POLY_G4  *gPrim;
+ *     s32 baseColor;
+ *     s32 transBit;
+ *     s32 i, j;
+ *
+ *     work = func_80098B80(0x3C);
+ *
+ *     if (flags & 0x20) {
+ *         baseColor = 0x2C404040;
+ *     } else {
+ *         baseColor = 0x2C808080;
+ *     }
+ *     if (flags & 0x4) {
+ *         transBit = 0x02000000;
+ *         baseColor |= transBit;
+ *     } else {
+ *         transBit = 0;
+ *     }
+ *
+ *     card = &g_tripleTriadCardStats[cardId];
+ *
+ *     RotTransPers4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
+ *                   &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3],
+ *                   &work->P, &work->flag);
+ *
+ *     if (NormalClip(work->outXY[0], work->outXY[1], work->outXY[2]) < 0) {
+ *         ftPrim = (POLY_FT4 *)out;
+ *         ftPrim->tag = 0x09000000;
+ *         *(s32 *)&ftPrim->r0 = transBit | 0x2C808080;
+ *         *(s32 *)&ftPrim->x0 = work->outXY[0];
+ *         *(s32 *)&ftPrim->x1 = work->outXY[1];
+ *         *(s32 *)&ftPrim->x2 = work->outXY[2];
+ *         *(s32 *)&ftPrim->x3 = work->outXY[3];
+ *         ftPrim->tpage = 0x9D;
+ *         ftPrim->clut  = 0x3FF0;
+ *         ftPrim->u0 = 0x3F;  ftPrim->v0 = 0xC0;
+ *         ftPrim->u1 = 0;     ftPrim->v1 = 0xC0;
+ *         ftPrim->u2 = 0x3F;  ftPrim->v2 = 0xFF;
+ *         ftPrim->u3 = 0;     ftPrim->v3 = 0xFF;
+ *         func_8004D584(ot, ftPrim);
+ *         out = ftPrim + 1;
+ *     } else {
+ *         if (flags & 0x2) {
+ *             for (i = 0; i < 4; i++) {
+ *                 for (j = 0; j < 4; j++) {
+ *                     work->digitVerts[j].vx = D_80182C90[i].vx + D_80182C70[j].vx;
+ *                     work->digitVerts[j].vy = D_80182C90[i].vy + D_80182C70[j].vy;
+ *                     work->digitVerts[j].vz = D_80182C90[i].vz + D_80182C70[j].vz;
+ *                 }
+ *                 ftPrim = (POLY_FT4 *)out;
+ *                 RotTransPers4(&work->digitVerts[0], &work->digitVerts[1],
+ *                               &work->digitVerts[2], &work->digitVerts[3],
+ *                               (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1,
+ *                               (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
+ *                               &work->P, &work->flag);
+ *                 ftPrim->tag = 0x09000000;
+ *                 *(s32 *)&ftPrim->r0 = transBit | 0x2C808080;
+ *                 ftPrim->clut  = 0x3800;
+ *                 ftPrim->tpage = 0xC;
+ *                 {
+ *                     u8 rank = card->sides[i];
+ *                     ftPrim->u0 = rank * 16;        ftPrim->v0 = 0;
+ *                     ftPrim->u1 = rank * 16 + 11;   ftPrim->v1 = 0;
+ *                     ftPrim->u2 = rank * 16;        ftPrim->v2 = 0xB;
+ *                     ftPrim->u3 = rank * 16 + 11;   ftPrim->v3 = 0xB;
+ *                 }
+ *                 func_8004D584(ot, ftPrim);
+ *                 out = ftPrim + 1;
+ *             }
+ *         }
+ *
+ *         if ((flags & 0x10) && card->element != 0) {
+ *             s32 bit = 0;
+ *             while (((card->element >> bit) & 1) == 0 && bit < 8) {
+ *                 bit++;
+ *             }
+ *             ftPrim = (POLY_FT4 *)out;
+ *             RotTransPers4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
+ *                           (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1,
+ *                           (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
+ *                           &work->P, &work->flag);
+ *             ftPrim->tag = 0x09000000;
+ *             *(s32 *)&ftPrim->r0 = 0x2C808080;
+ *             ftPrim->tpage = 0xC;
+ *             ftPrim->clut  = (bit + 0xE1) << 6;
+ *             {
+ *                 s32 uLeft = (bit % 4) * 64;
+ *                 s32 vTop  = (bit / 4) * 16 + 16;
+ *                 ftPrim->u0 = uLeft;       ftPrim->v0 = vTop;
+ *                 ftPrim->u1 = uLeft + 15;  ftPrim->v1 = vTop;
+ *                 ftPrim->u2 = uLeft;       ftPrim->v2 = vTop + 15;
+ *                 ftPrim->u3 = uLeft + 15;  ftPrim->v3 = vTop + 15;
+ *             }
+ *             func_8004D584(ot, ftPrim);
+ *             out = ftPrim + 1;
+ *         }
+ *
+ *         ftPrim = (POLY_FT4 *)out;
+ *         ftPrim->tag = 0x09000000;
+ *         *(s32 *)&ftPrim->r0 = baseColor | 0x2C000000;
+ *         *(s32 *)&ftPrim->x0 = work->outXY[0];
+ *         *(s32 *)&ftPrim->x1 = work->outXY[1];
+ *         *(s32 *)&ftPrim->x2 = work->outXY[2];
+ *         *(s32 *)&ftPrim->x3 = work->outXY[3];
+ *         {
+ *             s32 uLeft = (cardId & 0x1) << 6;
+ *             s32 vTop  = (cardId << 5) & 0xC0;
+ *             ftPrim->u0 = uLeft;          ftPrim->v0 = vTop;
+ *             ftPrim->u1 = uLeft + 0x3F;   ftPrim->v1 = vTop;
+ *             ftPrim->u2 = uLeft;          ftPrim->v2 = vTop + 0x3F;
+ *             ftPrim->u3 = uLeft + 0x3F;   ftPrim->v3 = vTop + 0x3F;
+ *             ftPrim->tpage = (((cardId >> 1) + 0xC8) << 6) | ((((cardId & 0x1) << 7) + 0x300) >> 4);
+ *             ftPrim->clut  = ((cardId >> 3) + 0x10) | 0x80;
+ *         }
+ *         func_8004D584(ot, ftPrim);
+ *         out = ftPrim + 1;
+ *
+ *         {
+ *             u32 color0, color1, color2;
+ *             gPrim = (POLY_G4 *)out;
+ *             RotTransPers4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
+ *                           (s32 *)&gPrim->x0, (s32 *)&gPrim->x1,
+ *                           (s32 *)&gPrim->x2, (s32 *)&gPrim->x3,
+ *                           &work->P, &work->flag);
+ *             gPrim->tag = 0x08000000;
+ *             if (flags & 0x20) {
+ *                 color0 = 0x38807060; color1 = 0x807060; color2 = 0x402018;
+ *             } else if (flags & 0x1) {
+ *                 color0 = 0x38FFE0C0; color1 = 0xFFE0C0; color2 = 0x804030;
+ *             } else {
+ *                 color0 = 0x38E0C0FF; color1 = 0xE0C0FF; color2 = 0x403080;
+ *             }
+ *             *(u32 *)&gPrim->r0 = color0;
+ *             *(u32 *)&gPrim->r1 = color1;
+ *             *(u32 *)&gPrim->r2 = color2;
+ *             *(u32 *)&gPrim->r3 = color2;
+ *             func_8004D584(ot, gPrim);
+ *             out = gPrim + 1;
+ *         }
+ *     }
+ *
+ *     func_80098BA0(0x3C);
+ *     return out;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009AE6C);
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009B3EC);

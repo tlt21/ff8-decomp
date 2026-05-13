@@ -1212,6 +1212,22 @@ typedef struct {
 /** @brief Global 5x5 Triple Triad board (sentinel-padded, 25 slots flat). */
 extern TripleTriadBoardSlot D_801D3398[TT_BOARD_ROWS * TT_BOARD_COLS];
 
+/**
+ * @brief 60-byte work buffer staged by @c func_80098B80 for one card
+ *        render pass (used by @c func_8009AE6C and related helpers).
+ *
+ * Holds the 4 digit-corner SVECTORs computed for each rank inside the
+ * digit loop, the 4 transformed screen positions of the card outline
+ * (from @c RotTransPers4), and the GTE P/flag outputs.
+ */
+typedef struct {
+    /* 0x00 */ SVECTOR digitVerts[4];   /**< Per-rank digit quad corners. */
+    /* 0x20 */ s32     outXY[4];         /**< Packed @c (s16 x, s16 y) screen verts. */
+    /* 0x30 */ s32     P;                /**< RotTransPers4 perspective output. */
+    /* 0x34 */ s32     flag;             /**< RotTransPers4 flag output. */
+    /* 0x38 */ u8      pad38[4];
+} CardRenderWork;                        /* 60 bytes */
+
 /** @brief 4-cardinal direction indices into @c g_tripleTriadDirectionOffsets and
  *         @c TripleTriadCard.sides[]. The pairing @c dir^1 yields the opposite. */
 typedef enum {
