@@ -1170,7 +1170,65 @@ void func_8009C12C(BattleObject *entity) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C440);
+/**
+ * @brief Emit a 62x62 semi-transparent gouraud quad over a card-effect node.
+ *
+ * Builds a @c POLY_G4 (semi-transparent code 0x3A) plus a @c DR_TPAGE in the
+ * caller's primitive buffer and links both into @p ot. Each of the four
+ * corners gets its own colour via @c DpqColor — the depth-queue input is
+ * @c rsin(angle + D_80182D30[i]) clamped to @c >=0, so the corners
+ * brighten/dim out of phase with each other as @p angle rotates.
+ *
+ * The quad spans pixels (spriteX+0xA1, spriteY+0x51) to (+0xDF, +0x8F)
+ * relative to the @c BattleAnimNode anchor.
+ *
+ * @param node     Display-list node providing the screen-space anchor
+ *                 (@c spriteX / @c spriteY at offsets 0x14 / 0x18).
+ * @param angle    Animation phase added to each corner's @c D_80182D30 offset.
+ * @param ot       Ordering-table bucket to link the two primitives into.
+ * @param primBuf  Caller's primitive buffer; the @c POLY_G4 is written at
+ *                 offset 0 (36 bytes) and the @c DR_TPAGE at offset 0x24
+ *                 (8 bytes).
+ * @return Pointer past the emitted primitives (@p primBuf + 0x2C).
+ */
+extern s32     D_80182D30[];     /**< Per-corner phase offsets for the gouraud flicker. */
+extern CVECTOR D_80182D40;        /**< Base colour passed to @c DpqColor. */
+extern CVECTOR *D_801D3390;       /**< Scratch walker: current vertex-colour slot in the @c POLY_G4. */
+
+u8 *func_8009C440(BattleAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
+    POLY_G4 *poly = (POLY_G4 *)primBuf;
+
+    D_801D3390 = ((CVECTOR *)poly) + 1;
+    SetFarColor(0xFF, 0xFF, 0xFF);
+
+    {
+        s32 sinVal;
+        s32 i;
+        for (i = 0; i < 4; i++) {
+            sinVal = rsin(angle + D_80182D30[i]);
+            if (sinVal < 0) sinVal = 0;
+            DpqColor(&D_80182D40, sinVal, D_801D3390);
+            D_801D3390 += 2;
+        }
+    }
+
+    poly->tag  = 0x08000000;
+    poly->code = 0x3A;
+
+    poly->x0 = poly->x2 = node->x.spriteX + 0xA1;
+    poly->x1 = poly->x3 = node->x.spriteX + 0xDF;
+    poly->y0 = poly->y1 = node->y.spriteY + 0x51;
+    poly->y2 = poly->y3 = node->y.spriteY + 0x8F;
+
+    AddPrim(ot, poly);
+
+    {
+        DR_TPAGE *tpage = (DR_TPAGE *)(poly + 1);
+        SetDrawTPage(tpage, 1, 1, 0x20);
+        AddPrim(ot, tpage);
+        return (u8 *)(tpage + 1);
+    }
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C59C);
 
