@@ -17,6 +17,10 @@ extern u8 D_801A2C70[2];     /* Per-player "type" byte; 3 selects the offset-han
 extern void  func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
 extern void *func_80098C44(u8 *list, s32 callback);
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
+extern s32   func_8009A7A4(s32 a, s32 b, s32 c);
+extern void  func_8009A878(s32 a, s32 b);
+extern void  func_800A233C(s32 a);
+extern void  func_800A2114(u8 entityType);
 
 /* SVECTOR tables used by the card render path (func_8009AE6C). */
 extern SVECTOR D_80182C30[4];   /* main card-face quad corners */
@@ -29,7 +33,7 @@ extern SVECTOR D_80182CF0[4];   /* shadow quad corners (card drop-shadow) */
 /* Substate handlers dispatched from func_8009BAF4. Same names exist in
  * the battle_code overlay with different signatures; keep these as
  * file-local externs so the two overlays don't collide. */
-extern void func_8009B690(void *entry, s32 idx);
+extern void func_8009B690(SubstateSlot *slot, s32 idx);
 extern void func_8009B7B4(void *entry, s32 idx);
 extern void func_8009B8D8(void *entry, s32 idx);
 
@@ -542,17 +546,68 @@ void func_8009B4CC(s32 mode, SubstateSlot *slot) {
 /**
  * @brief Look up the active object and initialize its handler.
  *
- * Gets an index via func_8009A7A4. If non-negative, passes the slot's
- * @c entityType byte to func_800A2114.
+ * Forwards @p a / @p b / @p c through to @c func_8009A7A4 (the function
+ * never touches a-regs itself, so the args land in the helper unchanged).
+ * If the helper returns a valid index, passes the slot's @c entityType
+ * byte to @c func_800A2114.
+ *
+ * @param a Search key (passed through to @c func_8009A7A4 as arg 0).
+ * @param b Filter mask (passed through as arg 1).
+ * @param c Row/column key (passed through as arg 2).
  */
-void func_8009B644(void) {
-    s32 idx = func_8009A7A4();
+void func_8009B644(s32 a, s32 b, s32 c) {
+    s32 idx = func_8009A7A4(a, b, c);
     if (idx >= 0) {
         func_800A2114(D_801D31C0[idx].entityType);
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009B690);
+/**
+ * @brief Substate-1 handler: cursor left/right movement on the substate row.
+ *
+ * Reads input bits from @c D_801D332E and the controller mask
+ * @c D_801D3328 to update @c slot->field2 (the row cursor) and/or queue a
+ * sub-dispatch:
+ *
+ *  - bit 0x1000 (left) : tries @c func_8009A7A4 with @c field2-1; if the
+ *    candidate is valid (returns @c >= 0), plays the move SFX via
+ *    @c func_800A233C(1), decrements @c field2, and falls through to the
+ *    common dispatch.
+ *  - bit 0x4000 (right): same pattern, with @c field2+1.
+ *  - bit 0x2000 (select) AND @c D_801D3328 has bit 0x8 set → store
+ *    @c 3 into @c D_801D3358 and return (skip the dispatch).
+ *  - bit 0x2000 (select) AND @c D_801D3328 has bit 0x4 set → store
+ *    @c 2 into @c D_801D3358 and return.
+ *
+ * The common dispatch at the bottom calls @c func_8009A878(0, field2) and
+ * @c func_8009B644(0, 0, field2) — the latter forwards its three args
+ * through to @c func_8009A7A4 inside the helper.
+ *
+ * @param slot Substate parameter slot — @c field2 is the row cursor.
+ * @param idx  Substate index (unused here; preserved for the dispatcher
+ *             callback signature).
+ */
+void func_8009B690(SubstateSlot *slot, s32 idx) {
+    if ((D_801D332E & 0x1000) && func_8009A7A4(0, 0, slot->field2 - 1) >= 0) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 - 1;
+    } else if ((D_801D332E & 0x4000) && func_8009A7A4(0, 0, slot->field2 + 1) >= 0) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 + 1;
+    } else if (D_801D332E & 0x2000) {
+        if (D_801D3328 & 0x8) {
+            D_801D3358 = 3;
+            return;
+        }
+        if (D_801D3328 & 0x4) {
+            D_801D3358 = 2;
+            return;
+        }
+    }
+
+    func_8009A878(0, slot->field2);
+    func_8009B644(0, 0, slot->field2);
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009B7B4);
 
