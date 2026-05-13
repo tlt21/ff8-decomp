@@ -2,13 +2,42 @@
 
 A decompilation of Final Fantasy VIII (PS1, USA — `SLUS_008.92`).
 
+## Progress
+| Binary | Functions | Code |
+|---|---:|---:|
+| Main Executable | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmain-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmain-code.json) |
+| menumain.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenumain-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenumain-code.json) |
+| menucfg.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenucfg-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenucfg-code.json) |
+| menupty.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenupty-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenupty-code.json) |
+| menusts.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenusts-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenusts-code.json) |
+| menuabl.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuabl-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuabl-code.json) |
+| menushop.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenushop-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenushop-code.json) |
+| menuext.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuext-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuext-code.json) |
+| menuitem.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuitem-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenuitem-code.json) |
+| menumgc.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenumgc-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenumgc-code.json) |
+| menugf.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenugf-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenugf-code.json) |
+| menujnc2.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenujnc2-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenujnc2-code.json) |
+| menusav.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenusav-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenusav-code.json) |
+| menucrd.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenucrd-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenucrd-code.json) |
+| menututo.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenututo-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenututo-code.json) |
+| menutmag.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutmag-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutmag-code.json) |
+| menutips.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutips-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutips-code.json) |
+| menutest.ovl | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutest-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fmenutest-code.json) |
+| field_init.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Ffield-init-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Ffield-init-code.json) |
+| display_init.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fdisplay-init-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fdisplay-init-code.json) |
+| field_engine.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Ffield-engine-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Ffield-engine-code.json) |
+| battle_engine.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-engine-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-engine-code.json) |
+| battle_render.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-render-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-render-code.json) |
+| battle_code.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-code-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-code-code.json) |
+| world_engine.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fworld-engine-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fworld-engine-code.json) |
+
 ## Contact
 
 [Discord server](https://discord.gg/cUrPXfnh)
 
 ## Development
 
-Any help is greatly appreciated. Below are some basic steps to get started and building the project.
+Any help is greatly appreciated! Below are some basic steps to get started and building the project.
 
 1. **Clone the repo with submodules**:
    ```bash
