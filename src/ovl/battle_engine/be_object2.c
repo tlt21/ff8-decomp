@@ -34,8 +34,8 @@ extern SVECTOR D_80182CF0[4];   /* shadow quad corners (card drop-shadow) */
  * the battle_code overlay with different signatures; keep these as
  * file-local externs so the two overlays don't collide. */
 extern void func_8009B690(SubstateSlot *slot, s32 idx);
-extern void func_8009B7B4(void *entry, s32 idx);
-extern void func_8009B8D8(void *entry, s32 idx);
+extern void func_8009B7B4(SubstateSlot *slot, s32 idx);
+extern void func_8009B8D8(SubstateSlot *slot, s32 idx);
 
 /**
  * @brief Set up a battle object slot and cancel lower-priority siblings in its group.
@@ -609,9 +609,114 @@ void func_8009B690(SubstateSlot *slot, s32 idx) {
     func_8009B644(0, 0, slot->field2);
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009B7B4);
+/**
+ * @brief Substate-2 handler: cursor left/right movement on the substate row.
+ *
+ * Mirror of @ref func_8009B690 but with @c a0=1 (substate-2 search key)
+ * and a different cancel mapping. Reads input bits from @c D_801D332E and
+ * the controller mask @c D_801D3328 to update @c slot->field2 (column
+ * cursor) and/or queue a sub-dispatch:
+ *
+ *  - bit 0x1000 (left) : tries @c func_8009A7A4(1, 0, field2-1); if valid,
+ *    play move SFX and decrement @c field2.
+ *  - bit 0x4000 (right): same pattern, with @c field2+1.
+ *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x8 set → @c D_801D3358
+ *    = 3 and return.
+ *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x2 set → @c D_801D3358
+ *    = 1 and return.
+ *
+ * Common dispatch: @c func_8009A878(1, field2) and
+ * @c func_8009B644(1, 0, field2).
+ *
+ * @param slot Substate parameter slot — @c field2 is the column cursor.
+ * @param idx  Substate index (unused; preserved for the dispatcher
+ *             callback signature).
+ */
+void func_8009B7B4(SubstateSlot *slot, s32 idx) {
+    if ((D_801D332E & 0x1000) && func_8009A7A4(1, 0, slot->field2 - 1) >= 0) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 - 1;
+    } else if ((D_801D332E & 0x4000) && func_8009A7A4(1, 0, slot->field2 + 1) >= 0) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 + 1;
+    } else if (D_801D332E & 0x8000) {
+        if (D_801D3328 & 0x8) {
+            D_801D3358 = 3;
+            return;
+        }
+        if (D_801D3328 & 0x2) {
+            D_801D3358 = 1;
+            return;
+        }
+    }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009B8D8);
+    func_8009A878(1, slot->field2);
+    func_8009B644(1, 0, slot->field2);
+}
+
+/**
+ * @brief Substate-3 handler: 2D cursor (row × column) with edge-wrap dispatch.
+ *
+ * Reads input bits from @c D_801D332E and the controller mask
+ * @c D_801D3328 to drive a row/column cursor (@c slot->field0 row,
+ * @c slot->field2 column):
+ *
+ *  - bit 0x8000 (up)    : @c field0--; if it doesn't underflow to @c -1,
+ *    play SFX. An underflow falls into the "row wrapped below 0" handler
+ *    at the bottom (clamps to 0 and conditionally sets @c D_801D3358=1).
+ *  - bit 0x2000 (down)  : @c field0++; if still less than 3, play SFX.
+ *    A value of 3+ falls into the "row past last" handler at the bottom
+ *    (clamps to 2 and conditionally sets @c D_801D3358=2).
+ *  - bit 0x1000 (left), only if up/down didn't fire: if @c field2 > 0,
+ *    play SFX and @c field2--.
+ *  - bit 0x4000 (right), only if up/down/left didn't fire: if
+ *    @c field2 < 2, play SFX and @c field2++.
+ *
+ * Row-wrap tail:
+ *  - if @c field0 < 0  : set @c field0 = 0; if @c D_801D3328 has bit 0x2
+ *    set, @c D_801D3358 = 1 (queue submenu).
+ *  - if @c field0 >= 3 : set @c field0 = 2; if @c D_801D3328 has bit 0x4
+ *    set, @c D_801D3358 = 2.
+ *
+ * Common dispatch at the end: @c func_8009B644(2, field0, field2).
+ *
+ * @param slot Substate parameter slot — @c field0 row, @c field2 column.
+ * @param idx  Substate index (unused; preserved for the dispatcher
+ *             callback signature).
+ */
+void func_8009B8D8(SubstateSlot *slot, s32 idx) {
+    if (D_801D332E & 0x8000) {
+        slot->field0 = slot->field0 - 1;
+        if (slot->field0 >= 0) {
+            func_800A233C(1);
+        }
+    } else if (D_801D332E & 0x2000) {
+        slot->field0 = slot->field0 + 1;
+        if (slot->field0 < 3) {
+            func_800A233C(1);
+        }
+    } else if ((D_801D332E & 0x1000) && slot->field2 > 0) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 - 1;
+    } else if ((D_801D332E & 0x4000) && slot->field2 < 2) {
+        func_800A233C(1);
+        slot->field2 = slot->field2 + 1;
+    }
+
+    if (slot->field0 < 0) {
+        slot->field0 = 0;
+        if (D_801D3328 & 0x2) {
+            D_801D3358 = 1;
+        }
+    } else if (slot->field0 >= 3) {
+        slot->field0 = 2;
+        if (D_801D3328 & 0x4) {
+            D_801D3358 = 2;
+        }
+    }
+
+    func_8009B644(2, slot->field0, slot->field2);
+}
 
 /**
  * @brief Adjust a battle speed/volume parameter based on controller input.
