@@ -7,9 +7,19 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +31,7 @@ jobs:
           git clone --depth=1 \
             https://x-access-token:${{ secrets.ORIGINALS_TOKEN }}@github.com/roengstrom/ff8-decomp-dependencies.git \
             /tmp/deps
-          cp -r /tmp/deps/original ./
+          cp -r /tmp/deps/original ./original
 
       - name: Install system dependencies
         run: |
@@ -52,8 +62,25 @@ jobs:
       - name: Generate progress report
         run: make report
 
-      - name: Upload progress report
+      - name: Generate progress site and badges
+        run: .venv/bin/python tools/generate_progress_site.py
+
+      - name: Upload progress report artifact
         uses: actions/upload-artifact@v4
         with:
           name: SLUS_008.92_report
           path: build/report.json
+
+      - name: Setup Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/deploy-pages@v4
