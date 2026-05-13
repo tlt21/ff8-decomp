@@ -1001,7 +1001,7 @@ typedef struct {
 extern SubstateSlot D_801D3340[6]; /**< Per-substate parameter table (one slot per substate 0..5). */
 extern u8  D_801D3358;     /**< Substate index (0..5). */
 extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
-extern s16 D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
+extern SubstateSlot D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
 
 /** @brief Battle-engine display-node spawner state (used by func_8009FED0). */
 extern s32 *D_801C2EB0;    /**< Display-list OT base — pointer-valued global; index by sort key. */

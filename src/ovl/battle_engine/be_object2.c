@@ -8,7 +8,33 @@ extern u8 D_801D3380[];
 extern u8 D_801D3798[];
 extern u8 D_801D3C58[];
 extern s32 D_801D3328;
-extern s32 func_8009BDC0();
+extern s32 D_801A2C74;
+extern u16 D_801C2EC4;
+extern u8  D_801C2DCA;
+
+/**
+ * @brief 20-byte linked-list node owned by the @c D_801D3380 list and
+ *        driven by the @ref func_8009BDC0 callback.
+ *
+ * @c state is a small dispatch index (0..3) for the card-selection
+ * cursor; @c fieldD and @c fieldE seed the row-cursor substate
+ * subscriptions; @c snapshot is a 4-byte mirror of the current
+ * @c D_801D3340 entry copied in when state 1 commits the choice.
+ */
+typedef struct {
+    u8           pad00[0xC];   /* linked-list header (flags / next / callback) */
+    u8           state;        /* 0x0C: dispatch state (0..3) */
+    u8           fieldD;       /* 0x0D: cursor row index seed */
+    u8           fieldE;       /* 0x0E: state byte forwarded to func_8009BD24 */
+    u8           pad0F;        /* 0x0F */
+    SubstateSlot snapshot;     /* 0x10: copy of D_801D335C after the user's pick */
+} SubstateMachineNode;
+
+extern s32  func_8009BDC0(SubstateMachineNode *p);
+extern void func_8009BD24(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
+extern void func_8009B4CC(s32 mode, SubstateSlot *slot);
+extern void func_8009C978(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void func_800A26C8(void);
 
 /* Per-player Triple Triad match state (region starts at 0x801A2C40). */
 extern u8 D_801A2C48[2][5];  /* Two players' 5-card hands (card ids). */
@@ -748,7 +774,7 @@ void func_8009BA4C(u16 *a0) {
         }
     }
 store:
-    D_801D335C = *a0;
+    D_801D335C.field0 = *a0;
 }
 
 /**
@@ -858,7 +884,109 @@ void func_8009BD24(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009BDC0);
+/**
+ * @brief Per-frame state machine for the player's Triple Triad card-selection cursor.
+ *
+ * Linked-list callback registered by @ref func_8009C010 on the
+ * @c D_801D3380 list. Drives a 4-state machine stored in @p p->state
+ * (offset @c 0x0C of the 20-byte node):
+ *
+ *  - state 0 : prime the column cursor for substate (@c fieldD+1) via
+ *              @ref func_8009BD24, then advance to state 1.
+ *  - state 1 : if @c D_801D3359 already equals the current state (= 1),
+ *              the selection has already been committed — bail with @c 0.
+ *              Otherwise probe the snapshot's column at @c D_801D335C.field2
+ *              via @ref func_8009A7A4: on success, copy
+ *              @c D_801D335C into the node's @c snapshot field, advance to
+ *              state 2 and play SFX 1; on failure, fall back to state 0.
+ *  - state 2 : arm row-cursor substate 3 via @ref func_8009BD24, advance
+ *              to state 3.
+ *  - state 3 : per-frame display tick:
+ *              - if @c D_801C2DCA is set, draw the snapshot via
+ *                @ref func_8009B4CC.
+ *              - update the active cursor entity via @ref func_8009A878.
+ *              - inspect @c D_801D3359 (= a UI trigger code):
+ *                  * @c 2 : commit the chosen card. If the destination
+ *                          board slot is already occupied (returned >= 0),
+ *                          play SFX @c 0x10 and stay; otherwise allocate
+ *                          a new battle entity, prime it with
+ *                          @ref setBattleObjectAction and @ref func_8009C978,
+ *                          play SFX 1, and return 2 (placement done).
+ *                  * @c 1 : exit (return 0).
+ *                  * @c 3 (matches current state) : cancel — play SFX 9,
+ *                          reset to state 0.
+ *
+ * Bails out at the very top if the global "battle paused" flag
+ * (@c D_801A2C74 bit @c 0x4) is clear AND @c D_801C2EC4 has bit @c 0x20
+ * set — calls @ref func_800A26C8 (the "open battle menu" handler) and
+ * returns 0 immediately.
+ *
+ * @param p Linked-list node owned by @c D_801D3380.
+ * @return  @c 0 normally / when bailing on commit; @c 2 once a card has
+ *          been placed on the board.
+ */
+s32 func_8009BDC0(SubstateMachineNode *p) {
+    s32 s1;
+
+    if (!(D_801A2C74 & 0x4) && (D_801C2EC4 & 0x20)) {
+        func_800A26C8();
+        return 0;
+    }
+
+    while (1) {
+        s1 = p->state;
+        switch (s1) {
+        case 0:
+            func_8009BD24(p->fieldD + 1, 0, p->fieldE, 2);
+            p->state = 1;
+            break;
+        case 1:
+            if (D_801D3359 == s1) return 0;
+            if (func_8009A7A4(p->fieldD, 0, D_801D335C.field2) >= 0) {
+                p->snapshot = D_801D335C;
+                p->state = 2;
+                func_800A233C(1);
+            } else {
+                p->state = 0;
+            }
+            break;
+        case 2:
+            func_8009BD24(3, 0, p->fieldE, 0);
+            p->state = 3;
+            break;
+        case 3: {
+            s32 trig;
+            if (D_801C2DCA != 0) {
+                func_8009B4CC(p->fieldD + 1, &p->snapshot);
+            }
+            func_8009A878(p->fieldD, p->snapshot.field2);
+            trig = D_801D3359;
+            switch (trig) {
+            case 2:
+                if (func_8009A7A4(2, D_801D335C.field0, D_801D335C.field2) < 0) {
+                    s32 entIdx = func_8009A7A4(p->fieldD, 0, p->snapshot.field2);
+                    setBattleObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
+                    func_8009C978((s32)D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
+                    func_800A233C(1);
+                    return 2;
+                }
+                func_800A233C(0x10);
+                p->state = trig;
+                break;
+            case 1:
+                return 0;
+            case 3:
+                if (trig == s1) {
+                    func_800A233C(9);
+                    p->state = 0;
+                }
+                break;
+            }
+            break;
+        }
+        }
+    }
+}
 
 /**
  * @brief Initialize the D_801D3380 linked list with a battle callback.
