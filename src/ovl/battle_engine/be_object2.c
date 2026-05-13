@@ -819,7 +819,44 @@ void func_8009BAF4(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009BD24);
+/**
+ * @brief Activate a substate slot and seed its column cursor.
+ *
+ * Latches the substate index and per-call control fields into the global
+ * tick state, OR-merging @p mask into @c D_801D3328 with the new
+ * substate's mask bit set. Then, for substates 1 and 2, the active column
+ * cursor (@c D_801D3340[idx].field2) is probed via @c func_8009A7A4 — if
+ * the current position is not valid, it's nudged by +1 to find a valid
+ * candidate.
+ *
+ *  - @c D_801D3358 = @p idx          (active substate index)
+ *  - @c D_801D3328 = @p mask | (1<<@p idx)  (cumulative subscribed-substate mask)
+ *  - @c D_801D3359 = 1               (arm completion)
+ *  - @c D_801D3338 = @p stateByte    (state byte)
+ *  - @c D_801D3334 = @p suppressFlags (completion-suppress flags)
+ *
+ * Substates 0 and 3..5 skip the cursor probe and return immediately.
+ *
+ * @param idx           Substate index (0..5).
+ * @param mask          Caller-supplied subscriber mask (this substate's bit
+ *                      is OR'd in before storing).
+ * @param stateByte     State byte to latch into @c D_801D3338.
+ * @param suppressFlags Completion-suppress flags to latch into @c D_801D3334.
+ */
+void func_8009BD24(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
+    D_801D3358 = idx;
+    D_801D3328 = mask | (1 << idx);
+    D_801D3359 = 1;
+    D_801D3338 = stateByte;
+    D_801D3334 = suppressFlags;
+
+    if (idx >= 3) return;
+    if (idx <= 0) return;
+
+    if (func_8009A7A4(idx - 1, 0, D_801D3340[idx].field2) < 0) {
+        D_801D3340[idx].field2 = D_801D3340[idx].field2 + 1;
+    }
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009BDC0);
 
