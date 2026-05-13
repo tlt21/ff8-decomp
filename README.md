@@ -1,6 +1,6 @@
-<p align="left">
+<p align="center">
   <a href="https://github.com/roengstrom/ff8-decomp">
-    <img src="images/logo.png" alt="Final Fantasy VIII Decompilation Project" width="600">
+    <img src="images/logo.png" alt="Final Fantasy VIII Decompilation Project" width="700">
   </a>
 </p>
 
