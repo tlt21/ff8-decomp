@@ -1,14 +1,16 @@
 import html
 import json
+import os
 import pathlib
 import re
+import urllib.parse
 from typing import Any
 
 REPORT_PATH = pathlib.Path("build/report.json")
 PUBLIC_DIR = pathlib.Path("public")
 BADGES_DIR = PUBLIC_DIR / "badges"
 
-REPO_PATH = ""
+PAGES_BASE_URL = os.environ["PAGES_BASE_URL"].rstrip("/")
 
 
 def slug(value: str) -> str:
@@ -42,6 +44,11 @@ def color(value: float) -> str:
     return "red"
 
 
+def shield_url(path: str) -> str:
+    endpoint = urllib.parse.quote(f"{PAGES_BASE_URL}/{path}", safe="")
+    return f"https://img.shields.io/endpoint?url={endpoint}"
+
+
 def write_json(path: pathlib.Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
@@ -62,6 +69,7 @@ def measure(measures: dict[str, Any], key: str) -> float:
 def main() -> None:
     report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
 
+    PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     BADGES_DIR.mkdir(parents=True, exist_ok=True)
 
     categories = report["categories"]
@@ -77,6 +85,7 @@ def main() -> None:
         write_badge(BADGES_DIR / f"{category_id}-data.json", data)
 
     overall = report["measures"]
+
     write_badge(BADGES_DIR / "overall-functions.json", measure(overall, "matched_functions_percent"))
     write_badge(BADGES_DIR / "overall-code.json", measure(overall, "matched_code_percent"))
     write_badge(BADGES_DIR / "overall-data.json", measure(overall, "matched_data_percent"))
@@ -94,11 +103,14 @@ def main() -> None:
         data = format_percent(measure(measures, "matched_data_percent"))
         code = format_percent(measure(measures, "matched_code_percent"))
 
+        functions_badge = shield_url(f"badges/{category_id}-functions.json")
+        data_badge = shield_url(f"badges/{category_id}-data.json")
+
         rows.append(f"""
           <tr>
             <td>{name}</td>
-            <td><img src="https://img.shields.io/endpoint?url=./badges/{category_id}-functions.json" alt="{name} functions"> {functions}</td>
-            <td><img src="https://img.shields.io/endpoint?url=./badges/{category_id}-data.json" alt="{name} data"> {data}</td>
+            <td><img src="{functions_badge}" alt="{name} functions"> {functions}</td>
+            <td><img src="{data_badge}" alt="{name} data"> {data}</td>
             <td>{code}</td>
           </tr>
         """)
@@ -129,6 +141,10 @@ def main() -> None:
 
     th {{
       background: #f6f8fa;
+    }}
+
+    img {{
+      vertical-align: middle;
     }}
   </style>
 </head>
