@@ -10,7 +10,10 @@ REPORT_PATH = pathlib.Path("build/report.json")
 PUBLIC_DIR = pathlib.Path("public")
 BADGES_DIR = PUBLIC_DIR / "badges"
 
-PAGES_BASE_URL = os.environ["PAGES_BASE_URL"].rstrip("/")
+PAGES_BASE_URL = os.environ.get(
+    "PAGES_BASE_URL",
+    "https://roengstrom.github.io/ff8-decomp"
+).rstrip("/")
 
 
 def slug(value: str) -> str:
@@ -78,11 +81,18 @@ def main() -> None:
         category_id = slug(category["id"])
         measures = category["measures"]
 
-        functions = measure(measures, "matched_functions_percent")
-        data = measure(measures, "matched_data_percent")
-
-        write_badge(BADGES_DIR / f"{category_id}-functions.json", functions)
-        write_badge(BADGES_DIR / f"{category_id}-data.json", data)
+        write_badge(
+            BADGES_DIR / f"{category_id}-functions.json",
+            measure(measures, "matched_functions_percent")
+        )
+        write_badge(
+            BADGES_DIR / f"{category_id}-data.json",
+            measure(measures, "matched_data_percent")
+        )
+        write_badge(
+            BADGES_DIR / f"{category_id}-code.json",
+            measure(measures, "matched_code_percent")
+        )
 
     overall = report["measures"]
 
@@ -97,21 +107,17 @@ def main() -> None:
     for category in categories:
         category_id = slug(category["id"])
         name = html.escape(category["name"])
-        measures = category["measures"]
-
-        functions = format_percent(measure(measures, "matched_functions_percent"))
-        data = format_percent(measure(measures, "matched_data_percent"))
-        code = format_percent(measure(measures, "matched_code_percent"))
 
         functions_badge = shield_url(f"badges/{category_id}-functions.json")
         data_badge = shield_url(f"badges/{category_id}-data.json")
+        code_badge = shield_url(f"badges/{category_id}-code.json")
 
         rows.append(f"""
           <tr>
             <td>{name}</td>
-            <td><img src="{functions_badge}" alt="{name} functions"> {functions}</td>
-            <td><img src="{data_badge}" alt="{name} data"> {data}</td>
-            <td>{code}</td>
+            <td><img src="{functions_badge}" alt="{name} functions"></td>
+            <td><img src="{data_badge}" alt="{name} data"></td>
+            <td><img src="{code_badge}" alt="{name} code"></td>
           </tr>
         """)
 
