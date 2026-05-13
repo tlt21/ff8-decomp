@@ -314,7 +314,7 @@ typedef struct {
     /* 0x1C */ s16 offX;         /**< Added to node @c baseX to produce world X. */
     /* 0x1E */ s16 offY;
     /* 0x20 */ s16 offZ;
-    /* 0x22 */ u16 offSort;      /**< Added to node @c sortKey. */
+    /* 0x22 */ s16 offSort;      /**< Added to node @c sortKey. */
 } BattleObject; /* 36 bytes */
 
 extern BattleObject D_801D31C0[10];

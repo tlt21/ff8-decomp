@@ -1055,7 +1055,123 @@ s32 func_8009C0F4(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C12C);
+/**
+ * @brief Per-frame transform for a card-effect @c BattleObject (state machine).
+ *
+ * Drives the per-frame animation update for a card's render state. The
+ * function is dispatched once per frame from @c func_8009AA68 and chooses
+ * its behavior from @c state (0..7):
+ *  - @b 0 / @b 6 — idle: no update this frame.
+ *  - @b 1 — open/flip sequence keyed by @c field02:
+ *      - frames 0..19: ease-in rotation via @c rsin (raises @c offY);
+ *        plays SFX 0x59 on the first frame.
+ *      - frames 20..24: hold (no visual change).
+ *      - frames 25..49: drop sequence: on frame 25 the @c param0..pad13
+ *        block (the source colour/index quartet at 0x10) is copied over
+ *        the active @c groupId..pad0F block at 0x0C, @c offSort sinks to
+ *        @c -9, then the next 24 frames sweep @c offY and @c offZ via
+ *        @c rsin/rcos.
+ *      - frame 50+: terminate (state=0, @c offSort cleared).
+ *  - @b 2..5 — slide-in trajectory: indexes a direction vector from
+ *    @c D_80182D10 (one of 4 cardinals) and moves @c posData/field18 along
+ *    that vector for 25 frames, with a small @c offZ bob and a single
+ *    @c initFlags^=1 toggle on frame 12. Frames 25..29 then settle to
+ *    @c offSort = 0; frame 30 terminates.
+ *  - @b 7 — short shake/twitch animation: 10-frame @c offY sweep via
+ *    @c rsin; on the last frame the cleanup clears @c offY / @c state /
+ *    @c field02 and increments @c priority (the byte at @c 0x0E).
+ *
+ * @param entity Battle object slot being driven this frame.
+ */
+typedef struct { u8 a, b, c, d; } Tetra4;
+extern SVECTOR D_80182D10[];
+
+void func_8009C12C(BattleObject *entity) {
+    s32 state;
+    s32 field02;
+    s32 t;
+
+    state = entity->state;
+    field02 = entity->field02;
+
+    switch (state) {
+    case 0:
+    case 6:
+        break;
+
+    case 1:
+        if (field02 < 20) {
+            if (field02 == 0) {
+                func_800A233C(0x59);
+            }
+            t = ((field02 + 1) * 4096) / 20;
+            entity->offY = -(rsin(t / 4) * 224) >> 12;
+            entity->angle = 4096;
+        } else {
+            field02 -= 20;
+            if (field02 < 5) {
+                /* hold */
+            } else {
+                field02 -= 5;
+                if (field02 < 25) {
+                    if (field02 == 0) {
+                        entity->posData[1] = 0;
+                        *(Tetra4 *)&entity->groupId = *(Tetra4 *)&entity->param0;
+                        entity->offSort = -9;
+                    }
+                    t = ((field02 + 1) * 4096) / 25;
+                    entity->offY = ((rsin(t / 4) * 224) >> 12) - 224;
+                    entity->offZ = (((4096 - rcos(t / 4)) * 128) >> 12) - 128;
+                    entity->angle = 0;
+                } else {
+                    entity->state = 0;
+                    entity->offSort = 0;
+                }
+            }
+        }
+        entity->field02++;
+        break;
+
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+        state -= 2;
+        if (field02 < 25) {
+            if (field02 == 12) {
+                entity->initFlags ^= 1;
+            }
+            t = ((field02 + 1) * 4096) / 25;
+            entity->offZ = -((rsin(t / 2) * 128) >> 12);
+            entity->offSort = -9;
+            entity->posData[0] = (D_80182D10[state].vx * t) >> 12;
+            entity->posData[1] = (D_80182D10[state].vy * t) >> 12;
+            entity->field18   = (D_80182D10[state].vz * t) >> 12;
+        } else {
+            field02 -= 25;
+            if (field02 < 5) {
+                entity->offSort = 0;
+            } else {
+                entity->state = 0;
+            }
+        }
+        entity->field02++;
+        break;
+
+    case 7:
+        entity->field02++;
+        t = ((s16)entity->field02 << 12) / 10;
+        t = rsin(t / 4);
+        entity->offY = (u32)t >> 7;
+        if ((s16)entity->field02 >= 10) {
+            entity->offY = 0;
+            entity->state = 0;
+            entity->field02 = 0;
+            entity->priority++;
+        }
+        break;
+    }
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object2", func_8009C440);
 
