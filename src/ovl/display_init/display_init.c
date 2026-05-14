@@ -1,13 +1,96 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libetc.h"
+#include "psxsdk/libcd.h"
 
 extern u32 D_800990B8[];
 extern s32 D_8009928C;
 extern s32 D_80099290;
 extern s32 D_80099294;
 
-INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_80098000);
+/** @brief Display-init double-buffer context (184 bytes at 0x800991D8). */
+typedef struct {
+    u32     ot[2];       /**< 0x00: double-buffered single-entry OT. */
+    DRAWENV draw;        /**< 0x08: 92-byte drawing environment. */
+    DISPENV disp;        /**< 0x64: 20-byte display environment. */
+    u8      pad78[0x30]; /**< 0x78: scratch / unidentified. */
+    s32     currBuf;     /**< 0xA8: active buffer index (0 or 1). */
+    s32     unkAC;
+    u8      unkB0;       /**< 0xB0: flag byte. */
+    u8      unkB1;
+    u8      pad[6];
+} DispCtx;
+
+extern DispCtx D_800991D8;
+
+extern void sndCmdF0(void);
+extern void sndCmdF1(void);
+extern s32  func_8004D174(void);
+extern s32  func_8004D208(s32 a);
+extern void func_8009818C(void);
+
+/**
+ * @brief Display-init overlay entry point — set up display + run 60-frame intro.
+ *
+ * Boot-time setup for the intro sequence (Squaresoft logo / opening movie
+ * preface) before the main menu. Steps:
+ *  - Ring the sound side (@c sndCmdF0/F1) and wait for the sound CPU to
+ *    drain its pending command queue (@c func_8004D174 / @c func_8004D208).
+ *  - Disable the display, sync the CD module to a known idle state, and
+ *    issue @c CdControlB(0xE, ...) — CD command 0xE is @c CdlSetmode with
+ *    param @c 0x80 (auto-pause + double-speed reporting).
+ *  - Set up a 640x480 interlaced display: clear VRAM, build the
+ *    @c DRAWENV / @c DISPENV in @c D_800991D8, mark dfe on the draw env
+ *    and @c isinter on the disp env, install both with @c PutDrawEnv /
+ *    @c PutDispEnv. Clear the active OT entry.
+ *  - Run the per-frame intro tick @c func_8009818C 60 times (one second
+ *    at 60 Hz).
+ */
+void func_80098000(void) {
+    RECT clearRect;
+    s32 status;
+    s32 i;
+
+    sndCmdF0();
+    sndCmdF1();
+
+    while ((status = func_8004D174()) == -1) {
+        VSync(0);
+    }
+    if (status != 0) {
+        while (func_8004D208(1) != 0) {}
+    }
+
+    SetDispMask(0);
+    CdSync(0, 0);
+    CdControlB(0xE, (u8 *)0x80, 0);
+    VSync(4);
+
+    clearRect.x = 0;
+    clearRect.y = 0;
+    clearRect.w = 0x280;
+    clearRect.h = 0x1E0;
+    ClearImage(&clearRect, 0, 0, 0);
+    DrawSync(0);
+
+    SetDefDispEnv(&D_800991D8.disp, 0, 0, 0x280, 0x1E0);
+    SetDefDrawEnv(&D_800991D8.draw, 0, 0, 0x280, 0x1E0);
+
+    D_800991D8.disp.isinter = 1;
+    D_800991D8.draw.dfe = 1;
+    PutDispEnv(&D_800991D8.disp);
+    PutDrawEnv(&D_800991D8.draw);
+    D_800991D8.currBuf = 0;
+    D_800991D8.unkB0 = 0;
+    D_800991D8.unkB1 = 0;
+    D_80099294 = 0;
+    VSync(0);
+    D_8009928C = ((u32)GetODE() < 1);
+    ClearOTagR(&D_800991D8.ot[D_800991D8.currBuf], 1);
+    for (i = 0; i < 60; i++) {
+        func_8009818C();
+    }
+}
 
 INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_8009818C);
 
