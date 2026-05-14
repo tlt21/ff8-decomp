@@ -82,7 +82,9 @@ typedef struct {
     /* 0xC8 */ s8 audioChannel1State;   /**< Audio channel 1 state byte; -1 = reset/inactive. */
     /* 0xC9 */ u8 soundBankSelector;    /**< Sound bank toggle (0 or 1). */
     /* 0xCA */ s8 audioChannel2State;   /**< Audio channel 2 state byte; -1 = reset/inactive. */
-    /* 0xCB */ u8 padCB[0x06];          /**< 0xCB..0xD0 */
+    /* 0xCB */ u8 padCB;
+    /* 0xCC */ u8 expectedDiscId;       /**< Currently inserted disc (1..4). The intro/disc-swap screen waits for @c getDiscId() to match. */
+    /* 0xCD */ u8 padCD[0x04];          /**< 0xCD..0xD0 */
     /* 0xD1 */ u8 fieldD1;              /**< Bit 0 toggled by fe_object6 helper. */
     /* 0xD2 */ u8 sfxActiveMask;        /**< Per-slot SFX active bitmask (set on play, cleared on completion). */
     /* 0xD3 */ u8 sfxStartMask;         /**< Per-slot SFX start bitmask (set on play). */

@@ -49,7 +49,10 @@ extern void func_80098378(s32 a, s32 b, s32 c, s32 d, s32 e);
 extern void func_800985EC(void);
 extern void func_800275D4();
 extern void func_80037FB0(s32 a, s32 b, s32 c);
-extern void func_800393C8(void);
+extern s32  func_800393C8(void);
+extern void resetCdDriveMode(void);
+extern s32  getDiscId(void);
+extern s32  func_80038A60(void);
 extern s32  getAnimFrameParam(s32 slot, s32 sub);
 
 /**
@@ -372,7 +375,78 @@ void func_8009869C(void) {
     D_80099290 = 1;
 }
 
-INCLUDE_ASM("asm/ovl/intro/nonmatchings/intro", func_8009879C);
+/**
+ * @brief Disc-swap intro screen: wait for the right disc to be inserted.
+ *
+ * Played when @c func_80098FD4 is invoked with mode 1 — typically when
+ * loading a save from a different disc than the one inserted. Loops:
+ *  - Loads the prompt graphic for the *currently inserted* disc minus one
+ *    (entry @c expectedDiscId-1 in @c D_800990B8) plus its music track.
+ *  - Waits for @c func_800393C8 to drain, then runs a fade-out / wait-
+ *    for-tray-open / fade-in / fade-out cycle controlled by
+ *    @c CdControlB(0x1, NULL, status) (CD command 0x1 = CdlNop, whose
+ *    status byte's @c 0x10 bit indicates the shell is open).
+ *  - After fade-in, polls @c getDiscId() and exits when the inserted
+ *    disc matches @c g_seedState->expectedDiscId.
+ *  - On mismatch (or if @c func_80038A60 returns nonzero), calls
+ *    @c func_8009869C to flash the screen and restarts the wait loop.
+ *  - Any button press on controller 1 (high nibble of @c D_800992A8)
+ *    short-circuits the tray wait and jumps straight to the fade-in.
+ */
+void func_8009879C(void) {
+    u8   cdStatus[8];
+    RECT rect;
+
+    func_80098000();
+    func_80098338(g_seedState->expectedDiscId - 1);
+    func_800985B4();
+
+    rect.x = 0x1E;
+    rect.y = 0x26;
+    rect.w = 0x244;
+    rect.h = 0x196;
+
+    while (func_800393C8() != 0) {}
+
+    while (1) {
+        s32 brightness;
+
+        resetCdDriveMode();
+        VSync(0);
+        D_8009928C = ((u32)GetODE() < 1);
+
+        for (brightness = 0xFF; brightness >= 0; brightness -= 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            D_80099294 = 1;
+            SetDispMask(1);
+        }
+
+        do {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto fadein;
+            CdControlB(1, 0, cdStatus);
+        } while (!(cdStatus[0] & 0x10));
+
+        do {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto fadein;
+            CdControlB(1, 0, cdStatus);
+        } while (cdStatus[0] & 0x10);
+
+    fadein:
+        for (brightness = 0; brightness < 0xFF; brightness += 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+        }
+        SetDispMask(0);
+
+        if (func_80038A60() == 0 && getDiscId() == g_seedState->expectedDiscId) {
+            return;
+        }
+        func_8009869C();
+    }
+}
 
 /**
  * @brief Squaresoft / FF8 startup intro sequence.
