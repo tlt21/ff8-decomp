@@ -7,6 +7,12 @@ extern u32 D_800990B8[];
 extern s32 D_8009928C;
 extern s32 D_80099290;
 extern s32 D_80099294;
+extern s32 D_80099298;
+extern s32 D_8009929C;
+extern s32 D_800992A0;
+extern s32 D_800992A4;
+extern s32 D_800992A8;
+extern s32 D_800992AC;
 
 /** @brief Display-init double-buffer context (184 bytes at 0x800991D8). */
 typedef struct {
@@ -28,6 +34,10 @@ extern void sndCmdF1(void);
 extern s32  func_8004D174(void);
 extern s32  func_8004D208(s32 a);
 extern void func_8009818C(void);
+extern void func_80098378(s32 a, s32 b, s32 c, s32 d, s32 e);
+extern void func_800985EC(void);
+extern void func_800275D4();
+extern s32  getAnimFrameParam(s32 slot, s32 sub);
 
 /**
  * @brief Display-init overlay entry point — set up display + run 60-frame intro.
@@ -92,7 +102,63 @@ void func_80098000(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_8009818C);
+/**
+ * @brief One frame of the display-init intro loop.
+ *
+ * Called 60 times in a row from @c func_80098000. Per-frame steps:
+ *  - @c DrawSync(0) + @c VSync(0): wait for GPU idle and vblank.
+ *  - Spin until @c GetODE flips: the busy-wait re-arms the previous
+ *    drawing pass.
+ *  - If @c D_80099294 is set, dispatch on @c D_80099290 to one of the
+ *    intro-stage renderers:
+ *      - state 0: @c func_80098378 with a full-width 640x400 mode.
+ *      - state 1: @c func_80098378 with the cropped 580x406 layout.
+ *      - state 2: @c func_800985EC (VRAM scanline copy).
+ *  - Submit the current buffer's OT via @c DrawOTag, flip @c currBuf,
+ *    install the next frame's @c DRAWENV / @c DISPENV pair, and clear
+ *    the newly-active OT for the next pass.
+ *  - Sample the controllers (@c getAnimFrameParam slots 0 and 1) and
+ *    update the edge-detect mirrors at @c D_800992A8 (slot 0 rising
+ *    edges) and @c D_800992AC (slot 1 rising edges) using the
+ *    @c D_80099298 / @c D_8009929C complements latched last frame.
+ */
+void func_8009818C(void) {
+    DrawSync(0);
+    VSync(0);
+
+    while (D_8009928C == ((u32)GetODE() < 1)) {}
+
+    D_8009928C = ((u32)GetODE() < 1);
+
+    if (D_80099294 != 0) {
+        switch (D_80099290) {
+        case 0:
+            func_80098378(0, 0, 0x28, 0x280, 0x190);
+            break;
+        case 1:
+            func_80098378(1, 0x1E, 0x26, 0x244, 0x196);
+            break;
+        case 2:
+            func_800985EC();
+            break;
+        }
+    }
+
+    DrawOTag(&D_800991D8.ot[D_800991D8.currBuf]);
+    D_800991D8.currBuf = D_800991D8.currBuf ^ 1;
+    PutDispEnv(&D_800991D8.disp);
+    PutDrawEnv(&D_800991D8.draw);
+    ClearOTagR(&D_800991D8.ot[D_800991D8.currBuf], 1);
+
+    func_800275D4();
+    D_800992A0 = getAnimFrameParam(0, 0);
+    D_800992A4 = getAnimFrameParam(1, 0);
+
+    D_800992A8 = D_80099298 & D_800992A0;
+    D_800992AC = D_8009929C & D_800992A4;
+    D_8009929C = ~D_800992A4;
+    D_80099298 = ~D_800992A0;
+}
 
 INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_80098338);
 

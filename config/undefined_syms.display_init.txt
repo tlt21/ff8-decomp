@@ -10,6 +10,7 @@ DrawSync     = 0x80048C50;
 ClearImage   = 0x80048DD4;
 LoadImage    = 0x80048EFC;
 MoveImage    = 0x80048FBC;
+DrawOTag     = 0x80049244;
 ClearOTagR   = 0x8004913C;
 PutDispEnv   = 0x80049480;
 PutDrawEnv   = 0x800492B4;
