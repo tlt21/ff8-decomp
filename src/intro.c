@@ -130,7 +130,7 @@ void func_8009818C(void) {
 /**
  * @brief Kick off an asynchronous CD load for an intro asset.
  *
- * @c D_800990B8 is a table of (sector, size) pairs (8 bytes per entry,
+ * @c g_introAssetTable is a table of (sector, size) pairs (8 bytes per entry,
  * laid out as @c u32 sector then @c u32 size). For each story-stage
  * index used by the intro sequence (e.g. @c 0x23 Squaresoft logo,
  * @c 4 FF8 logo, @c 5..0x1F SeeD application text pages, @c 0x20 "The
@@ -138,12 +138,12 @@ void func_8009818C(void) {
  * @c cdReadAsyncSync into VRAM-adjacent main RAM at @c 0x80100000.
  *
  * @param stage Asset table index — selects which (sector, size) pair
- *              from @c D_800990B8.
+ *              from @c g_introAssetTable.
  */
 void func_80098338(s32 stage) {
     /* Each table entry is 2 u32s (sector, size); index by stage * 2. */
-    cdReadAsyncSync(D_800990B8[stage * 2],
-                    D_800990B8[stage * 2 + 1],
+    cdReadAsyncSync(g_introAssetTable[stage * 2],
+                    g_introAssetTable[stage * 2 + 1],
                     (s32)0x80100000, 0);
 }
 
@@ -232,11 +232,11 @@ void func_80098440(s32 brightness, s32 mode, RECT *rect) {
 /**
  * @brief Load and play a specific music track for the display init overlay.
  *
- * Reads CD file entry at offset 0x110 (entry 34) from D_800990B8 and
+ * Reads CD file entry at offset 0x110 (entry 34) from g_introAssetTable and
  * calls cdReadAsyncSync to load it to address 0x8017D000.
  */
 void func_800985B4(void) {
-    u32 *base = D_800990B8;
+    u32 *base = g_introAssetTable;
 
     cdReadAsyncSync(*(u32 *)((u8 *)base + 0x110),
                   *(u32 *)((u8 *)base + 0x114),
@@ -332,7 +332,7 @@ void func_8009869C(void) {
  * Played when @c func_80098FD4 is invoked with mode 1 — typically when
  * loading a save from a different disc than the one inserted. Loops:
  *  - Loads the prompt graphic for the *currently inserted* disc minus one
- *    (entry @c expectedDiscId-1 in @c D_800990B8) plus its music track.
+ *    (entry @c expectedDiscId-1 in @c g_introAssetTable) plus its music track.
  *  - Waits for @c func_800393C8 to drain, then runs a fade-out / wait-
  *    for-tray-open / fade-in / fade-out cycle controlled by
  *    @c CdControlB(0x1, NULL, status) (CD command 0x1 = CdlNop, whose

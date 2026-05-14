@@ -25,7 +25,7 @@ typedef struct {
 } DispCtx;
 
 /* --- Data globals defined in the intro overlay's .data section ----------- */
-extern u32     D_800990B8[];   /**< CD asset table: (sector, size) per stage. */
+extern u32     g_introAssetTable[];  /**< CD asset table: (sector, size) per stage (see src/intro_assets.c). */
 extern DispCtx D_800991D8;     /**< Per-buffer display context. */
 extern s32     D_8009928C;     /**< GPU drawing-ready latch (mirrors GetODE). */
 extern s32     D_80099290;     /**< Active intro-render mode (0..2). */
