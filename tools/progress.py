@@ -19,6 +19,12 @@ CODE_OVERLAYS = [
 OVERLAY_EXT = {name: "ovl" for name in MENU_OVERLAYS}
 OVERLAY_EXT.update({name: "bin" for name in CODE_OVERLAYS})
 
+# C-source globs per overlay. Mirrors the Makefile's <name>_C_SRCS list.
+# Defaults to src/ovl/<name>/*.c; override here when sources live elsewhere.
+OVERLAY_SRC_GLOBS = {
+    "intro": ["src/intro.c"],
+}
+
 
 def count_functions_in_file(filepath):
     """Count C function definitions and INCLUDE_ASM macros in a .c file.
@@ -84,18 +90,30 @@ def main():
 
     rows = []
 
-    # Main binary: symbol_addrs.txt is incomplete, so use source counting
+    # Collect overlay source paths first so we can exclude them from the main count.
+    overlay_sources = {}
+    for name in MENU_OVERLAYS + CODE_OVERLAYS:
+        globs = OVERLAY_SRC_GLOBS.get(name, [f"src/ovl/{name}/*.c"])
+        overlay_sources[name] = sorted(
+            f for pattern in globs for f in glob.glob(pattern)
+        )
+
+    all_overlay_files = {f for files in overlay_sources.values() for f in files}
+
+    # Main binary: src/*.c minus anything claimed by an overlay.
     c, asm = 0, 0
     for f in sorted(glob.glob("src/*.c")):
+        if f in all_overlay_files:
+            continue
         fc, fa = count_functions_in_file(f)
         c += fc
         asm += fa
     rows.append(("SLUS_008.92", c, asm, c + asm))
 
-    # Overlays: count from source files (C functions + INCLUDE_ASM)
+    # Overlays: count from their own source files.
     for name in MENU_OVERLAYS + CODE_OVERLAYS:
         c, asm = 0, 0
-        for f in sorted(glob.glob(f"src/ovl/{name}/*.c")):
+        for f in overlay_sources[name]:
             fc, fa = count_functions_in_file(f)
             c += fc
             asm += fa

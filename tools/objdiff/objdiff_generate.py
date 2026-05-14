@@ -81,21 +81,25 @@ def find_units():
                         "metadata": {"progress_categories": ["main"]},
                     })
 
-    # Overlay .o files
+    # Overlay .o files — search any .c-derived .o under build/ovl/<name>/src/
+    # (some overlays live under src/ovl/<name>/, others at src/<name>.c).
     ovl_base = BUILD / "ovl"
     if ovl_base.exists():
         for ovl_dir in sorted(ovl_base.iterdir()):
             if not ovl_dir.is_dir():
                 continue
             ovl_name = ovl_dir.name
-            src_dir = ovl_dir / "src" / "ovl" / ovl_name
-            if not src_dir.exists():
+            src_root = ovl_dir / "src"
+            if not src_root.exists():
                 continue
-            for o_file in sorted(src_dir.glob("*.o")):
-                name = o_file.stem
-                expected_o = EXPECTED / "build" / "ovl" / ovl_name / "src" / "ovl" / ovl_name / o_file.name
+            for o_file in sorted(src_root.rglob("*.o")):
+                rel_from_ovl = o_file.relative_to(ovl_dir)
+                # The build path mirrors the source path; expected/ mirrors build/.
+                expected_o = EXPECTED / "build" / "ovl" / ovl_name / rel_from_ovl
+                # Name the unit by the source path it came from (drop the build/ovl/<name>/ prefix and .o).
+                src_rel = str(rel_from_ovl).replace(".o", "")
                 units.append({
-                    "name": f"ovl/{ovl_name}/{name}",
+                    "name": f"ovl/{ovl_name}/{Path(src_rel).name}",
                     "target_path": str(expected_o.relative_to(ROOT)) if expected_o.exists() else str(o_file.relative_to(ROOT)),
                     "base_path": str(o_file.relative_to(ROOT)),
                     "metadata": {"progress_categories": [ovl_name]},
