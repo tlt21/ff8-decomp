@@ -1,4 +1,6 @@
 #include "common.h"
+#include "battle.h"
+#include "field.h"
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libetc.h"
 #include "psxsdk/libcd.h"
@@ -13,6 +15,8 @@ extern s32 D_800992A0;
 extern s32 D_800992A4;
 extern s32 D_800992A8;
 extern s32 D_800992AC;
+extern s32 D_800992B0;
+extern SeedState *g_seedState;
 
 /** @brief Display-init double-buffer context (184 bytes at 0x800991D8). */
 typedef struct {
@@ -31,12 +35,22 @@ extern DispCtx D_800991D8;
 
 extern void sndCmdF0(void);
 extern void sndCmdF1(void);
+extern s16  sndCmd10(u32 bank);
+extern void sndCmdC0(s32 a, s32 b);
+extern void sndCmdC1(s32 id, s32 b, s32 c);
+extern s32  sndGetStatus(void);
+extern u32  toggleSoundBank(void);
 extern s32  func_8004D174(void);
 extern s32  func_8004D208(s32 a);
 extern void func_8009818C(void);
+extern void func_80098000(void);
+extern void func_80098338(s32 stage);
 extern void func_80098378(s32 a, s32 b, s32 c, s32 d, s32 e);
+extern void func_80098440(s32 brightness, s32 mode, RECT *rect);
 extern void func_800985EC(void);
 extern void func_800275D4();
+extern void func_80037FB0(s32 a, s32 b, s32 c);
+extern void func_800393C8(void);
 extern s32  getAnimFrameParam(s32 slot, s32 sub);
 
 /**
@@ -265,7 +279,203 @@ void func_8009869C(void) {
 
 INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_8009879C);
 
-INCLUDE_ASM("asm/ovl/display_init/nonmatchings/display_init", func_80098974);
+/**
+ * @brief Squaresoft / FF8 startup intro sequence.
+ *
+ * Plays the boot-time intro shown when no save is loaded — Squaresoft logo,
+ * FF8 logo, then the SeeD application story text crawl (stages 5-0x1F, 27
+ * pages of text rendered by @c func_80098338), followed by "The End"
+ * (stage 0x20) and a final fade. Any button press on controller 1
+ * (@c D_800992A8 high nibble) skips to the cleanup tail.
+ *
+ * Each segment fades in / holds / fades out via @c func_80098440 (the
+ * fade primitive — modes 1 and 2 control how brightness is applied) over
+ * a 640x400 (rectY=0x28, rectW=0x280, rectH=0x190) draw area. The per-frame
+ * tick @c func_8009818C drives display flipping and input sampling.
+ *
+ * SeeD sound loading: waits for @c g_seedState->soundLoadComplete before
+ * starting music (@c sndCmd10(toggleSoundBank()), @c sndCmdC0(0, 0x7F)).
+ * On exit, @c sndCmdC1(D_8005F11C, 0x60, 0) fades the music out and a
+ * final brightness ramp restores the display to full before returning.
+ */
+void func_80098974(void) {
+    RECT rect;
+    s32 outerCount;
+    s32 stage;
+    s32 brightness;
+    s32 holdFrames;
+    s32 rectY, rectW, rectH;
+    s32 frame;
+    s32 one;
+
+    func_80098000();
+    rectY = 0x28;
+    rectW = 0x280;
+    rectH = 0x190;
+
+    while (1) {
+        func_80098338(0x23);
+        rect.x = 0; rect.y = rectY; rect.w = rectW; rect.h = rectH;
+
+        for (brightness = 0xFF, one = 1; brightness >= 0; brightness -= 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            D_80099294 = one;
+            SetDispMask(1);
+        }
+
+        for (frame = 0; frame < 0x78; frame++) {
+            func_8009818C();
+        }
+
+        for (frame = 0; frame < 0x78; frame++) {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (brightness = 0; brightness < 0xFF; brightness += 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        func_80098338(4);
+        rect.x = 0; rect.y = rectY; rect.w = rectW; rect.h = rectH;
+
+        for (brightness = 0xFF, one = 1; brightness >= 0; brightness -= 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            D_80099294 = one;
+            SetDispMask(1);
+        }
+
+        for (frame = 0; frame < 0x78; frame++) {
+            func_8009818C();
+        }
+
+        for (frame = 0; frame < 0x78; frame++) {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (brightness = 0; brightness < 0xFF; brightness += 4) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        func_80037FB0(0, 0x4F, 0x80110000);
+        if (g_seedState->soundLoadComplete == 0) {
+            do {
+                func_800393C8();
+            } while (g_seedState->soundLoadComplete == 0);
+        }
+
+        D_8005F11C = sndCmd10(toggleSoundBank());
+        sndCmdC0(0, 0x7F);
+
+        for (frame = 0; frame < 0xB4; frame++) {
+            func_80098440(0xFF, 2, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        outerCount = 0;
+        D_800992B0 = VSync(-1);
+
+        for (stage = 5; stage < 0x20; stage++, outerCount++) {
+            func_80098338(stage);
+            rect.x = 0; rect.y = rectY; rect.w = rectW; rect.h = rectH;
+
+            for (brightness = 0xFF; brightness >= 0; brightness -= 8) {
+                func_80098440(brightness, 2, &rect);
+                func_8009818C();
+                if (D_800992A8 & 0xF0) goto exit;
+            }
+
+            holdFrames = (stage - 4) * 0x1B3;
+            while ((u32)(VSync(-1) - D_800992B0) < (u32)holdFrames) {
+                func_8009818C();
+                if (D_800992A8 & 0xF0) goto exit;
+            }
+
+            for (brightness = 0; brightness < 0xFF; brightness += 8) {
+                func_80098440(brightness, 2, &rect);
+                func_8009818C();
+                if (D_800992A8 & 0xF0) goto exit;
+            }
+        }
+
+        func_80098338(0x20);
+        rect.x = 0; rect.y = rectY; rect.w = rectW; rect.h = rectH;
+
+        for (brightness = 0xFF; brightness >= 0; brightness -= 8) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        holdFrames = (outerCount + 1) * 0x1B3;
+        while ((u32)(VSync(-1) - D_800992B0) < (u32)holdFrames) {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (brightness = 0; brightness < 0xFF; brightness += 4) {
+            func_80098440(brightness, 1, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (frame = 0; frame < 0x78; frame++) {
+            func_80098440(0xFF, 1, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        func_80098338(0x21);
+        rect.x = 0; rect.y = rectY; rect.w = rectW; rect.h = rectH;
+
+        for (brightness = 0xFF; brightness >= 0; brightness -= 2) {
+            func_80098440(brightness, 1, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        while (sndGetStatus() != 0) {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (frame = 0; frame < 0xE10; frame++) {
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        for (brightness = 0; brightness < 0xFF; brightness++) {
+            func_80098440(brightness, 2, &rect);
+            func_8009818C();
+            if (D_800992A8 & 0xF0) goto exit;
+        }
+
+        SetDispMask(0);
+    }
+
+exit:
+    sndCmdC1(D_8005F11C, 0x60, 0);
+
+    if (brightness >= 0x100) {
+        brightness = 0xFF;
+    }
+    if (brightness < 0) {
+        brightness = 0;
+    }
+
+    for (; brightness < 0xFF; brightness += 2) {
+        func_80098440(brightness, 2, &rect);
+        func_8009818C();
+    }
+}
 
 /**
  * @brief Display initialization entry point with mode selection.
