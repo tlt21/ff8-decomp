@@ -2,6 +2,7 @@
 #define INTRO_H
 
 #include "common.h"
+#include "intro_assets.h"
 #include "psxsdk/libgpu.h"
 
 /**
@@ -25,7 +26,6 @@ typedef struct {
 } DispCtx;
 
 /* --- Data globals defined in the intro overlay's .data section ----------- */
-extern u32     g_introAssetTable[];  /**< CD asset table: (sector, size) per stage (see src/intro_assets.c). */
 extern DispCtx g_introDispCtx;       /**< 0x800991D8 — double-buffer display context. */
 extern s32     g_introOdeLatch;      /**< 0x8009928C — last-seen @c GetODE() < 1 parity. */
 extern s32     g_introRenderMode;    /**< 0x80099290 — sub-renderer dispatch (0..2). */

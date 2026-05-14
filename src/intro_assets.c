@@ -9,8 +9,7 @@
  * In a CD-mastering pipeline this file would be regenerated from the disc
  * layout; for now the offsets are taken from the original game image.
  */
-#include "common.h"
-#include "intro.h"
+#include "intro_assets.h"
 
 u32 g_introAssetTable[] = {
     /* idx  sector       size           description                         */
