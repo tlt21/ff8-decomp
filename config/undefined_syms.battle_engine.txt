@@ -1,12 +1,18 @@
 /* PsyQ library aliases used by decomped C. */
-ClearOTag     = 0x80049074;
-DrawOTag      = 0x80049244;
-AddPrim       = 0x8004D584;
-SetDrawTPage  = 0x8004D724;
-NormalClip    = 0x80040EA4;
-RotTransPers4 = 0x80040ED4;
-rsin          = 0x8003ED64;
-rcos          = 0x8003EE34;
+SetDefDrawEnv  = 0x800487E4;
+SetDefDispEnv  = 0x80048898;
+SetDispMask    = 0x80048BB8;
+ClearImage     = 0x80048DD4;
+ClearOTag      = 0x80049074;
+ClearOTagR     = 0x8004913C;
+DrawOTag       = 0x80049244;
+AddPrim        = 0x8004D584;
+SetDrawTPage   = 0x8004D724;
+NormalClip     = 0x80040EA4;
+RotTransPers4  = 0x80040ED4;
+rsin           = 0x8003ED64;
+rcos           = 0x8003EE34;
+InitGeom       = 0x8003F41C;
 SetFarColor    = 0x800408A4;
 DpqColor       = 0x80040918;
 ScaleMatrix    = 0x80040564;

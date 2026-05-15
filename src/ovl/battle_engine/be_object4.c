@@ -1,4 +1,5 @@
 #include "common.h"
+#include "psxsdk/libgpu.h"
 
 extern s16 D_801D49E2;
 extern s16 D_801D4B18;
@@ -13,7 +14,7 @@ extern u8 D_8012E66C[];
 extern u8 D_80182E70[];
 extern u8 D_80182EC8[];
 extern u8 D_801C2DCA;
-extern u8 D_801C2DD0[];
+extern DRAWENV D_801C2DD0[2];
 extern u8 D_801D4500[];
 extern u8 D_801D4568[];
 extern u8 D_801D4968[];
@@ -184,7 +185,7 @@ void func_800A271C(void) {
  */
 s32 func_800A274C(void) {
     s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(D_801C2DD0 + idx * 92, D_8012E66C);
+    func_80098A1C(&D_801C2DD0[idx], D_8012E66C);
     return 0;
 }
 

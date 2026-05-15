@@ -1,5 +1,6 @@
 #include "common.h"
 #include "battle.h"
+#include "psxsdk/libgpu.h"
 
 /**
  * @brief Script-action entry in the D_801D3EC0 2x5 table.
@@ -43,7 +44,7 @@ extern u8 D_801D4308[];
 extern s32 D_801D3D08;
 extern s32 D_80182E4C[];
 extern u8 D_801C2DCA;
-extern u8 D_801C2DD0[];
+extern DRAWENV D_801C2DD0[2];
 extern u8 D_8012E66C[];
 extern u8 D_80158680[];
 extern u8 D_801A2CE6;
@@ -167,7 +168,7 @@ INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object3", func_8009FAF8);
  */
 s32 func_8009FC40(void) {
     s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(D_801C2DD0 + idx * 92, D_8012E66C);
+    func_80098A1C(&D_801C2DD0[idx], D_8012E66C);
     return 0;
 }
 
@@ -401,7 +402,7 @@ s32 func_800A0A88(void) {
  */
 s32 func_800A0AD4(void) {
     s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(D_801C2DD0 + idx * 92, D_80158680);
+    func_80098A1C(&D_801C2DD0[idx], D_80158680);
     return 0;
 }
 

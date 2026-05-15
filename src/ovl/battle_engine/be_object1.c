@@ -35,7 +35,18 @@ extern u8 D_80182B84[];
 extern u8 D_801A2C78[];
 extern u8 D_801A2CE6;
 extern u8 *D_801A2C40;
+extern u8 D_801C2DC8;
 extern s8 D_801C2DC9;
+extern u8 D_801C2DCA;
+extern DRAWENV D_801C2DD0[2];
+extern DISPENV D_801C2E88[2];
+extern RECT D_800A45A8;
+extern RECT D_800A45B0;
+extern u32 D_801A2CE8[];
+extern u8  D_801A2DC8[];
+extern void func_800988D4(void);
+extern void func_800408C4(s32, s32);   /* SetGeomOffset */
+extern void func_800408E4(s32);        /* SetGeomScreen */
 extern u8 D_801D3028[];
 extern u8 D_801D3038[];
 extern volatile u16 D_8005F158;
@@ -150,7 +161,59 @@ s32 func_80098304(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_800984DC);
+/**
+ * @brief Initialize the battle engine's GPU and GTE subsystems.
+ *
+ * Sets up double-buffered draw/display environments for a 384x224 screen
+ * with the visible area at 256x224 offset by (0, 8), clears the two
+ * framebuffer regions to black plus a 256x256 texture region to white,
+ * primes the reverse-order primitive table and pool tail, then initializes
+ * the GTE with screen offset (192, 112), projection distance 512, and
+ * masks the display while finishing setup.
+ */
+void func_800984DC(void) {
+    DISPENV *disp;
+    RECT *screen0;
+    RECT *screen1;
+
+    SetDefDrawEnv(&D_801C2DD0[0], 0, 0, 0x180, 0xE0);
+    disp = D_801C2E88;
+    SetDefDispEnv(&disp[0], 0x180, 0, 0x180, 0xE0);
+    screen0 = &disp[0].screen;
+    screen0->x = 0;
+    screen0->y = 8;
+    screen0->w = 0x100;
+    screen0->h = 0xE0;
+
+    SetDefDrawEnv(&D_801C2DD0[1], 0x180, 0, 0x180, 0xE0);
+    SetDefDispEnv(&disp[1], 0, 0, 0x180, 0xE0);
+    disp[1].screen.x = 0;
+    screen1 = &disp[1].screen;
+    screen1->y = 8;
+    screen1->w = 0x100;
+    screen1->h = 0xE0;
+
+    ClearImage(&D_800A45A8, 0, 0, 0);
+    D_800A45A8.x = 0x180;
+    D_800A45A8.y = 0;
+    ClearImage(&D_800A45A8, 0, 0, 0);
+
+    ClearImage(&D_800A45B0, 0xFF, 0xFF, 0xFF);
+
+    D_801C2DCA = 0;
+    D_801C2EB0 = (s32 *)D_801A2CE8;
+    ClearOTagR(D_801A2CE8, 0x1C);
+    D_801C2EB4 = &D_801A2DC8[D_801C2DCA << 16];
+
+    InitGeom();
+    func_800408C4(0xC0, 0x70);
+    func_800408E4(0x200);
+    SetDispMask(0);
+
+    D_801C2DC9 = 2;
+    D_801C2DC8 = 0;
+    func_800988D4();
+}
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80098690);
 
