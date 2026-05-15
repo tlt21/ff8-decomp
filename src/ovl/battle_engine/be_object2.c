@@ -213,7 +213,7 @@ s32 func_8009AA68(BattleObjectCtl *ctl) {
 
     if (entity->state == 0 && entity->groupId == 2) {
         s32 col = entity->fieldD + 1;
-        s8 elementMod = D_801D3398[(entity->priority + 1) * 5 + col].elementMod;
+        s8 elementMod = D_801D3398.cells[entity->priority + 1][col].elementMod;
         if (elementMod != 0) {
             D_801C2EB4 = func_8009A970(node, elementMod,
                                         &D_801C2EB0[(s16)node->sortKey], D_801C2EB4);
@@ -965,7 +965,7 @@ s32 func_8009BDC0(SubstateMachineNode *p) {
                 if (func_8009A7A4(2, D_801D335C.field0, D_801D335C.field2) < 0) {
                     s32 entIdx = func_8009A7A4(p->fieldD, 0, p->snapshot.field2);
                     setBattleObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
-                    func_8009C978((s32)D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
+                    func_8009C978((s32)&D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
                     func_800A233C(1);
                     return 2;
                 }

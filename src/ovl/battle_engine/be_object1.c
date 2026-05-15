@@ -42,7 +42,7 @@ typedef struct {
 
 extern s32 D_801C2FD0;
 extern s32 D_801C2FD8;
-extern s32 D_801A2C6C;
+extern volatile s32 D_801A2C6C;
 extern s32 D_801A2C74;
 extern PoolEntry D_801C2ED0[];
 extern u8 *D_801D2FE0;
@@ -75,6 +75,7 @@ extern void func_800408C4(s32, s32);   /* SetGeomOffset */
 extern void func_800408E4(s32);        /* SetGeomScreen */
 extern u8 D_801D3028[];
 extern u8 D_801D3038[];
+extern u8 D_8012E66C[];
 extern volatile u16 D_8005F158;
 
 typedef struct { u8 r, g, b; } RGB;
@@ -1138,30 +1139,27 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
  * matrices, and emit one batch of @c POLY_G3 primitives via
  * @c func_800995F8 into the active OT.
  *
- * @note Near-match (99.13%): remaining gap is gcc 2.7.2 register naming
- *       on case 0 temps and one scheduling slot — the C body in
- *       @c permuter/func_80099798/base.c reproduces this match. The
- *       @c new_var anchors, the @c short r narrowing, the @c c=d aliasing
- *       in case 1's third branch, and splitting @c vy -= ... into two
- *       statements (@c d = expr; @c vy -= d) are permuter-found tricks
- *       that pin constants and reshape gcc's register choices.
+ * @note Near-match (92.24%): remaining gap is gcc 2.7.2 register naming and
+ *       scheduling choices that no clean C structure reproduces. The C body
+ *       in @c permuter/func_80099798/base.c — reproduced below — is the
+ *       most natural form that holds up under both readability and match
+ *       criteria. Higher scores (up to ~99%) are achievable with permuter
+ *       tricks (anchor variables like @c new_var = 0x8C, @c c=d aliases,
+ *       @c short r narrowing) but produce non-idiomatic source.
  *
  * @verbatim
  * s32 func_80099798(HandlerNode *node) {
- *     s32 new_var = 0x8C;
  *     D_801D3010 = (TransformBuf *)func_80098B80(0x28);
  *     switch (node->state) {
  *         case 0: {
- *             short r = func_80023D04() % 2;     // short narrows for prologue
- *             s32 d300c, c00x;
- *             s32 new_var400 = 0x400;
+ *             s32 r = func_80023D04() % 2;
+ *             s32 delta = -0x400;
+ *             s32 xPos  = -0x8C;
  *             node->phase = r;
- *             if ((u8)r) d300c =  new_var400;
- *             else       d300c = -new_var400;
- *             D_801D300C = d300c;
- *             if (node->phase) c00x =  0x8C;
- *             else             c00x = -new_var;
- *             D_80182C00.vx = c00x;
+ *             if (r) delta = 0x400;
+ *             D_801D300C = delta;
+ *             if (r) xPos = 0x8C;
+ *             D_80182C00.vx = xPos;
  *             D_801D3010->vec = D_80182BF8;
  *             func_800A233C(0x70);
  *             node->state = 1;  node->counter = 0;
@@ -1169,23 +1167,20 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
  *         }
  *         case 1: {
  *             s32 c = node->counter;
- *             if (c < 0x3C) {
- *                 s32 t    = (c << 12) / 60;
- *                 s32 sinv = rsin(t / 4);
- *                 D_80182C08.vx = (u32)t >> 2;
- *                 D_80182C08.vy = ((D_801D300C + 0xA000) * sinv) >> 12;
+ *             if (c < 60) {
+ *                 s32 t = (c << 12) / 60;
+ *                 D_80182C08.vx = (u32)t >> 2;   // t is non-negative; srl
+ *                 D_80182C08.vy = ((D_801D300C + 0xA000) * rsin(t / 4)) >> 12;
  *                 D_801D3010->vec = D_80182BF8;
- *             } else if ((c -= 0x3C) < 0xA) {
+ *             } else if ((c -= 60) < 10) {
  *                 D_801D3010->vec = D_80182BF8;
- *             } else if ((c -= 0xA) < 0xF) {
+ *             } else if ((c -= 10) < 15) {
  *                 s32 d = (c << 12) / 15;
- *                 c = d;                          // alias c=d for reg split
- *                 D_80182C08.vx = (-(c << 10) >> 12) + 0x400;
+ *                 D_80182C08.vx = (-(d << 10) >> 12) + 0x400;
  *                 D_80182C08.vy = D_801D300C + (((-D_801D300C) * d) >> 12);
- *                 LoadAverageShort12(&D_80182BF8, &D_80182C00, 0x1000 - d, c,
+ *                 LoadAverageShort12(&D_80182BF8, &D_80182C00, 0x1000 - d, d,
  *                                    &D_801D3010->vec);
- *                 d = (rsin(c / 2) << 4) >> 12;
- *                 D_801D3010->vec.vy -= d;
+ *                 D_801D3010->vec.vy -= (rsin(d / 2) << 4) >> 12;
  *             } else {
  *                 D_80182C08.vx = 0;
  *                 D_801D3010->vec = D_80182C00;
@@ -1196,27 +1191,26 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
  *             break;
  *         }
  *         case 2: {
- *             s32 v;
+ *             s32 xPos = -0x8C;
  *             D_80182C08.vy += 0x10;
- *             if (node->phase) v =  0x8C;
- *             else             v = -new_var;
+ *             if (node->phase) xPos = 0x8C;
  *             D_801D3010->vec.vy = -0x5C;
  *             D_801D3010->vec.vz =  0x200;
- *             D_801D3010->vec.vx = v;
+ *             D_801D3010->vec.vx = xPos;
  *             if (D_801D30F8 != node->phase) {
  *                 node->state = 3;  node->counter = 0;
  *             }
  *             break;
  *         }
  *         case 3: {
- *             s32 t  = (node->counter << 12) / 10;
- *             s32 a1 = rsin(t / 4);
- *             if (node->phase) a1 = 0x1000 - a1;
- *             D_801D3010->vec.vx = ((a1 * 0x118) >> 12) - 0x8C;
+ *             s32 t    = (node->counter << 12) / 10;
+ *             s32 sinv = rsin(t / 4);
+ *             if (node->phase) sinv = 0x1000 - sinv;
+ *             D_801D3010->vec.vx = ((sinv * 0x118) >> 12) - 0x8C;
  *             D_801D3010->vec.vy = -0x5C;
  *             D_801D3010->vec.vz = (-(rsin(t / 2) << 6) >> 12) + 0x200;
  *             node->counter++;
- *             if (((u8)node->counter) >= 0xA) {
+ *             if (node->counter >= 10) {
  *                 node->state = 2;  node->counter = 0;
  *                 node->phase ^= 1;
  *             }
@@ -1228,7 +1222,7 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
  *     D_801D3010->mat.t[1] = D_801D3010->vec.vy;
  *     D_801D3010->mat.t[2] = D_801D3010->vec.vz;
  *     RotMatrixX(0x100, &D_801D3010->mat);
- *     SetTransMatrix(&D_801D3010->mat);    // note: trans before rot
+ *     SetTransMatrix(&D_801D3010->mat);
  *     SetRotMatrix(&D_801D3010->mat);
  *     D_801C2EB4 = func_800995F8(&D_801C2EB0[4], D_801C2EB4);
  *     func_80098BA0(0x28);
@@ -1238,6 +1232,232 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
  */
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80099798);
 
+/**
+ * @brief Triple Triad match controller — 10-state machine driving the post-game
+ *        result flow (rule resolution → card counting → reward → cleanup).
+ *
+ * Called as a per-frame handler off the battle-object dispatch chain. Each
+ * call advances the state machine until it must wait for an asynchronous
+ * event (input poll, sub-handler completion, animation finish), at which
+ * point it returns @c 0 and the next frame re-enters. The state byte at
+ * @c ctl->state (@c 0..9) is dispatched via a jumptable; states @c 2 and
+ * @c 3 are unused and re-loop the dispatch (gcc-default fill for unused
+ * cases). State @c >= 10 hangs intentionally.
+ *
+ * State outline:
+ *   - **0** (init): on first frame allocate a sub-handler running
+ *     @c func_80099798, mark @c D_801D30F8 = @c -1, clear the substate
+ *     parameter slots. Stays here until @c D_801D30F8 becomes non-negative
+ *     (the sub-handler picks a starting player), then advances to state 1.
+ *   - **1** (player turn): on first frame dispatch on
+ *     @c D_801A2C70[D_801D30F8] (player type: 0/1 human, 2 AI, 3 demo) into
+ *     @c func_8009C010 / @c func_8009DECC to create a per-turn handler,
+ *     stashed at @c ctl->subHandler. Subsequent frames poll
+ *     @c func_80098D28(subHandler); on completion advance to state 4.
+ *   - **4** (rule resolution, first pass): wait for @c func_8009C0F4 (UI
+ *     idle). On entry call @c applyCardRules to evaluate Same/Plus chains.
+ *     If the result flags either bit 2 (Same) or bit 3 (Plus), play the
+ *     matching SFX (@c func_8009EB30 0/1), then sweep the 3x3 play area
+ *     for cells marked with the corresponding flag bit and animate them via
+ *     @c func_8009C0A0. After @c counter == 1, finalize and advance to 5.
+ *   - **5** (rule resolution, chain pass): keep applying @c applyCardRules
+ *     until the result returns 0, playing the chain SFX (@c 5) once. Then
+ *     advance to state 6.
+ *   - **6** (empty-cell tally): count occupied cells in the play area. If
+ *     all 9 are filled, advance to state 7. Otherwise flip @c D_801D30F8
+ *     and loop back to state 1 (next player's turn).
+ *   - **7** (card count): wait one frame; then tally cards in
+ *     @c D_801D31C0 by owner (low bit of @c initFlags). Stash the winner
+ *     in @c D_801D30FC (@c 0/1 for winner, @c 2 for draw). Wait until
+ *     @c counter >= 12, then advance to state 8.
+ *   - **8** (result SFX + input wait): on first frame pick the result SFX
+ *     based on winner/draw and start it via @c func_8009EB30, saving the
+ *     handle in @c D_801D3018. Wait for @c D_801C2EC4 button input; on
+ *     cancel (@c 0x4000) silence the SFX and stay; on confirm play
+ *     @c func_800A2054 and advance to state 9 (or in Sudden Death mode
+ *     loop back to state 1 via @c func_8009953C reset).
+ *   - **9** (fade out): call @c func_800A0370 once, wait 15 frames, then
+ *     stop the result SFX, update the Triple Triad win/loss/draw counters
+ *     in @c TripleTriadData, set @c D_80082C9C category byte, and trigger
+ *     battle exit via @c D_801A2CE6 = @c 4.
+ *
+ * @param ctl  Battle-object handler context (state at +0x10, counter at
+ *             +0x11, sub-handler pointer at +0x0C, rule flags at +0x13,
+ *             retry flag at +0x15).
+ * @return Always @c 0.
+ *
+ * @note Near-match (96.85%): remaining gap is gcc 2.7.2 register allocation
+ *       (s2↔s3 swap on the row-offset variable in case 6, a1↔a2 swap on
+ *       loop counters). The intentional hang on invalid @c state @c >= @c 10
+ *       falls out of gcc's switch bounds check (the @c sltiu/beqz-to-self
+ *       pattern emerges automatically when no @c default case is provided).
+ *       Matching tricks applied: (1) @c ownerMask is pre-initialized to
+ *       @c 0 then passed to @c func_8009EB30 in the Same branch — gcc
+ *       reuses the s-reg for the SFX-id arg @c 0 then re-loads it with
+ *       @c TT_CELL_SAME_MATCHED after the call. (2) @c cnt[1]=0; @c cnt[0]=0;
+ *       reversed init order matches the @c sb sequence. (3) @c cnt[0]>cnt[1]
+ *       written first (instead of @c cnt[1]<cnt[0]) — gcc loads @c cnt[0]
+ *       first matching target. The C body in
+ *       @c permuter/func_80099C78/base.c is the canonical form.
+ *
+ * @verbatim
+ * s32 func_80099C78(HandlerNode *ctl) {
+ *     while (1) {
+ *         switch (ctl->state) {
+ *             case 0: {
+ *                 if (ctl->counter == 0) {
+ *                     HandlerNode *sub = (HandlerNode *)func_80098C44(D_801D3028, (s32)func_80099798);
+ *                     sub->state = 0;
+ *                     sub->counter = 0;
+ *                     D_801D30F8 = -1;
+ *                     D_801D3340[1].field2 = 0;
+ *                     D_801D3340[2].field2 = 0;
+ *                     ctl->counter++;
+ *                 }
+ *                 if (D_801D30F8 < 0) return 0;
+ *                 ctl->state = 1;  ctl->counter = 0;
+ *                 break;
+ *             }
+ *             case 1: {
+ *                 if (ctl->counter == 0) {
+ *                     u8 playerType = D_801A2C70[D_801D30F8];
+ *                     switch (playerType) {
+ *                         case 0: ctl->subHandler = (void *)func_8009C010(D_801D30F8, 0); break;
+ *                         case 1: ctl->subHandler = (void *)func_8009C010(D_801D30F8, 1); break;
+ *                         case 2: ctl->subHandler = (void *)func_8009C010(D_801D30F8, 2); break;
+ *                         case 3: ctl->subHandler = (void *)func_8009DECC(D_801D30F8); break;
+ *                     }
+ *                     ctl->counter++;
+ *                     return 0;
+ *                 }
+ *                 if (func_80098D28(ctl->subHandler) == 0) {
+ *                     ctl->state = 4;  ctl->counter = 0;
+ *                     break;
+ *                 }
+ *                 return 0;
+ *             }
+ *             case 4: {
+ *                 if (func_8009C0F4()) return 0;
+ *                 if (ctl->counter == 0) {
+ *                     u8 rules = applyCardRules(&D_801D3398, 1);
+ *                     ctl->rulesFlags = rules;
+ *                     if (rules & TT_RESULT_COMBO_MASK) {
+ *                         s32 row, col;
+ *                         s32 ownerMask = 0;  // also used as SFX arg in Same path
+ *                         if (rules & TT_RESULT_SAME_FIRED) {
+ *                             func_8009EB30(ownerMask);
+ *                             ownerMask = TT_CELL_SAME_MATCHED;
+ *                         } else if (rules & TT_RESULT_PLUS_FIRED) {
+ *                             func_8009EB30(1);
+ *                             ownerMask = TT_CELL_PLUS_COMBO;
+ *                         }
+ *                         for (row = 1; row <= 3; row++) {
+ *                             for (col = 1; col <= 3; col++) {
+ *                                 if (D_801D3398.cells[row][col].flags & ownerMask)
+ *                                     func_8009C0A0(D_801D3398.cells[row][col].entityIdx, 6);
+ *                             }
+ *                         }
+ *                         func_800A233C(TT_HOLD_FRAMES_RULE);
+ *                     }
+ *                     ctl->counter++;
+ *                 } else {
+ *                     ctl->retryFlag = 1;
+ *                     func_8009D058(&D_801D3398);
+ *                     ctl->state = 5;  ctl->counter = 0;
+ *                 }
+ *                 break;
+ *             }
+ *             case 5: {
+ *                 if (func_8009C0F4()) return 0;
+ *                 if (ctl->rulesFlags == 0) { ctl->state = 6; ctl->counter = 0; break; }
+ *                 {
+ *                     u8 next = applyCardRules(&D_801D3398, ctl->rulesFlags);
+ *                     ctl->rulesFlags = next;
+ *                     if (next != 0 && ctl->retryFlag != 0) func_8009EB30(5);
+ *                     func_8009D058(&D_801D3398);
+ *                 }
+ *                 break;
+ *             }
+ *             case 6: {
+ *                 s32 unmatched = 0, row;
+ *                 for (row = 1; row <= 3; row++) {
+ *                     s32 col;
+ *                     for (col = 1; col <= 3; col++) {
+ *                         if (!(D_801D3398.cells[row][col].flags & TT_CELL_OCCUPIED))
+ *                             unmatched++;
+ *                     }
+ *                 }
+ *                 if (unmatched == 0) ctl->state = 7;
+ *                 else { D_801D30F8 ^= 1; ctl->state = 1; }
+ *                 ctl->counter = 0;
+ *                 break;
+ *             }
+ *             case 7: {
+ *                 ctl->counter++;
+ *                 if (ctl->counter == 1) {
+ *                     u8 cnt[2]; s32 i;
+ *                     cnt[1] = 0;  cnt[0] = 0;
+ *                     for (i = 0; i < 10; i++) cnt[D_801D31C0[i].initFlags & 1]++;
+ *                     if (cnt[0] > cnt[1])      D_801D30FC = 0;
+ *                     else if (cnt[1] > cnt[0]) D_801D30FC = 1;
+ *                     else                       D_801D30FC = 2;
+ *                 }
+ *                 if ((u8)ctl->counter < TT_HOLD_FRAMES_TALLY) return 0;
+ *                 ctl->state = 8;  ctl->counter = 0;
+ *                 break;
+ *             }
+ *             case 8: {
+ *                 if (ctl->counter == 0) {
+ *                     s32 mode;
+ *                     if (D_801D30FC == 2) mode = 4;
+ *                     else if (D_801A2C70[D_801D30FC] < 3) { func_800A247C(3); mode = 2; }
+ *                     else mode = 3;
+ *                     D_801D3018 = func_8009EB30(mode);
+ *                     ctl->counter++;
+ *                 }
+ *                 if (D_801C2EC4 & PAD_UP) {
+ *                     if (D_801D3018 != 0) { func_8009EB90(D_801D3018, 1); D_801D3018 = 0; }
+ *                     return 0;
+ *                 }
+ *                 if (D_801C2EC4 == 0) return 0;
+ *                 func_800A2054(3);
+ *                 if (D_801D30FC == 2 && (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH)) {
+ *                     if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
+ *                     func_8009953C();
+ *                     D_801D30F8 ^= 1;
+ *                     ctl->state = 1;
+ *                 } else {
+ *                     ctl->state = 9;
+ *                 }
+ *                 ctl->counter = 0;
+ *                 break;
+ *             }
+ *             case 9: {
+ *                 if (ctl->counter == 0) func_800A0370(TT_HOLD_FRAMES_FADE);
+ *                 ctl->counter++;
+ *                 if ((u8)ctl->counter < TT_HOLD_FRAMES_FADE) return 0;
+ *                 if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
+ *                 {
+ *                     TripleTriadData *inv = getInventoryPtr();
+ *                     if (D_801D30FC == 2) {
+ *                         D_80082C9C = D_801D30FC;
+ *                         inv->draws++;
+ *                     } else if (D_801A2C70[D_801D30FC] == 3) {
+ *                         D_80082C9C = 1;
+ *                         inv->defeats++;
+ *                     } else {
+ *                         D_80082C9C = 0;
+ *                         inv->victories++;
+ *                     }
+ *                     D_801A2CE6 = 4;
+ *                 }
+ *                 return 0;
+ *             }
+ *         }
+ *     }
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80099C78);
 
 /**
@@ -1254,7 +1474,110 @@ s32 func_8009A2F4(s32 a0) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_8009A314);
+/**
+ * @brief Triple Triad: emit per-cell capture-direction marker sprites and flip
+ *        the back-buffer's draw-env entry.
+ *
+ * Per-frame renderer that walks the 3x3 active play area (rows/cols 1..3).
+ * Each board slot carries a @c pad05 bitmask whose set bits each represent a
+ * captured-from direction (or similar overlay sprite) to render at that cell.
+ * The function finds the lowest set bit of @c pad05, packs a 6-word combined
+ * @c DR_TPAGE + @c SPRT primitive (24 bytes) into the active primitive pool
+ * via @c D_801C2EB4, and links it into the OT at @c D_801C2EB0[0x1B] (the
+ * 0x6C byte slot in the sort tree) using @c AddPrim. The U/V coordinates are
+ * computed from the bit position: @c U = ((bit&3)<<6) + ((frameTick<<2)&0x30)
+ * (animated by @c D_801A2C6C frame counter modulo 4), @c V = (bit>>2)<<4 + 0x10.
+ * Cell pixel positions step by 0x40 in both axes (cell size).
+ *
+ * After all visible cells emit, @c D_801C2EB4 is bumped to the new tail and
+ * @c func_80098A1C is called with @c &D_801C2DD0[!activeBuffer] (the OTHER
+ * draw-env) plus @c D_8012E66C as the callback — registering the back-buffer
+ * for the next vblank flip.
+ *
+ * @return Always @c 0.
+ *
+ * @note Matching tricks: (1) @c TripleTriadCellPrim is a 6-word combined
+ *       primitive (P_TAG + DR_TPAGE + SPRT). (2) The bit-scan loop uses a
+ *       redundant @c saved = colByteOffset[boardBase+5] re-load (instead of
+ *       @c saved = mask) — this re-emits the @c addu for the cell address,
+ *       letting gcc allocate @c v1 (matching target) instead of reusing
+ *       @c v0. (3) @c v = saved >> bit at the top of the while-loop body
+ *       AND in the tail (line 76 below is redundant after the bottom-of-body
+ *       shift, but the compiler emits a srav for it in the back-edge delay
+ *       slot for the next iter's check). (4) @c volatile s32 D_801A2C6C
+ *       prevents gcc from narrowing the global load to @c lbu — the target
+ *       uses a 32-bit @c lw. (5) @c i[arr] form @c colByteOffset[boardBase+5]
+ *       forces the @c addu operand order @c (s2, s8) matching target.
+ *       (6) @c row=1 / @c col=1 in declaration init (not the @c for header)
+ *       fixes the s-reg allocation so that @c row→s7 and @c col→s4.
+ *       (7) @c rowByteOffset = pixelY chains the init so gcc emits
+ *       @c addu s6, s5, $0 (matching target's @c addu s6, s5, zero).
+ */
+typedef struct {
+    /* 0x00 */ u32 tag;        /**< @c P_TAG: len=5, next=0 (six-dword primitive). */
+    /* 0x04 */ u32 tpageCmd;   /**< GP0(0xE1) Draw Mode + tpage attribute = @c 0xE100060C. */
+    /* 0x08 */ u32 sprtCmd;    /**< GP0(0x66) textured sprite + grey-tint RGB = @c 0x66808080. */
+    /* 0x0C */ s16 x0, y0;     /**< Screen-space sprite origin (top-left). */
+    /* 0x10 */ u8  u0, v0;     /**< Texture-page UV (bit-position derived). */
+    /* 0x12 */ u16 clut;       /**< CLUT id (varies by lowest set bit of @c pad05). */
+    /* 0x14 */ s16 w, h;       /**< Sprite size in pixels (15x15). */
+} TripleTriadCellPrim;
+
+s32 func_8009A314(void) {
+    TripleTriadCellPrim *prim = (TripleTriadCellPrim *)D_801C2EB4;
+    s32 row = 1;
+    u8 *boardBase = (u8 *)&D_801D3398;
+    s32 pixelY = 0x28;
+    s32 rowByteOffset = pixelY;
+
+    for (; row <= 3; row++) {
+        s32 col = 1;
+        s32 pixelX = 0x78;
+        s32 colByteOffset = rowByteOffset + 8;
+
+        for (; col <= 3; col++) {
+            u8 mask = colByteOffset[boardBase + 5];
+
+            if (mask != 0) {
+                s32 bit = 0;
+                s32 saved = colByteOffset[boardBase + 5];
+                s32 v;
+
+                while (1) {
+                    v = saved >> bit;
+                    if (v & 1) break;
+                    bit++;
+                    if (bit >= 8) break;
+                    v = saved >> bit;
+                }
+
+                prim->tag      = 0x05000000;
+                prim->tpageCmd = 0xE100060C;
+                prim->clut     = (bit + 0xE1) << 6;
+                prim->sprtCmd  = 0x66808080;
+                prim->x0       = pixelX;
+                prim->y0       = pixelY;
+                prim->u0       = ((bit % 4) << 6) + ((D_801A2C6C << 2) & 0x30);
+                prim->v0       = ((bit / 4) << 4) + 0x10;
+                prim->h        = 0xF;
+                prim->w        = 0xF;
+
+                AddPrim((s32 *)&D_801C2EB0[0x1B], prim);
+                prim++;
+            }
+
+            pixelX += 0x40;
+            colByteOffset += 8;
+        }
+
+        pixelY += 0x40;
+        rowByteOffset += 0x28;
+    }
+
+    D_801C2EB4 = prim;
+    func_80098A1C((u8 *)&D_801C2DD0[D_801C2DCA ^ 1], D_8012E66C);
+    return 0;
+}
 
 /**
  * @brief Query the list at @p node->listPtr; return 2 if empty, 0 otherwise.

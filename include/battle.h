@@ -1139,7 +1139,7 @@ extern void setSfxField2F(s32 idx, s32 val);
 typedef struct {
     /* 0x00 */ u16 flags;       /**< See @c TT_CELL_* flag table below. */
     /* 0x02 */ u8  cardId;      /**< Index into @c g_tripleTriadCardStats. */
-    /* 0x03 */ u8  pad03;
+    /* 0x03 */ u8  entityIdx;   /**< @c D_801D31C0 slot index (battle object) driving this cell's animation. */
     /* 0x04 */ u8  owner;       /**< Player 0 or 1. */
     /* 0x05 */ u8  pad05;
     /* 0x06 */ s8  elementMod;  /**< FF8 Elemental rule: +1/-1 added to each edge if card's
@@ -1224,8 +1224,8 @@ typedef struct {
     /* 0x00 */ TripleTriadBoardSlot cells[TT_BOARD_ROWS][TT_BOARD_COLS];
 } TripleTriadBoard;
 
-/** @brief Global 5x5 Triple Triad board (sentinel-padded, 25 slots flat). */
-extern TripleTriadBoardSlot D_801D3398[TT_BOARD_ROWS * TT_BOARD_COLS];
+/** @brief Global 5x5 Triple Triad board (sentinel-padded). */
+extern TripleTriadBoard D_801D3398;
 
 /**
  * @brief 60-byte work buffer staged by @c func_80098B80 for one card
