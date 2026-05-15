@@ -3,17 +3,41 @@
 #include "psxsdk/libc.h"
 #include "psxsdk/libgpu.h"
 
+#define BE_OT_LEN 28  /**< OT entries per buffer (D_801A2CE8). */
+
 typedef struct {
     u32 type;
     u32 size;
     s32 offset;
 } ResHeader;
 
+/** @brief PsyQ TIM image block (CLUT or image): block-length + RECT + pixel data. */
 typedef struct {
-    u8 active;
-    u8 pad01[3];
-    u8 data[8];
-    void *src;
+    s32  blockLength;   /**< Total bytes including this field. */
+    RECT rect;          /**< VRAM target/source rectangle. */
+    u32  data[1];       /**< Pixel data (variable). */
+} TIM_BLOCK;
+
+/** @brief PsyQ TIM file: id+flag header followed by CLUT then image block. */
+typedef struct {
+    u32       id;       /**< Magic 0x10. */
+    u32       flag;     /**< bpp + CLUT-present flag. */
+    TIM_BLOCK clut;     /**< CLUT block; image block follows in memory. */
+} TIM;
+
+/** @brief Deferred VRAM transfer dispatched by @c func_800988E0. */
+typedef enum {
+    POOL_LOAD_IMAGE  = 0,  /**< LoadImage(rect, src). */
+    POOL_LOAD_TIM    = 1,  /**< LoadImage twice from a TIM file (CLUT + image). */
+    POOL_STORE_IMAGE = 2,  /**< StoreImage(rect, dst). */
+    POOL_MOVE_IMAGE  = 3   /**< MoveImage(rect, dstX, dstY) with @c src packed as @c y<<16|x. */
+} PoolAction;
+
+typedef struct {
+    u8   active;        /**< @c PoolAction enum value. */
+    u8   pad01[3];
+    RECT rect;          /**< Destination/source RECT (unused when @c active == POOL_LOAD_TIM). */
+    void *src;          /**< TIM pointer / pixel buffer / packed dest coords (depends on @c active). */
 } PoolEntry;
 
 extern s32 D_801C2FD0;
@@ -25,7 +49,7 @@ extern u8 *D_801D2FE0;
 extern u8 *D_801D3000;
 extern s16 D_80182B54;
 extern s16 D_80182B5A;
-extern s16 D_80182B56;
+extern s16 g_textCursorX;
 extern s16 D_80182B58;
 extern u8 D_801D2FF0[2][8];
 extern u8 D_801C2FE0[2][0x8000];
@@ -42,14 +66,21 @@ extern DRAWENV D_801C2DD0[2];
 extern DISPENV D_801C2E88[2];
 extern RECT D_800A45A8;
 extern RECT D_800A45B0;
-extern u32 D_801A2CE8[];
-extern u8  D_801A2DC8[];
+extern u32 D_801A2CE8[2][BE_OT_LEN];
+extern u8  D_801A2DC8[2][0x10000];  /* primitive pool, 64KB per buffer */
+extern DRAWENV *g_activeDrawEnv;
 extern void func_800988D4(void);
+extern void func_800988E0(void);
 extern void func_800408C4(s32, s32);   /* SetGeomOffset */
 extern void func_800408E4(s32);        /* SetGeomScreen */
 extern u8 D_801D3028[];
 extern u8 D_801D3038[];
 extern volatile u16 D_8005F158;
+
+typedef struct { u8 r, g, b; } RGB;
+extern RGB D_80182B5C;          /* debug-text rgb color. */
+extern u32 D_80182AA0[];        /* color palette table, indexed by ASCII byte '0'..'8'. */
+extern void SetSprt(SPRT *p);   /* PsyQ: init SPRT tag/code header. */
 
 typedef u8 *(*BattleStateFn)(void);
 extern BattleStateFn D_800A4588[];
@@ -201,9 +232,9 @@ void func_800984DC(void) {
     ClearImage(&D_800A45B0, 0xFF, 0xFF, 0xFF);
 
     D_801C2DCA = 0;
-    D_801C2EB0 = (s32 *)D_801A2CE8;
-    ClearOTagR(D_801A2CE8, 0x1C);
-    D_801C2EB4 = &D_801A2DC8[D_801C2DCA << 16];
+    D_801C2EB0 = &D_801A2CE8[0][0];
+    ClearOTagR(&D_801A2CE8[0][0], BE_OT_LEN);
+    D_801C2EB4 = &D_801A2DC8[D_801C2DCA][0];
 
     InitGeom();
     func_800408C4(0xC0, 0x70);
@@ -215,7 +246,51 @@ void func_800984DC(void) {
     func_800988D4();
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80098690);
+/**
+ * @brief Flip the battle engine's double-buffered draw/display environments.
+ *
+ * Called once per frame (paired with @c func_80099464). Synchronizes with
+ * vsync and the previous draw, advances the fade-in/fade-out counter
+ * @c D_801C2DC9 (decrements positives, increments negatives; on reaching
+ * zero, toggles @c SetDispMask), then flips @c D_801C2DCA to the next
+ * buffer index. The just-flipped buffer's draw and disp envs are pushed
+ * to the GPU, the previous buffer's OT is drawn, and the new buffer's
+ * OT base + primitive pool tail are reset so the next frame's primitives
+ * accumulate into the fresh buffer. @c g_activeDrawEnv is updated to
+ * point at the buffer being prepared (the one NOT just put on display).
+ */
+void func_80098690(void) {
+    func_80099464();
+    VSync(1);
+    DrawSync(0);
+    VSync(1);
+    VSync(D_801C2DC8);
+
+    if (D_801C2DC9 > 0) {
+        D_801C2DC9--;
+        if (D_801C2DC9 == 0) {
+            SetDispMask(1);
+        }
+    } else if (D_801C2DC9 < 0) {
+        D_801C2DC9++;
+        if (D_801C2DC9 == 0) {
+            SetDispMask(0);
+        }
+    }
+
+    D_801C2DCA ^= 1;
+
+    PutDrawEnv(&D_801C2DD0[D_801C2DCA]);
+    PutDispEnv(&D_801C2E88[D_801C2DCA]);
+    func_800988E0();
+
+    DrawOTag(&D_801A2CE8[D_801C2DCA ^ 1][BE_OT_LEN - 1]);
+    D_801C2EB4 = &D_801A2DC8[D_801C2DCA][0];
+    D_801C2EB0 = &D_801A2CE8[D_801C2DCA][0];
+    ClearOTagR(&D_801A2CE8[D_801C2DCA][0], BE_OT_LEN);
+
+    g_activeDrawEnv = &D_801C2DD0[D_801C2DCA ^ 1];
+}
 
 /**
  * @brief Initialize controller input arrays for battle engine.
@@ -245,7 +320,43 @@ void func_800988D4(void) {
     D_801C2FD0 = 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_800988E0);
+/**
+ * @brief Dispatch all pending entries in the @c D_801C2ED0 GPU-transfer pool.
+ *
+ * Walks @c D_801C2FD0 entries and performs the requested operation on each
+ * (LoadImage / LoadImage TIM / StoreImage / MoveImage), then resets the pool
+ * count to zero. Entries are typically queued by @c func_800988E0's siblings
+ * during a frame and flushed here once vsync has elapsed.
+ */
+void func_800988E0(void) {
+    s32 i;
+    PoolEntry *p = D_801C2ED0;
+
+    for (i = 0; i < D_801C2FD0; p++, i++) {
+        switch (p->active) {
+            case POOL_LOAD_IMAGE:
+                LoadImage(&p->rect, p->src);
+                break;
+            case POOL_LOAD_TIM: {
+                TIM *tim = p->src;
+                TIM_BLOCK *image;
+                LoadImage(&tim->clut.rect, tim->clut.data);
+                /* Re-derive image block from p->src (not cached @c tim) so gcc
+                   reloads the pointer — matches the original instruction order. */
+                image = (TIM_BLOCK *)((u8 *)&((TIM *)p->src)->clut + tim->clut.blockLength);
+                LoadImage(&image->rect, image->data);
+                break;
+            }
+            case POOL_STORE_IMAGE:
+                StoreImage(&p->rect, p->src);
+                break;
+            case POOL_MOVE_IMAGE:
+                MoveImage(&p->rect, ((u32)p->src) & 0xFFFF, ((u32)p->src) >> 16);
+                break;
+        }
+    }
+    D_801C2FD0 = 0;
+}
 
 /**
  * @brief Register an inactive D_801C2ED0 pool entry with an 8-byte data copy.
@@ -261,7 +372,7 @@ INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_800988E0);
 void func_80098A1C(u8 *a0, u8 *a1) {
     PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
     entry->active = 0;
-    memcpy(entry->data, a0, 8);
+    memcpy(&entry->rect, a0, 8);
     entry->src = a1;
 }
 
@@ -302,7 +413,7 @@ u8 *func_80098A6C(ResHeader *res) {
 void func_80098AB4(u8 *a0, u8 *a1) {
     PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
     entry->active = 2;
-    memcpy(entry->data, a0, 8);
+    memcpy(&entry->rect, a0, 8);
     entry->src = a1;
 }
 
@@ -318,7 +429,7 @@ void func_80098AB4(u8 *a0, u8 *a1) {
 void func_80098B08(u8 *a0, s16 a1, u16 a2) {
     PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
     entry->active = 3;
-    memcpy(entry->data, a0, 8);
+    memcpy(&entry->rect, a0, 8);
     entry->src = (void *)(((s32)a2 << 16) | a1);
 }
 
@@ -521,7 +632,7 @@ void func_80098DD4(void) {
 /**
  * @brief Set battle viewport dimensions if non-negative.
  *
- * Stores a0 to D_80182B5A and D_80182B56 if a0 >= 0.
+ * Stores a0 to D_80182B5A and g_textCursorX if a0 >= 0.
  * Stores a1 to D_80182B58 if a1 >= 0.
  *
  * @param a0 Width value (stored if >= 0).
@@ -530,16 +641,121 @@ void func_80098DD4(void) {
 void func_80098E54(s32 a0, s32 a1) {
     if (a0 >= 0) {
         D_80182B5A = a0;
-        D_80182B56 = a0;
+        g_textCursorX = a0;
     }
     if (a1 >= 0) {
         D_80182B58 = a1;
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80098E7C);
+/**
+ * @brief Append one debug-text character as a 5x5 textured sprite primitive.
+ *
+ * Renders @p ch (uppercased on the fly) from the debug font atlas into a
+ * fresh @c SPRT at the current packet-buffer tail (@c D_801D2FE0), then
+ * advances the cursor and the buffer pointer. Newline resets the cursor
+ * to the line origin and steps down 7 px; any non-printable byte (below
+ * space) just advances the cursor without emitting a glyph.
+ *
+ * The U/V atlas math packs 8 glyphs per row across 64 px; biases by
+ * @c -0x80 / @c -0x20 wrap the indices into the texture-page coordinate
+ * space. Odd/even character codes alternate between two CLUTs.
+ */
+void func_80098E7C(u8 ch) {
+    SPRT *prim;
+    s32 adjusted;
+    s32 row;
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80098FD8);
+    prim = (SPRT *)D_801D2FE0;
+
+    if (ch == '\n') {
+        g_textCursorX = D_80182B5A;
+        D_80182B58 += 7;
+        return;
+    }
+
+    /* Any space or control byte: just advance the cursor, no glyph. */
+    if (ch <= 0x20) {
+        g_textCursorX += 6;
+        return;
+    }
+
+    /* Lowercase 'a'..'z' (0x61..0x7A): fold to uppercase by subtracting 0x20. */
+    if ((u8)(ch - 0x61) < 0x1A) {
+        ch -= 0x20;
+    }
+
+    SetSprt(prim);
+
+    /* Drop down to glyph index relative to space (0x20 = first printable). */
+    adjusted = ch - 0x20;
+
+    prim->r0 = D_80182B5C.r;
+    prim->g0 = D_80182B5C.g;
+    prim->b0 = D_80182B5C.b;
+
+    prim->x0 = g_textCursorX;
+    prim->y0 = D_80182B58;
+
+    prim->u0 = ((adjusted << 2) & 0x38) - 0x80;
+
+    row = adjusted;
+    if (adjusted < 0) {
+        row = ch - 0x11;
+    }
+    prim->v0 = ((row >> 4) << 3) - 0x20;
+
+    if (ch & 1) {
+        prim->clut = 0x384F;
+    } else {
+        prim->clut = 0x380F;
+    }
+
+    prim->h = 5;
+    prim->w = 5;
+
+    AddPrim((u32 *)D_801D3000, prim);
+
+    D_801D2FE0 = (u8 *)(prim + 1);
+    g_textCursorX += 6;
+}
+
+/**
+ * @brief Render a null-terminated text string, with @c '#<digit>' color escapes.
+ *
+ * Walks @p str byte by byte. Characters are passed to @c func_80098E7C for
+ * sprite rendering. A @c '#' begins an escape: if the next byte is an ASCII
+ * digit @c '0'..'8', it indexes the palette table @c D_80182AA0 and the
+ * matching 4-byte RGB entry is copied into the live @c D_80182B5C color;
+ * any other byte after @c '#' is rendered as a plain character (the @c '#'
+ * is consumed silently).
+ *
+ * @note The @c escape_marker variable holds @c '#' across iterations to
+ * anchor the constant in a callee-saved register (matches target codegen).
+ */
+void func_80098FD8(u8 *str) {
+    u8 ch;
+
+    for (ch = *str++; ch != 0; ch = *str++) {
+        s32 digitEscape = '#';
+        if (ch == digitEscape) {
+            s32 next = *str++;
+            s32 digit = next & 0xFF;
+            if (digit < '9') {
+                if (digit >= '0') {
+                    /* Set color from palette entry indexed by ASCII digit. */
+                    memcpy(&D_80182B5C, &D_80182AA0[digit], 4);
+                } else {
+                    func_80098E7C(next);
+                }
+            } else {
+                func_80098E7C(next);
+            }
+        } else {
+            func_80098E7C(ch);
+        }
+    }
+}
 
 /**
  * Converts an integer to a decimal string representation.
@@ -633,9 +849,94 @@ u8 *func_800991AC(s32 a0, u8 *a1) {
     return dst + func_80047CB4(dst);
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80099204);
+/**
+ * @brief printf-style format-into-buffer.
+ *
+ * Walks the format string given as @c args[0] and writes the formatted
+ * output into @p dst. The remaining @c args[1..] are the values referenced
+ * by format specifiers. Supported specifiers:
+ *
+ *   - @c %d, @c %D : signed decimal (via @c func_800990A0)
+ *   - @c %x, @c %X : hexadecimal    (via @c func_80099134)
+ *   - @c %b, @c %B : binary         (via @c func_800991AC)
+ *   - @c %c, @c %C : single character byte
+ *   - @c %s, @c %S : null-terminated string
+ *
+ * Each @c % may be followed by an optional @c '0' to select zero-padding
+ * (default is space-padding), then a decimal field width parsed by
+ * @c func_80047C54 (strtol). Plain characters are copied verbatim. The
+ * @c escape_marker local anchors the @c '%' constant in a callee-saved
+ * register, matching the target's register allocation.
+ *
+ * @param dst   Output buffer; receives a null-terminated formatted string.
+ * @param args  Variadic argument array: @c args[0] is the format string,
+ *              subsequent words are pulled in order by format specifiers.
+ * @return Length of the produced string (excluding null terminator).
+ */
+s32 func_80099204(char *dst, s32 *args) {
+    char *fmt = (char *)*args++;
+    char *out = dst;
+    char buf[256];
+    u8 ch;
+    u8 padCh;
+    s32 width;
 
-extern s32 func_80099204(s32 a0, s32 *args);
+    ch = *fmt++;
+    if (ch == 0) goto end;
+
+    do {
+        s32 escape_marker = '%';
+        if (ch == escape_marker) {
+            padCh = ' ';
+            if (*fmt == '0') {
+                padCh = '0';
+                fmt++;
+            }
+            width = func_80047C54(fmt, &fmt, 0);
+            ch = *fmt++;
+            switch (ch) {
+                case 'D': case 'd':
+                    func_800990A0(*args++, buf);
+                    break;
+                case 'X': case 'x':
+                    func_80099134(*args++, buf);
+                    break;
+                case 'B': case 'b':
+                    func_800991AC(*args++, buf);
+                    break;
+                case 'C': case 'c':
+                    buf[0] = (u8)*args++;
+                    buf[1] = 0;
+                    break;
+                case 'S': case 's':
+                    func_80047CA4(buf, (char *)*args++);
+                    break;
+                default:
+                    buf[0] = ch;
+                    buf[1] = 0;
+                    break;
+            }
+            if (width > 0) {
+                s32 len = func_80047CB4(buf);
+                if (len < width) {
+                    s32 i;
+                    width -= len;
+                    for (i = 0; i < width; i++) {
+                        *out++ = padCh;
+                    }
+                }
+            }
+            func_80047CA4(out, buf);
+            out += func_80047CB4(buf);
+        } else {
+            *out++ = ch;
+        }
+        ch = *fmt++;
+    } while (ch != 0);
+end:
+    *out = 0;
+    return func_80047CB4(dst);
+}
 
 /**
  * @brief Variadic forwarder: passes @p a0 and a pointer to the variadic
@@ -646,7 +947,7 @@ extern s32 func_80099204(s32 a0, s32 *args);
  * start of a variadic argument list.
  */
 s32 func_800993F4(s32 a0, s32 a1, ...) {
-    return func_80099204(a0, &a1);
+    return func_80099204((char *)a0, &a1);
 }
 
 /**
@@ -659,7 +960,7 @@ s32 func_800993F4(s32 a0, s32 a1, ...) {
  */
 void func_80099424(s32 a0, ...) {
     s8 buf[0x100];
-    func_80099204((s32)buf, &a0);
+    func_80099204((char *)buf, &a0);
     func_80098FD8(buf);
 }
 
@@ -683,17 +984,258 @@ void func_80099464(void) {
     ClearOTag(D_801D2FF0[D_80182B54], 2);
 
     D_80182B5A = 8;
-    D_80182B56 = 8;
+    g_textCursorX = 8;
     D_80182B58 = 8;
 
     D_801D2FE0 = D_801C2FE0[D_80182B54];
     D_801D3000 = D_801D2FF0[D_80182B54];
 }
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_8009953C);
+/**
+ * @brief Initialize the 10 Triple Triad battle-object slots for a new match.
+ *
+ * Calls @c func_8009C6D8 for one-shot setup, then assigns each of the 10
+ * @c D_801D31C0 slots to a player by tagging it with that player's index
+ * (low bit of @c initFlags) and a sequence number (0..N) within that
+ * player's hand. The @c fieldD reset clears any stale sub-state.
+ *
+ * For the "offset hand" layout (@c D_801A2C70[player] @c == @c 3) with
+ * the corresponding rule bit clear, @c posData[1] is biased to @c 0x800
+ * so the card draws shifted; otherwise it stays at zero.
+ *
+ * Finally, slots 1 and 2 of the substate parameter table @c D_801D3340
+ * have their @c field2 halfword zeroed (idle substate state).
+ *
+ * @note The reversed @c cnt initialization order matches the compiler's
+ *       scheduling for the original source — natural order produces the
+ *       wrong store sequence.
+ */
+void func_8009953C(void) {
+    s32 cnt[2];
+    s32 i;
+    s32 owner;
+    BattleObject *entry;
 
-INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_800995F8);
+    func_8009C6D8();
 
+    cnt[1] = 0;
+    cnt[0] = 0;
+
+    for (i = 0; i < 10; i++) {
+        s32 c;
+        entry = &D_801D31C0[i];
+        owner = entry->initFlags & 1;
+        entry->fieldD = 0;
+        entry->groupId = owner;
+        c = cnt[owner];
+        entry->priority = c;
+        cnt[owner] = c + 1;
+        if (D_801A2C70[owner] == 3 && !(g_tripleTriadRules & 1)) {
+            entry->posData[1] = 0x800;
+        }
+    }
+
+    D_801D3340[1].field2 = 0;
+    D_801D3340[2].field2 = 0;
+}
+
+/**
+ * @brief Per-triangle face descriptor for the 4-vertex G3 icon model.
+ *
+ * The 4 entries of @c D_80182BB8 pair with the 4-vertex SVECTOR table
+ * @c D_80182B98 to describe a tetrahedral 3D icon (3 yellow faces and one
+ * white face). The 3 vertex indices select corners from the transformed
+ * vertex output; the three color words pre-pack the @c POLY_G3
+ * @c r/g/b/code byte quartets for direct word-store into the primitive.
+ */
+typedef struct {
+    u8  v0;             /**< Index 0..3 into the transformed vertex table. */
+    u8  v1;
+    u8  v2;
+    u8  pad03;
+    u32 color0Word;     /**< Packed @c r0|g0|b0|code (with @c 0x30 = G3 code). */
+    u32 color1Word;     /**< Packed @c r1|g1|b1|pad1. */
+    u32 color2Word;     /**< Packed @c r2|g2|b2|pad2. */
+} TriadFaceDesc;        /* 0x10 bytes */
+
+extern SVECTOR        D_80182B98[4];   /**< 4-vertex tetrahedron model. */
+extern TriadFaceDesc  D_80182BB8[4];   /**< 4 G3 face descriptors. */
+extern u32           *D_801D3008;      /**< Scratch buffer pointer for RotTransPers4 outputs. */
+
+/**
+ * @brief Emit @c POLY_G3 primitives for a 4-vertex tetrahedral icon model.
+ *
+ * Allocates a 24-byte scratch buffer (6 words: 4 packed sxy + p + flag),
+ * batches the 4 model vertices through @c RotTransPers4 to project them
+ * into screen space, then walks the 4 face descriptors in @c D_80182BB8.
+ * For each face it picks 3 of the 4 transformed vertices, runs
+ * @c NormalClip to drop back-facing triangles, and (if visible) writes a
+ * @c POLY_G3 with the face's pre-packed colors + projected screen
+ * positions, links it into @p ot via @c AddPrim, and advances @p prims.
+ *
+ * The packed @c color0/1/2Word fields are copied into the primitive via
+ * @c sw-equivalent word stores to match the source's u32 copy pattern.
+ *
+ * @param ot     Display-list OT head this batch is chained into.
+ * @param prims  Output buffer for @c POLY_G3 primitives (up to 4 emitted).
+ * @return Pointer to the next free slot after the last emitted primitive.
+ */
+POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
+    POLY_G3 *out;
+    s32 i;
+    TriadFaceDesc *face;
+    s32 *ptr;
+
+    ptr = (s32 *)func_80098B80(0x18);
+    D_801D3008 = (u32 *)ptr;
+
+    RotTransPers4(&D_80182B98[0], &D_80182B98[1], &D_80182B98[2], &D_80182B98[3],
+                  &ptr[0], &ptr[1], &ptr[2], &ptr[3], &ptr[4], &ptr[5]);
+
+    out = prims;
+    for (i = 0; i < 4; i++) {
+        face = &D_80182BB8[i];
+        if (NormalClip(D_801D3008[face->v0], D_801D3008[face->v1], D_801D3008[face->v2]) >= 0) {
+            out->tag = 0x06000000;
+            *(u32 *)&out->r0 = face->color0Word;
+            *(u32 *)&out->r1 = face->color1Word;
+            *(u32 *)&out->r2 = face->color2Word;
+            *(u32 *)&out->x0 = D_801D3008[face->v0];
+            *(u32 *)&out->x1 = D_801D3008[face->v1];
+            *(u32 *)&out->x2 = D_801D3008[face->v2];
+            AddPrim(ot, out);
+            out++;
+        }
+    }
+
+    func_80098BA0(0x18);
+    return out;
+}
+
+/**
+ * @brief Per-frame 4-state animation handler for a 3D icon transform.
+ *
+ * Allocates a 40-byte scratch @c TransformBuf (8-byte rotation @c SVECTOR
+ * + 32-byte @c MATRIX) and dispatches on the node's state byte:
+ *
+ *  - **State 0** (init): pick a random phase (0 or 1) via @c func_80023D04,
+ *    set the directional @c D_801D300C (±0x400) and @c D_80182C00.vx (±0x8C)
+ *    from the phase, seed the scratch vector from the +Z unit @c D_80182BF8,
+ *    call @c func_800A233C(0x70), advance to state 1.
+ *  - **State 1** (entry arc, 85 frames total): three sub-phases driven by
+ *    the counter — 0..59 = sin-driven Y arc, 60..69 = hold (vector reset),
+ *    70..84 = blend back to @c D_80182C00 with an oscillating Y dip; on
+ *    counter >= 85 latches the phase to @c D_801D30F8 and goes to state 2.
+ *  - **State 2** (idle): nudges @c D_80182C08.vy by 0x10 per frame and
+ *    writes the static pose (-0x5C / 0x200 / ±0x8C). Transitions to state 3
+ *    when @c D_801D30F8 disagrees with the node's phase.
+ *  - **State 3** (flip): 10-frame swing using @c rsin to interpolate X/Z;
+ *    on completion flips the phase bit and returns to state 2.
+ *
+ * Always runs the common tail: build a @c YXZ rotation matrix from
+ * @c D_80182C08, copy the scratch vector into the matrix translation,
+ * apply a constant +0x100 X tilt, set the GTE rotation + translation
+ * matrices, and emit one batch of @c POLY_G3 primitives via
+ * @c func_800995F8 into the active OT.
+ *
+ * @note Near-match (99.13%): remaining gap is gcc 2.7.2 register naming
+ *       on case 0 temps and one scheduling slot — the C body in
+ *       @c permuter/func_80099798/base.c reproduces this match. The
+ *       @c new_var anchors, the @c short r narrowing, the @c c=d aliasing
+ *       in case 1's third branch, and splitting @c vy -= ... into two
+ *       statements (@c d = expr; @c vy -= d) are permuter-found tricks
+ *       that pin constants and reshape gcc's register choices.
+ *
+ * @verbatim
+ * s32 func_80099798(HandlerNode *node) {
+ *     s32 new_var = 0x8C;
+ *     D_801D3010 = (TransformBuf *)func_80098B80(0x28);
+ *     switch (node->state) {
+ *         case 0: {
+ *             short r = func_80023D04() % 2;     // short narrows for prologue
+ *             s32 d300c, c00x;
+ *             s32 new_var400 = 0x400;
+ *             node->phase = r;
+ *             if ((u8)r) d300c =  new_var400;
+ *             else       d300c = -new_var400;
+ *             D_801D300C = d300c;
+ *             if (node->phase) c00x =  0x8C;
+ *             else             c00x = -new_var;
+ *             D_80182C00.vx = c00x;
+ *             D_801D3010->vec = D_80182BF8;
+ *             func_800A233C(0x70);
+ *             node->state = 1;  node->counter = 0;
+ *             break;
+ *         }
+ *         case 1: {
+ *             s32 c = node->counter;
+ *             if (c < 0x3C) {
+ *                 s32 t    = (c << 12) / 60;
+ *                 s32 sinv = rsin(t / 4);
+ *                 D_80182C08.vx = (u32)t >> 2;
+ *                 D_80182C08.vy = ((D_801D300C + 0xA000) * sinv) >> 12;
+ *                 D_801D3010->vec = D_80182BF8;
+ *             } else if ((c -= 0x3C) < 0xA) {
+ *                 D_801D3010->vec = D_80182BF8;
+ *             } else if ((c -= 0xA) < 0xF) {
+ *                 s32 d = (c << 12) / 15;
+ *                 c = d;                          // alias c=d for reg split
+ *                 D_80182C08.vx = (-(c << 10) >> 12) + 0x400;
+ *                 D_80182C08.vy = D_801D300C + (((-D_801D300C) * d) >> 12);
+ *                 LoadAverageShort12(&D_80182BF8, &D_80182C00, 0x1000 - d, c,
+ *                                    &D_801D3010->vec);
+ *                 d = (rsin(c / 2) << 4) >> 12;
+ *                 D_801D3010->vec.vy -= d;
+ *             } else {
+ *                 D_80182C08.vx = 0;
+ *                 D_801D3010->vec = D_80182C00;
+ *                 D_801D30F8 = node->phase;
+ *                 node->state = 2;  node->counter = 0;
+ *             }
+ *             node->counter++;
+ *             break;
+ *         }
+ *         case 2: {
+ *             s32 v;
+ *             D_80182C08.vy += 0x10;
+ *             if (node->phase) v =  0x8C;
+ *             else             v = -new_var;
+ *             D_801D3010->vec.vy = -0x5C;
+ *             D_801D3010->vec.vz =  0x200;
+ *             D_801D3010->vec.vx = v;
+ *             if (D_801D30F8 != node->phase) {
+ *                 node->state = 3;  node->counter = 0;
+ *             }
+ *             break;
+ *         }
+ *         case 3: {
+ *             s32 t  = (node->counter << 12) / 10;
+ *             s32 a1 = rsin(t / 4);
+ *             if (node->phase) a1 = 0x1000 - a1;
+ *             D_801D3010->vec.vx = ((a1 * 0x118) >> 12) - 0x8C;
+ *             D_801D3010->vec.vy = -0x5C;
+ *             D_801D3010->vec.vz = (-(rsin(t / 2) << 6) >> 12) + 0x200;
+ *             node->counter++;
+ *             if (((u8)node->counter) >= 0xA) {
+ *                 node->state = 2;  node->counter = 0;
+ *                 node->phase ^= 1;
+ *             }
+ *             break;
+ *         }
+ *     }
+ *     RotMatrixYXZ(&D_80182C08, &D_801D3010->mat);
+ *     D_801D3010->mat.t[0] = D_801D3010->vec.vx;
+ *     D_801D3010->mat.t[1] = D_801D3010->vec.vy;
+ *     D_801D3010->mat.t[2] = D_801D3010->vec.vz;
+ *     RotMatrixX(0x100, &D_801D3010->mat);
+ *     SetTransMatrix(&D_801D3010->mat);    // note: trans before rot
+ *     SetRotMatrix(&D_801D3010->mat);
+ *     D_801C2EB4 = func_800995F8(&D_801C2EB0[4], D_801C2EB4);
+ *     func_80098BA0(0x28);
+ *     return 0;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80099798);
 
 INCLUDE_ASM("asm/ovl/battle_engine/nonmatchings/be_object1", func_80099C78);

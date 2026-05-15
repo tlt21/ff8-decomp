@@ -38,7 +38,6 @@ extern void func_800A26C8(void);
 
 /* Per-player Triple Triad match state (region starts at 0x801A2C40). */
 extern u8 D_801A2C48[2][5];  /* Two players' 5-card hands (card ids). */
-extern u8 D_801A2C70[2];     /* Per-player "type" byte; 3 selects the offset-hand layout. */
 
 extern void  func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
 extern void *func_80098C44(u8 *list, s32 callback);

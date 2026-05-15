@@ -1018,7 +1018,7 @@ extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
 extern SubstateSlot D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
 
 /** @brief Battle-engine display-node spawner state (used by func_8009FED0). */
-extern s32 *D_801C2EB0;    /**< Display-list OT base — pointer-valued global; index by sort key. */
+extern u32 *D_801C2EB0;    /**< Display-list OT base — points at the active buffer's OT (D_801A2CE8[D_801C2DCA]); index by sort key. */
 extern void *D_801C2EB4;   /**< Current primitive-pool tail (advanced by display helpers). */
 extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
 extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
@@ -1264,5 +1264,6 @@ typedef enum {
 extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats table (~110 cards). */
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
+extern u8                   D_801A2C70[2];                     /**< Per-player layout type; 3 selects the offset-hand layout. */
 
 #endif /* BATTLE_H */
