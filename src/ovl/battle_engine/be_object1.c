@@ -1747,48 +1747,39 @@ u8 *func_8009A6EC(u8 *a0, s16 *a1) {
  * @param priority Target @c BattleObject.priority.
  * @return Slot index @c 0..9 of the first matching entry, or @c -1 if
  *         none found / invalid mode.
- *
- * @note Matching trick: explicit @c goto dispatch keeps gcc from inlining
- *       each loop body right after its dispatch test. With gotos the two
- *       scan loops land at the bottom of the function and the three
- *       dispatch tests at the top become @c bltz / @c bnez / @c beq
- *       forward jumps — matching the target's "test up top, handlers at
- *       the bottom" layout. Without gotos, gcc falls through into the
- *       first loop right after the @c a0 @c < @c 2 test (89% match).
  */
 s32 func_8009A7A4(s32 groupId, s32 fieldD, s32 priority) {
     s32 i;
 
-    if (groupId < 0) goto invalid;
-    if (groupId < 2) goto scan_active;
-    if (groupId == 2) goto scan_by_field;
-    return -1;
+    if (groupId < 0) return -1;
 
-scan_active:
-    for (i = 0; i < 10; i++) {
-        if (D_801D31C0[i].flags & 1) {
+    switch (groupId) {
+    case 0:
+    case 1:
+        for (i = 0; i < 10; i++) {
+            if (D_801D31C0[i].flags & 1) {
+                if (D_801D31C0[i].groupId == groupId) {
+                    if (D_801D31C0[i].priority == priority) {
+                        return i;
+                    }
+                }
+            }
+        }
+        return -1;
+
+    case 2:
+        for (i = 0; i < 10; i++) {
             if (D_801D31C0[i].groupId == groupId) {
-                if (D_801D31C0[i].priority == priority) {
-                    return i;
+                if (D_801D31C0[i].fieldD == fieldD) {
+                    if (D_801D31C0[i].priority == priority) {
+                        return i;
+                    }
                 }
             }
         }
+        return -1;
     }
-    return -1;
 
-scan_by_field:
-    for (i = 0; i < 10; i++) {
-        if (D_801D31C0[i].groupId == groupId) {
-            if (D_801D31C0[i].fieldD == fieldD) {
-                if (D_801D31C0[i].priority == priority) {
-                    return i;
-                }
-            }
-        }
-    }
-    return -1;
-
-invalid:
     return -1;
 }
 
