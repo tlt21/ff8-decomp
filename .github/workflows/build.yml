@@ -63,6 +63,7 @@ jobs:
         run: make report
 
       - name: Generate progress site and badges
+        if: github.event_name != 'pull_request'
         run: .venv/bin/python tools/generate_progress_site.py
         env:
           PAGES_BASE_URL: https://roengstrom.github.io/ff8-decomp
