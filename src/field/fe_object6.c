@@ -683,7 +683,24 @@ s32 func_800B35FC(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3650);
+/**
+ * Pop two stack values, store the first into SystemState halfword
+ * @c unk024 (mode-1 timer), look up the second through the @c D_80085230
+ * entity-pointer table and copy @c field_0x256 into @c unk021. Mode
+ * byte is set to 1.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3650(Eline *eline) {
+    s32 val1 = POP(eline);
+    s32 val2 = POP(eline);
+    D_800704A8.unk024 = val1;
+    D_800704A8.unk021 = D_80085230[val2]->field_0x256;
+    D_800704A8.unk020 = 1;
+    D_800704A8.unk022 = 0;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B36C8);
 
