@@ -793,7 +793,18 @@ s32 func_800B414C(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B417C);
+/**
+ * Pop a value and store it into @c g_gameState.mainData.battleStateFlag
+ * (the battle state word at @c g_gameState+0xCD4 used by camera shake).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B417C(Eline *eline) {
+    volatile GameState *gs = &g_gameState;
+    gs->mainData.battleStateFlag = POP(eline);
+    return 2;
+}
 
 /**
  * @brief Copy the global battle state flag into the script result register.
