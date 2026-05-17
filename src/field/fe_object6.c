@@ -11,8 +11,29 @@ extern u8 D_8007064D;
 extern u8 D_8007064F[];
 extern u8 D_8007065C[];
 
+extern u8 *D_800D5EA4;
+extern u8 *func_8003974C(u8 *base, s32 idx);
+extern s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2348);
+/**
+ * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
+ * the dispatcher-keyed bank table @c D_800D5EA4, and plays the resulting
+ * bank SFX with the popped parameters (volume masked to 8 bits, pan to 7).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @param a1    Dispatcher-supplied SFX bank index.
+ * @return 2 (continue processing).
+ */
+s32 func_800B2348(Eline *eline, s32 a1) {
+    s32 val1, val2, val3;
+    val1 = POP(eline);
+    val2 = POP(eline);
+    val3 = POP(eline);
+    val2 &= 0xFF;
+    val3 &= 0x7F;
+    sndPlayBankSfx((s32)func_8003974C(D_800D5EA4, a1), val1, val2, val3);
+    return 2;
+}
 
 /**
  * Pops a parameter and calls sndSetMasterVolume, returns 2.
