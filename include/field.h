@@ -71,7 +71,9 @@ typedef struct {
     /* 0x000 */ u8 mode;
     /* 0x001 */ u8 pad001;
     /* 0x002 */ s16 counter;
-    /* 0x004 */ u8 pad004[0x08];
+    /* 0x004 */ u16 unk004;
+    /* 0x006 */ u16 unk006;
+    /* 0x008 */ u8 pad008[0x04];
     /* 0x00C */ u16 unk00C;
     /* 0x00E */ u16 unk00E;
     /* 0x010 */ u8 pad010[0x02];

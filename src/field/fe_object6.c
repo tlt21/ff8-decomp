@@ -932,7 +932,26 @@ s32 func_800B45CC(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B460C);
+/**
+ * If active, set mode = 1 and stage the dispatcher-supplied @p a1 into
+ * @c unk00C, then pop four halfwords into @c unk00E / @c unk006 /
+ * @c unk004 / @c counter.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @param a1    Dispatcher-supplied mode-1 trigger word.
+ * @return 1 (yield to dispatcher without advancing PC).
+ */
+s32 func_800B460C(Eline *eline, s32 a1) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        D_800704A8.mode = 1;
+        D_800704A8.unk00C = a1;
+        D_800704A8.unk00E = (u16)POP(eline);
+        D_800704A8.unk006 = (u16)POP(eline);
+        D_800704A8.unk004 = (u16)POP(eline);
+        D_800704A8.counter = (u16)POP(eline);
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B46E4);
 
