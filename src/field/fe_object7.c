@@ -1658,7 +1658,39 @@ s32 func_800B8344(Eline *eline, s32 a1) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B83FC);
+/**
+ * @brief Positioned-message opcode handler — 4-pop variant (full XYZ).
+ *
+ * Sister of @c func_800B8344 but pops an extra coordinate: pops one
+ * halfword (window/format ID, stored to @c field_0x1D8) plus three
+ * s32 values that become @c msgPosY, @c msgPosX, and @c msgTextPtr
+ * (each scaled into Q19.12). Stores the dispatcher arg into
+ * @c field_0x1FC. Same inactive-frame contract: wait for
+ * @c msgState == 2 then clear @c msgActive and return 3.
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 3 once the message has been read.
+ */
+s32 func_800B83FC(Eline *eline, s32 a1) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState != 2) {
+            return 1;
+        }
+        eline->msgActive = 0;
+        return 3;
+    }
+    do {
+        eline->msgActive = 2;
+        eline->msgState = 0;
+        eline->field_0x1D8 = POP(eline);
+        eline->msgPosY = POP(eline) << 12;
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B84D8);
 
