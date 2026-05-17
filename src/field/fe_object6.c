@@ -1267,7 +1267,25 @@ s32 func_800B4F80(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4FF8);
+/**
+ * Pop a flag value. If @c stateFlags bit @c 0x200 is clear, set or
+ * clear bit @c 0x02 in @c fieldD1 based on the popped value. If
+ * @c 0x200 is set, leave @c fieldD1 alone.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B4FF8(Eline *eline) {
+    s32 val = POP(eline);
+    if (!(g_seedState->stateFlags & 0x200)) {
+        if (val != 0) {
+            g_seedState->fieldD1 |= 0x02;
+        } else {
+            g_seedState->fieldD1 &= ~0x02;
+        }
+    }
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B505C);
 
