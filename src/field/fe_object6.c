@@ -385,7 +385,22 @@ s32 func_800B2E68(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2EDC);
+/**
+ * Variant of @c func_800B2E68 that arms the @c 0x2000 marker flag
+ * instead of @c 0x8000 after running the movement-sweep init.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B2EDC(Eline *eline) {
+    s8 idx = eline->stackPtr;
+    s8 idx2 = idx - 1;
+    eline->stackPtr = idx - 2;
+    func_800B2D40(eline, ((s32 *)eline)[(s8)idx],
+                         ((s32 *)eline)[(s8)idx2]);
+    eline->flags |= 0x2000;
+    return 2;
+}
 
 /**
  * Returns 2 if bit 0x800 is set in the flags at offset 0x160, otherwise 1.
