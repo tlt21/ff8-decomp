@@ -73,7 +73,8 @@ typedef struct {
     /* 0x002 */ s16 counter;
     /* 0x004 */ u16 unk004;
     /* 0x006 */ u16 unk006;
-    /* 0x008 */ u8 pad008[0x04];
+    /* 0x008 */ u16 unk008;
+    /* 0x00A */ u8 pad00A[0x02];
     /* 0x00C */ u16 unk00C;
     /* 0x00E */ u16 unk00E;
     /* 0x010 */ u8 pad010[0x02];
