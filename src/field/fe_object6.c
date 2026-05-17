@@ -415,7 +415,23 @@ s32 func_800B2F50(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2F70);
+/**
+ * Pop a single value @c v and stage a zero-length movement at that
+ * position: call @c func_800B2D40(v, v) (start equals end), set both
+ * walk-speed countdown halfwords to 1, and arm the @c 0x1000 stop
+ * marker so the next tick records completion immediately.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B2F70(Eline *eline) {
+    s32 val = POP(eline);
+    func_800B2D40(eline, val, val);
+    ((FieldEntity *)eline)->walkSpeed2 = 1;
+    ((FieldEntity *)eline)->walkSpeed = 1;
+    eline->flags |= 0x1000;
+    return 2;
+}
 
 /**
  * Reset movement parameters: set walk speed to 1, clear directions, update flags.
