@@ -4,7 +4,6 @@
 
 extern SeedState *g_seedState;
 extern u8 D_80070652;
-extern u8 D_800704A8[];
 extern u8 D_800704CA;
 extern u8 D_8007064A;
 extern u8 D_8007064B;
@@ -371,8 +370,8 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B33B8);
  */
 s32 func_800B3474(u8 *a0) {
 
-    D_800704A8[0x122] = 0;
-    D_800704A8[0x130] = 0;
+    D_800704A8.unk122 = 0;
+    D_800704A8.unk130 = 0;
     return 2;
 }
 
@@ -459,7 +458,7 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B417C);
  */
 s32 func_800B41B0(Eline *eline) {
     volatile GameState *gs = &g_gameState;
-    eline->field_0x140 = gs->mainData.battleStateFlag;
+    eline->resultSlots[0] = gs->mainData.battleStateFlag;
     return 2;
 }
 
@@ -587,9 +586,9 @@ s32 func_800B49D8(u8 *a0) {
 
 /** @brief Set D_800704A8 command to 5, clear halfword, copy entity byte 0xD1. Returns 3. */
 s32 func_800B49E8(void) {
-    *(u8 *)D_800704A8 = 5;
-    *(u16 *)(D_800704A8 + 2) = 0;
-    *(u8 *)(D_800704A8 + 0x1AB) = g_seedState->fieldD1;
+    D_800704A8.mode = 5;
+    D_800704A8.counter = 0;
+    D_800704A8.unk1AB = g_seedState->fieldD1;
     return 3;
 }
 
@@ -602,9 +601,9 @@ s32 func_800B49E8(void) {
  */
 s32 func_800B4A18(u8 *a0) {
 
-    D_800704A8[0] = 5;
-    *(u16 *)(D_800704A8 + 2) = 1;
-    D_800704A8[0x1AB] = 2;
+    D_800704A8.mode = 5;
+    D_800704A8.counter = 1;
+    D_800704A8.unk1AB = 2;
     return 3;
 }
 
@@ -621,9 +620,9 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4A88);
  */
 s32 func_800B4D0C(u8 *a0) {
 
-    D_800704A8[0] = 5;
-    *(u16 *)(D_800704A8 + 2) = 0x1A;
-    D_800704A8[0x1AB] = 1;
+    D_800704A8.mode = 5;
+    D_800704A8.counter = 0x1A;
+    D_800704A8.unk1AB = 1;
     return 3;
 }
 
@@ -679,9 +678,9 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4E60);
  */
 s32 func_800B4EB0(u8 *a0) {
 
-    D_800704A8[0] = 5;
-    *(u16 *)(D_800704A8 + 2) = 0x18;
-    D_800704A8[0x1AB] = 1;
+    D_800704A8.mode = 5;
+    D_800704A8.counter = 0x18;
+    D_800704A8.unk1AB = 1;
     return 3;
 }
 

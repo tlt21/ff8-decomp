@@ -48,6 +48,31 @@ typedef struct {
     u8 unk24C;              /**< 0x24C */
 } FieldEntity;              /* size >= 0x24D */
 
+/** @brief System state block (at @c D_800704A8). */
+typedef struct {
+    /* 0x000 */ u8 mode;
+    /* 0x001 */ u8 pad001;
+    /* 0x002 */ s16 counter;
+    /* 0x004 */ u8 pad004[0x0E];
+    /* 0x012 */ u8 entityIndex[3];  /**< Per-active-slot field-entity index (mirror of g_seedState->memberSlot[]). */
+    /* 0x015 */ u8 pad015[0xED];
+    /* 0x102 */ u16 unk102;
+    /* 0x104 */ u16 unk104;
+    /* 0x106 */ u16 unk106;
+    /* 0x108 */ u8 pad108[0x1A];
+    /* 0x122 */ u8 unk122;          /**< Cleared together with @c unk130 by an fe_object6 opcode. */
+    /* 0x123 */ u8 pad123[0x0D];
+    /* 0x130 */ u8 unk130;
+    /* 0x131 */ u8 pad131[0x5F];
+    /* 0x190 */ u8 slotActive[16];
+    /* 0x1A0 */ u8 pad1A0[0x0B];
+    /* 0x1AB */ u8 unk1AB;          /**< Sub-mode byte; written together with @c mode by fe_object6 opcodes. */
+    /* 0x1AC */ u8 pad1AC[0x02];
+    /* 0x1AE */ u8 unk1AE;          /**< Script-writable byte (set by opcode handler @c func_800B85C8, read by @c func_8009FE18). */
+} SystemState;
+
+extern SystemState D_800704A8;
+
 /**
  * @brief 256-byte misc3 region of @c GameState — held at @c g_gameState+0xD60
  * and aliased through the @c g_seedState pointer.
@@ -113,9 +138,7 @@ typedef struct {
  */
 typedef struct {
     /* 0x000 */ u8 pad000[0x140];
-    /* 0x140 */ s32 field_0x140;
-    /* 0x144 */ s32 field_0x144;
-    /* 0x148 */ u8 pad148[0x18];
+    /* 0x140 */ s32 resultSlots[8]; /**< Result-slot register file (opcodes 0x08/0x09 read/write). */
     /* 0x160 */ s32 flags;
     /* 0x164 */ u8 pad164[0x10];
     /* 0x174 */ u8 scriptGroup;     /**< Script group index. */
@@ -126,16 +149,34 @@ typedef struct {
     /* 0x190 */ s32 posX;           /**< Entity X position (fixed-point). */
     /* 0x194 */ s32 posY;           /**< Entity Y position (fixed-point). */
     /* 0x198 */ s32 posZ;           /**< Entity Z position (fixed-point). */
-    /* 0x19C */ u8 pad19C[0x18];
+    /* 0x19C */ u8 pad19C[0x0C];
+    /* 0x1A8 */ s32 unk1A8;
+    /* 0x1AC */ s32 unk1AC;
+    /* 0x1B0 */ s32 unk1B0;
     /* 0x1B4 */ s32 msgTextPtr;     /**< Message text pointer (fixed-point). */
     /* 0x1B8 */ s32 msgPosX;        /**< Message X position (fixed-point). */
     /* 0x1BC */ s32 msgPosY;        /**< Message Y position (fixed-point). */
     /* 0x1C0 */ s32 field_0x1C0;    /**< Saved message text pointer. */
     /* 0x1C4 */ s32 field_0x1C4;    /**< Saved message X position. */
     /* 0x1C8 */ s32 field_0x1C8;    /**< Saved message Y position. */
-    /* 0x1CC */ u8 pad1CC[0x0E];
+    /* 0x1CC */ u8 pad1CC[0x0C];
+    /* 0x1D8 */ u16 field_0x1D8;
     /* 0x1DA */ u16 field_0x1DA;
-    /* 0x1DC */ u8 pad1DC[0x22];
+    /* 0x1DC */ u8 pad1DC[0x04];
+    /* 0x1E0 */ u16 field_0x1E0;
+    /* 0x1E2 */ u16 field_0x1E2;
+    /* 0x1E4 */ u16 field_0x1E4;
+    /* 0x1E6 */ u16 field_0x1E6;
+    /* 0x1E8 */ u16 field_0x1E8;
+    /* 0x1EA */ u16 field_0x1EA;
+    /* 0x1EC */ u16 field_0x1EC;
+    /* 0x1EE */ u16 field_0x1EE;
+    /* 0x1F0 */ u16 field_0x1F0;
+    /* 0x1F2 */ u16 field_0x1F2;
+    /* 0x1F4 */ u16 field_0x1F4;
+    /* 0x1F6 */ u8 pad1F6[0x04];
+    /* 0x1FA */ u16 field_0x1FA;
+    /* 0x1FC */ u16 field_0x1FC;
     /* 0x1FE */ s16 savedChannel;   /**< Previous message channel. */
     /* 0x200 */ u16 msgChannel;     /**< Current message channel. */
     /* 0x202 */ u16 field_0x202;    /**< Saved channel for async restore. */
@@ -148,16 +189,22 @@ typedef struct {
     /* 0x23C */ u8 msgActive;       /**< Message active flag. */
     /* 0x23D */ u8 pad23D[0x03];
     /* 0x240 */ u8 field_0x240;
-    /* 0x241 */ u8 pad241[0x0D];
+    /* 0x241 */ u8 pad241[0x04];
+    /* 0x245 */ u8 unk245;
+    /* 0x246 */ u8 pad246[0x08];
     /* 0x24E */ u8 field_0x24E;
     /* 0x24F */ u8 field_0x24F;
     /* 0x250 */ u8 field_0x250;
     /* 0x251 */ u8 field_0x251;
-    /* 0x252 */ u8 pad252[0x04];
+    /* 0x252 */ u8 pad252[0x03];
+    /* 0x255 */ u8 field_0x255;
     /* 0x256 */ u8 field_0x256;
     /* 0x257 */ u8 pad257[0x0B];
     /* 0x262 */ u8 field_0x262;
 } Eline;
+
+/** @brief Push one s32 onto the eline's bytecode stack. */
+#define PUSH(eline, val) (((s32 *)(eline))[(s8)(++(eline)->stackPtr)] = (val))
 
 /** @brief Pop one s32 from the eline's bytecode stack. */
 #define POP(eline) (((s32 *)(eline))[(s8)(eline)->stackPtr--])

@@ -4,7 +4,6 @@
 extern SeedState *g_seedState;
 extern u8 *D_800704C0;
 extern s32 D_800DE4DC;
-extern u8 D_800704A8[];
 extern u8 D_800DE8D2;
 extern u8 D_80085398[];
 extern u8 D_80085300[];
@@ -39,7 +38,7 @@ s32 func_800BB650(FieldEntity *entity) { s16 buf[4]; func_800A8DAC(*((u8 *)entit
  */
 void func_800BB6C8(void) {
     u8 *dst = (u8 *)g_seedState;
-    u8 *src = D_800704A8;
+    u8 *src = (u8 *)&D_800704A8;
 
     *(u16 *)(dst + 0xD8) = *(u16 *)(src + 0x108);
     *(u16 *)(dst + 0xDC) = *(u16 *)(src + 0x10C);
@@ -55,7 +54,7 @@ void func_800BB6C8(void) {
     *(u16 *)(dst + 0xEE) = *(u16 *)(src + 0x11E);
 }
 
-s32 func_800BB768(void) { u8 *src = D_800704A8; D_800DE8D2 = 2; *(u16 *)(src + 0x108) = 2; *(u16 *)(src + 0x10A) = 0xFF; *(u16 *)(src + 0x10C) = 0x10; *(u16 *)(src + 0x10E) = 0xFF; *(u16 *)(src + 0x110) = 0xFF; *(u16 *)(src + 0x112) = 0xFF; func_800BB6C8(); return 2; }
+s32 func_800BB768(void) { u8 *src = (u8 *)&D_800704A8; D_800DE8D2 = 2; *(u16 *)(src + 0x108) = 2; *(u16 *)(src + 0x10A) = 0xFF; *(u16 *)(src + 0x10C) = 0x10; *(u16 *)(src + 0x10E) = 0xFF; *(u16 *)(src + 0x110) = 0xFF; *(u16 *)(src + 0x112) = 0xFF; func_800BB6C8(); return 2; }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB7BC);
 
@@ -82,13 +81,13 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBC08);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBC64);
 
-s32 func_800BBDA8(void) { u8 *src = D_800704A8; if (*(u16 *)(src + 0x10C) != *(u16 *)(src + 0x10A)) { return 1; } *(u16 *)((u8 *)g_seedState + 0xD8) = *(u16 *)(src + 0x108); return 2; }
+s32 func_800BBDA8(void) { u8 *src = (u8 *)&D_800704A8; if (*(u16 *)(src + 0x10C) != *(u16 *)(src + 0x10A)) { return 1; } *(u16 *)((u8 *)g_seedState + 0xD8) = *(u16 *)(src + 0x108); return 2; }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBDE0);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBE50);
 
-s32 func_800BBE78(void) { u8 *src = D_800704A8; *(volatile u16 *)(src + 0x108) = 4; *(u16 *)((u8 *)g_seedState + 0xD8) = *(volatile u16 *)(src + 0x108); return 2; }
+s32 func_800BBE78(void) { u8 *src = (u8 *)&D_800704A8; *(volatile u16 *)(src + 0x108) = 4; *(u16 *)((u8 *)g_seedState + 0xD8) = *(volatile u16 *)(src + 0x108); return 2; }
 
 /**
  * Pops two parameters from the stack and calls func_8002E1B4(val2 & 7, val1).
@@ -211,7 +210,7 @@ s32 func_800BC8CC(Eline *e) {
         case 0:
             setSfxGlobalFlag(sfxIdx);
             r = func_8002CE84(sfxIdx);
-            e->field_0x140 = r;
+            e->resultSlots[0] = r;
             if (r >= 0) {
                 fadeOutSfxSlow(sfxIdx);
                 e->field_0x204++;

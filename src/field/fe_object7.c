@@ -5,15 +5,6 @@
 #include "psxsdk/libgte.h"
 
 
-/** @brief System state block (at D_800704A8). */
-typedef struct {
-    /* 0x000 */ u8 mode;
-    /* 0x001 */ u8 pad001;
-    /* 0x002 */ s16 counter;
-    /* 0x004 */ u8 pad004[0x18C];
-    /* 0x190 */ u8 slotActive[16];
-} SystemState;
-
 /** @brief Battle encounter setup parameters (at D_80082C90). */
 typedef struct {
     /* 0x00 */ s32 encounterPtr;
@@ -27,9 +18,7 @@ typedef struct {
     /* 0x0C */ u8 result;
 } EncounterParams;
 
-extern SystemState D_800704A8;
 extern u8 D_8007064C;
-extern u8 D_80070656[];
 extern s16 D_8007737C;
 extern Eline *D_80085224;
 extern Eline *D_80085230[];
@@ -56,7 +45,7 @@ extern Eline *D_800DE4F8;
  * @return 2 (continue processing).
  */
 s32 func_800B542C(Eline *eline) {
-    eline->field_0x140 = getKeyItemValue(POP(eline));
+    eline->resultSlots[0] = getKeyItemValue(POP(eline));
     return 2;
 }
 
@@ -87,8 +76,8 @@ s32 func_800B5480(Eline *eline) {
         params->field_05 = POP_BYTE(eline);
 
         result = sumItemQuantities(params);
-        eline->field_0x140 = result;
-        eline->field_0x144 = 0;
+        eline->resultSlots[0] = result;
+        eline->resultSlots[1] = 0;
 
         if (result >= 5) {
             if (!(g_seedState->stateFlags & 0x10)) {
@@ -130,9 +119,9 @@ s32 func_800B5480(Eline *eline) {
         return 1;
     } else {
         if (D_80082C90.result == 3) {
-            eline->field_0x144 = -1;
+            eline->resultSlots[1] = -1;
         } else {
-            eline->field_0x144 = D_80082C90.result;
+            eline->resultSlots[1] = D_80082C90.result;
         }
         return 2;
     }
@@ -352,7 +341,7 @@ s32 func_800B5A30(Eline *eline) {
 
         i = getPackedField2Bit(fieldIdx);
         if (i == 3 || getPackedField2Bit(fieldIdx) == 2) {
-            eline->field_0x140 = 0;
+            eline->resultSlots[0] = 0;
             eline->stackPtr--;
             return 2;
         }
@@ -362,7 +351,7 @@ s32 func_800B5A30(Eline *eline) {
             break;
         }
 
-        eline->field_0x140 = 0;
+        eline->resultSlots[0] = 0;
         eline->stackPtr--;
         return 2;
 
@@ -399,7 +388,7 @@ s32 func_800B5A30(Eline *eline) {
         g_seedState->sfxActiveMask &= ~0x40;
 
         if ((s8)D_800DE4D2 == 0) {
-            eline->field_0x140 = 0;
+            eline->resultSlots[0] = 0;
             eline->stackPtr--;
             return 2;
         }
@@ -636,7 +625,7 @@ s32 func_800B64B0(Eline *eline) {
  * @return 2 (continue processing).
  */
 s32 func_800B6524(Eline *eline) {
-    eline->field_0x140 = D_80082C0F;
+    eline->resultSlots[0] = D_80082C0F;
     return 2;
 }
 
@@ -841,7 +830,7 @@ s32 func_800B68B8(Eline *eline) {
 }
 
 /**
- * @brief MES opcode 0x50 handler — show dialog message on screen.
+ * @brief MES opcode 0x3E handler — show dialog message on screen.
  *
  * Checks if the entity is active, then pops window ID, Y position,
  * X position, and message text pointer from the bytecode stack. Saves
@@ -1386,9 +1375,154 @@ void func_800B788C(Eline *self, Eline *target) {
     self->flags |= 0x2001;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B79C8);
+/**
+ * @brief Proximity-anchored message from the OTHER two party members.
+ *
+ * On the active frame, locates the party slot whose @c memberSlot
+ * matches @c eline->field_0x255 (the "speaker"), then sets up
+ * proximity messages from the other two slots back at the speaker
+ * via @c func_800B788C. Saves the chosen entity pointers in
+ * @c D_800DE4F0 / @c D_800DE4F4, kicks off the speaker's own animation
+ * via @c func_800B912C, and marks flag @c 0x2000.
+ *
+ * On subsequent inactive frames, waits for both saved entities to
+ * reach @c msgState == 2 with a fresh field_0x24E/24F mismatch — for
+ * each, triggers @c func_800B912C and sets flag @c 0x8000. Once both
+ * have completed, calls @c func_8009ECA4 and clears msgActive + flag
+ * bit @c 0x1 on each.
+ *
+ * @param eline Script context (the speaker).
+ * @return 1 while waiting, 2 once both other-party messages finish.
+ */
+s32 func_800B79C8(Eline *eline) {
+    s32 i;
+    s32 idx;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B7D44);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        for (i = 0; i < 3; i++) {
+            if (g_gameState.battleParty[i] == eline->field_0x255) {
+                break;
+            }
+        }
+
+        D_800DE4F8 = 0;
+        D_800DE4F4 = 0;
+        D_800DE4F0 = 0;
+
+        switch (i) {
+        case 0:
+            if (g_seedState->memberSlot[1] != 0xFF) {
+                idx = g_seedState->memberSlot[1];
+                D_800DE4F0 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            if (g_seedState->memberSlot[2] != 0xFF) {
+                idx = g_seedState->memberSlot[2];
+                D_800DE4F4 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            break;
+        case 1:
+            if (g_seedState->memberSlot[0] != 0xFF) {
+                idx = g_seedState->memberSlot[0];
+                D_800DE4F0 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            if (g_seedState->memberSlot[2] != 0xFF) {
+                idx = g_seedState->memberSlot[2];
+                D_800DE4F4 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            break;
+        case 2:
+            if (g_seedState->memberSlot[0] != 0xFF) {
+                idx = g_seedState->memberSlot[0];
+                D_800DE4F0 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            if (g_seedState->memberSlot[1] != 0xFF) {
+                idx = g_seedState->memberSlot[1];
+                D_800DE4F4 = &D_80085224[idx];
+                func_800B788C(&D_80085224[idx], eline);
+            }
+            break;
+        }
+
+        func_800B912C(eline, eline->field_0x24F);
+        eline->flags |= 0x2000;
+    } else {
+        if (D_800DE4F0 != NULL && D_800DE4F0->msgState == 2
+                && D_800DE4F0->field_0x24E != D_800DE4F0->field_0x24F) {
+            func_800B912C(D_800DE4F0, D_800DE4F0->field_0x24F);
+            D_800DE4F0->flags |= 0x8000;
+        }
+        if (D_800DE4F4 != NULL && D_800DE4F4->msgState == 2
+                && D_800DE4F4->field_0x24E != D_800DE4F4->field_0x24F) {
+            func_800B912C(D_800DE4F4, D_800DE4F4->field_0x24F);
+            D_800DE4F4->flags |= 0x8000;
+        }
+
+        if (D_800DE4F0 == NULL || D_800DE4F0->msgState == 2) {
+            if (D_800DE4F4 == NULL || D_800DE4F4->msgState == 2) {
+                func_8009ECA4();
+                if (D_800DE4F0) {
+                    D_800DE4F0->flags &= ~1;
+                    D_800DE4F0->msgActive = 0;
+                }
+                if (D_800DE4F4) {
+                    D_800DE4F4->flags &= ~1;
+                    D_800DE4F4->msgActive = 0;
+                }
+                return 2;
+            }
+        }
+    }
+    return 1;
+}
+
+/**
+ * @brief Start a proximity-anchored message at an explicit XYZ position.
+ *
+ * Sister of @c func_800B788C, but takes the anchor coordinates directly
+ * as args rather than via a target entity. Computes the planar distance
+ * from @c eline to @c (x, y) (Q20.12 fixed-point), picks one of two
+ * sound-channel scalings and one of two script-param byte offsets
+ * (field_0x251 for "far" ≥ ~509 units, field_0x250 for "near") based on
+ * the squared distance threshold @c 0x3F47F. Issues the chosen command
+ * via @c func_800B912C, primes the message at the supplied position,
+ * and sets flag @c 0x2000. Window ID is fixed to @c 8.
+ *
+ * @param eline Script context.
+ * @param x     Anchor X (Q19.12 fixed-point).
+ * @param y     Anchor Y (Q19.12 fixed-point).
+ * @param z     Anchor Z (Q19.12 fixed-point).
+ */
+void func_800B7D44(Eline *eline, s32 x, s32 y, s32 z) {
+    s32 dx, dy, distSq;
+
+    dx = (x - eline->posX) / 4096;
+    dy = (y - eline->posY) / 4096;
+    dx = dx * dx;
+    dy = dy * dy;
+    dx = dx + dy;
+    distSq = dx;
+
+    if (distSq > 0x3F47F) {
+        eline->savedChannel = (u32)(D_800704B2 * 25375) >> 6;
+        func_800B912C(eline, eline->field_0x251);
+    } else {
+        eline->savedChannel = (u32)(D_800704B2 * 17255) >> 7;
+        func_800B912C(eline, eline->field_0x250);
+    }
+
+    eline->msgActive = 1;
+    eline->msgState = 0;
+    eline->windowId = 8;
+    eline->msgTextPtr = x;
+    eline->msgPosX = y;
+    eline->msgPosY = z;
+    eline->flags |= 0x2000;
+}
 
 /**
  * @brief 3-party walk opcode handler.
@@ -1488,51 +1622,432 @@ s32 func_800B7E78(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8344);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B83FC);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B84D8);
+/**
+ * @brief Positioned-message opcode handler with stored arg.
+ *
+ * On the active frame, starts a new positioned message: writes
+ * @c msgActive = 2, @c msgState = 0, then pops three values from the
+ * bytecode stack — a halfword (window/format ID, stored to
+ * @c field_0x1D8), and two s32 coords that are scaled into Q19.12 and
+ * written to @c msgPosX and @c msgTextPtr. Finally stores the
+ * dispatcher arg into @c field_0x1FC.
+ *
+ * On subsequent inactive frames, waits for @c msgState == 2; once
+ * complete, clears @c msgActive and returns 3 (skip-to-next-entity).
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 3 once the message has been read.
+ */
+s32 func_800B8344(Eline *eline, s32 a1) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState != 2) {
+            return 1;
+        }
+        eline->msgActive = 0;
+        return 3;
+    }
+    do {
+        eline->msgActive = 2;
+        eline->msgState = 0;
+        eline->field_0x1D8 = POP(eline);
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
 
 /**
- * Pops a word from the stack and stores the low byte to D_80070656.
+ * @brief Positioned-message opcode handler — 4-pop variant (full XYZ).
  *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * Sister of @c func_800B8344 but pops an extra coordinate: pops one
+ * halfword (window/format ID, stored to @c field_0x1D8) plus three
+ * s32 values that become @c msgPosY, @c msgPosX, and @c msgTextPtr
+ * (each scaled into Q19.12). Stores the dispatcher arg into
+ * @c field_0x1FC. Same inactive-frame contract: wait for
+ * @c msgState == 2 then clear @c msgActive and return 3.
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 3 once the message has been read.
  */
-s32 func_800B85C8(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)D_80070656 = *(volatile s32 *)(a0 + (s8)idx * 4);
+s32 func_800B83FC(Eline *eline, s32 a1) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState != 2) {
+            return 1;
+        }
+        eline->msgActive = 0;
+        return 3;
+    }
+    do {
+        eline->msgActive = 2;
+        eline->msgState = 0;
+        eline->field_0x1D8 = POP(eline);
+        eline->msgPosY = POP(eline) << 12;
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
+
+/**
+ * @brief Positioned-message opcode handler — anchor at a party member.
+ *
+ * Variant of the @c func_800B8344 / @c func_800B83FC pattern that
+ * copies the anchor coordinates from a party-member entity instead
+ * of taking them as args. Pops a window/format halfword (stored to
+ * @c field_0x1D8) and a slot index, looks up the entity through
+ * @c g_seedState->memberSlot[], and copies the entity's @c posX /
+ * @c posY / @c posZ to @c msgTextPtr / @c msgPosX / @c msgPosY plus
+ * @c field_0x1FA to @c field_0x1FC.
+ *
+ * @param eline Script context.
+ * @return 1 while running, 3 once the message has been read.
+ */
+s32 func_800B84D8(Eline *eline) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState != 2) {
+            return 1;
+        }
+        eline->msgActive = 0;
+        return 3;
+    }
+    do {
+        s32 m;
+        eline->msgActive = 2;
+        eline->msgState = 0;
+        eline->field_0x1D8 = POP(eline);
+        m = g_seedState->memberSlot[POP(eline)];
+        eline->msgTextPtr = D_80085224[m].posX;
+        eline->msgPosX = D_80085224[m].posY;
+        eline->msgPosY = D_80085224[m].posZ;
+        eline->field_0x1FC = D_80085224[m].field_0x1FA;
+    } while (0);
+    return 1;
+}
+
+/**
+ * @brief Pop a word from the bytecode stack and store its low byte to
+ *        @c D_800704A8.unk1AE.
+ *
+ * The @c volatile cast on the load is required to prevent gcc 2.7.2
+ * from narrowing the @c lw to @c lbu — the target reads a full s32
+ * even though only the low byte is stored.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B85C8(Eline *eline) {
+    D_800704A8.unk1AE = *(volatile s32 *)&POP(eline);
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B85F8);
+/**
+ * @brief Positioned-message opcode handler — variant with animation
+ *        kick and "msgActive = 3" semantics.
+ *
+ * On the active frame: sets @c msgActive = 3 (distinct from the
+ * @c msgActive = 2 variants in @c func_800B8344 / @c func_800B83FC),
+ * @c windowId = 1, @c msgState = 0; pops a signed halfword and
+ * dispatches @c func_800B912C with it (animation trigger); marks
+ * @c flags |= 0x2000; pops three coords (Q19.12) into @c msgPosY /
+ * @c msgPosX / @c msgTextPtr; stores the opcode arg into @c field_0x1FC.
+ *
+ * On inactive frames: waits for @c msgState == 2 and returns 2 once
+ * the message has been read (no return 3 here — the message stays
+ * available rather than skipping the entity).
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 2 once read.
+ */
+s32 func_800B85F8(Eline *eline, s32 a1) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState == 2) {
+            eline->msgActive = 0;
+            return 2;
+        }
+        return 1;
+    }
+    do {
+        eline->msgActive = 3;
+        eline->windowId = 1;
+        eline->msgState = 0;
+        func_800B912C(eline, (s16)POP(eline));
+        eline->flags |= 0x2000;
+        eline->msgPosY = POP(eline) << 12;
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8710);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8824);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B89C0);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8B58);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8BE0);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8CD4);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8DC8);
-
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8E74);
+/**
+ * @brief 9-pop positioned-message handler — sets up message position
+ *        plus three "saved" coords and three additional unk slots.
+ *
+ * On the active frame: @c msgActive = 4 (distinct from sibling
+ * handlers), @c windowId = 1, @c msgState = 0; then pops nine s32
+ * values, each scaled into Q19.12, into a contiguous region of the
+ * Eline:
+ *   - @c msgPosY  / @c msgPosX  / @c msgTextPtr   (current msg coords)
+ *   - @c field_0x1C8 / @c field_0x1C4 / @c field_0x1C0 (saved msg coords)
+ *   - @c unk1B0 / @c unk1AC / @c unk1A8 (three extra slots)
+ * and finally stores the dispatcher arg into @c field_0x1FC.
+ *
+ * On inactive frames: wait for @c msgState == 2 and return 2 once
+ * the message has been read.
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 2 once read.
+ */
+s32 func_800B8824(Eline *eline, s32 a1) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState == 2) {
+            eline->msgActive = 0;
+            return 2;
+        }
+        return 1;
+    }
+    do {
+        eline->msgActive = 4;
+        eline->windowId = 1;
+        eline->msgState = 0;
+        eline->msgPosY = POP(eline) << 12;
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1C8 = POP(eline) << 12;
+        eline->field_0x1C4 = POP(eline) << 12;
+        eline->field_0x1C0 = POP(eline) << 12;
+        eline->unk1B0 = POP(eline) << 12;
+        eline->unk1AC = POP(eline) << 12;
+        eline->unk1A8 = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
 
 /**
- * Returns 2 if the byte at offset 0x245 equals 3, otherwise returns 1.
+ * @brief 9-pop full-message handler (msgActive=4, windowId=0).
  *
- * @param a0 Pointer to the script/object structure.
- * @return 2 if object byte 0x245 is 3, else 1.
+ * Leaf variant of @c func_800B8824: same 9-pop sequence into the
+ * @c msgPosY / @c msgPosX / @c msgTextPtr / @c field_0x1C0..C8 /
+ * @c unk1A8..B0 region with the same @c msgActive = 4 marker, but
+ * @c windowId = 0 instead of 1.
+ *
+ * Matching scaffold for gcc 2.7.2: hoisting the active-mask shift
+ * into a @c u16 local (@c active_mask) and pre-loading the
+ * @c msgActive constant @c 4 into an @c s32 local (@c new_var) before
+ * the @c if check forces gcc to pick @c v1 for the constant rather
+ * than @c a2 — without this scaffolding the stackPtr load also
+ * gets allocated to the wrong register (v0/v1 swap).
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 1 while running, 2 once read.
  */
-s32 func_800B8F20(u8 *a0) {
-    if (*(u8 *)(a0 + 0x245) == 3) {
+s32 func_800B89C0(Eline *eline, s32 a1) {
+    u16 active_mask;
+    s32 new_var;
+    active_mask = eline->activeMask >> eline->scriptGroup;
+    new_var = 4;
+    if (!(active_mask & 1)) {
+        if (eline->msgState == 2) {
+            eline->msgActive = 0;
+            return 2;
+        }
+        return 1;
+    }
+    do {
+        eline->msgActive = new_var;
+        eline->windowId = 0;
+        eline->msgState = 0;
+        eline->msgPosY = POP(eline) << 12;
+        eline->msgPosX = POP(eline) << 12;
+        eline->msgTextPtr = POP(eline) << 12;
+        eline->field_0x1C8 = POP(eline) << 12;
+        eline->field_0x1C4 = POP(eline) << 12;
+        eline->field_0x1C0 = POP(eline) << 12;
+        eline->unk1B0 = POP(eline) << 12;
+        eline->unk1AC = POP(eline) << 12;
+        eline->unk1A8 = POP(eline) << 12;
+        eline->field_0x1FC = a1;
+    } while (0);
+    return 1;
+}
+
+/**
+ * @brief Pop three halfwords and broadcast each to a pair of fields.
+ *
+ * Pops three u16 values from the bytecode stack and stores each one to
+ * two adjacent halfword fields (current+target pattern for animation
+ * interpolation): @c (1EC,1EE), @c (1E6,1E8), and @c (1E0,1E2). Also
+ * stores the dispatcher arg into @c field_0x1FC, clears @c unk245 /
+ * @c msgState / @c field_0x1F4. Leaf function.
+ *
+ * @param eline Script context.
+ * @param a1    Opcode argument (stored as halfword to field_0x1FC).
+ * @return 2 (advance PC).
+ */
+s32 func_800B8B58(Eline *eline, s32 a1) {
+    do {
+        u16 a, b, c;
+        a = POP(eline);
+        eline->field_0x1EC = a;
+        eline->field_0x1EE = a;
+        b = POP(eline);
+        eline->field_0x1E6 = b;
+        eline->field_0x1E8 = b;
+        c = POP(eline);
+        eline->field_0x1FC = a1;
+        eline->unk245 = 0;
+        eline->msgState = 0;
+        eline->field_0x1F4 = 0;
+        eline->field_0x1E0 = c;
+        eline->field_0x1E2 = c;
+    } while (0);
+    return 2;
+}
+
+/**
+ * @brief Pop seven halfwords into animation fields with @c unk245 = 1.
+ *
+ * Sister of @c func_800B8B58 but with one more parameter direction:
+ * sets @c unk245 = 1, pops seven u16 values into @c field_0x1F2,
+ * @c 1F0, @c 1EA, @c 1E4, @c 1EE, @c 1E8, @c 1E2 (last), and zeros
+ * @c field_0x1F4. Leaf function.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8BE0(Eline *eline, s32 a1) {
+    do {
+        eline->unk245 = 1;
+        eline->field_0x1F2 = POP(eline);
+        eline->field_0x1F0 = POP(eline);
+        eline->field_0x1EA = POP(eline);
+        eline->field_0x1E4 = POP(eline);
+        eline->field_0x1EE = POP(eline);
+        eline->field_0x1E8 = POP(eline);
+        eline->field_0x1E2 = POP(eline);
+        eline->field_0x1F4 = 0;
+    } while (0);
+    return 2;
+}
+
+/**
+ * @brief Pop seven halfwords into animation fields with @c unk245 = 2.
+ *
+ * Identical to @c func_800B8BE0 except @c unk245 is set to @c 2 (a
+ * different sub-mode marker). Same pop sequence and field layout.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8CD4(Eline *eline, s32 a1) {
+    do {
+        eline->unk245 = 2;
+        eline->field_0x1F2 = POP(eline);
+        eline->field_0x1F0 = POP(eline);
+        eline->field_0x1EA = POP(eline);
+        eline->field_0x1E4 = POP(eline);
+        eline->field_0x1EE = POP(eline);
+        eline->field_0x1E8 = POP(eline);
+        eline->field_0x1E2 = POP(eline);
+        eline->field_0x1F4 = 0;
+    } while (0);
+    return 2;
+}
+
+/**
+ * @brief Animation handler — rotate current XY/Z fields into "saved"
+ *        slots and pop new values in (unk245 = 1 variant).
+ *
+ * Sister of @c func_800B8E74 with @c unk245 = 1. Same shape and
+ * matching scaffold — see @c func_800B8E74 for the reg-alloc trick.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8DC8(Eline *eline, s32 a1) {
+    s32 s1E4 = eline->field_0x1E4;
+    s32 s1F0 = eline->field_0x1F0;
+    s32 s1EA;
+    eline->unk245 = 1;
+    eline->field_0x1F2 = POP(eline);
+    s1EA = eline->field_0x1EA;
+    eline->field_0x1E2 = s1E4;
+    eline->field_0x1EE = s1F0;
+    eline->field_0x1E8 = s1EA;
+    s1EA = (s8)(eline->stackPtr--);
+    eline->field_0x1F0 = ((s32 *)eline)[s1EA];
+    s1F0 = (s8)(eline->stackPtr--);
+    eline->field_0x1EA = ((s32 *)eline)[s1F0];
+    eline->field_0x1E4 = POP(eline);
+    eline->field_0x1F4 = 0;
+    return 2;
+}
+
+/**
+ * @brief Animation handler — rotate current XY/Z fields into "saved"
+ *        slots and pop new values in.
+ *
+ * Sister of @c func_800B8DC8 (which uses @c unk245 = 1). Pre-reads
+ * the current @c field_0x1E4 / @c 1F0 / @c 1EA into temporaries,
+ * stores them into the "saved" trio (@c 1E2 / @c 1EE / @c 1E8),
+ * then pops four fresh values into @c 1F2 / @c 1F0 / @c 1EA /
+ * @c 1E4 and clears @c field_0x1F4. Sets @c unk245 = 2.
+ *
+ * The middle two POPs are split into "capture stackPtr index, then
+ * index the array" — this forces gcc 2.7.2 to keep @c a1 / @c a2 in
+ * the order the target wants (a2 = saved_1E4, a1 = saved_1F0). The
+ * normal inline POP form makes gcc swap them.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8E74(Eline *eline, s32 a1) {
+    s32 s1E4 = eline->field_0x1E4;
+    s32 s1F0 = eline->field_0x1F0;
+    s32 s1EA;
+    eline->unk245 = 2;
+    eline->field_0x1F2 = POP(eline);
+    s1EA = eline->field_0x1EA;
+    eline->field_0x1E2 = s1E4;
+    eline->field_0x1EE = s1F0;
+    eline->field_0x1E8 = s1EA;
+    s1EA = (s8)(eline->stackPtr--);
+    eline->field_0x1F0 = ((s32 *)eline)[s1EA];
+    s1F0 = (s8)(eline->stackPtr--);
+    eline->field_0x1EA = ((s32 *)eline)[s1F0];
+    eline->field_0x1E4 = POP(eline);
+    eline->field_0x1F4 = 0;
+    return 2;
+}
+
+/**
+ * @brief Return 2 if @c unk245 == 3, otherwise return 1.
+ *
+ * Probes the animation sub-mode byte set by the sibling opcode
+ * handlers (@c func_800B8BE0 / @c func_800B8CD4 / @c func_800B8DC8 /
+ * @c func_800B8E74). Used by scripts to wait until the animation
+ * reaches sub-mode 3.
+ *
+ * @param eline Script context.
+ * @return 2 if @c unk245 == 3 (advance), 1 otherwise (yield).
+ */
+s32 func_800B8F20(Eline *eline) {
+    if (eline->unk245 == 3) {
         return 2;
     }
     return 1;
@@ -1571,25 +2086,69 @@ s32 func_800B8F60(u8 *a0) {
     return 2;
 }
 
-/** @brief Compare D_800704A8 entries. Returns 1 if different, 2 if same. */
-s32 func_800B8F80(u8 *a0) {
-    u8 *base = (u8 *)&D_800704A8;
-    u16 val1 = *(u16 *)(base + 0x106);
-    u16 val2 = *(u16 *)(base + 0x104);
-    if (val1 == val2) {
+/**
+ * @brief Wait until @c D_800704A8.unk106 catches up with @c unk104.
+ *
+ * Read by scripts to wait for the animation tick set by
+ * @c func_800B8FA8 (POP → @c unk104, @c unk106 = 0) — some other
+ * code path advances @c unk106 each frame, and this opcode yields
+ * (return 1) until they're equal.
+ *
+ * @return 2 (advance) when @c unk104 == @c unk106, 1 (yield) otherwise.
+ */
+s32 func_800B8F80(Eline *eline) {
+    if (D_800704A8.unk106 == D_800704A8.unk104) {
         return 2;
     }
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8FA8);
-
-/** @brief Pop byte from stack and store to offset 0x240. Returns 2. */
-s32 func_800B9000(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)(a0 + 0x240) = *(u8 *)(a0 + (s8)idx * 4);
+/**
+ * @brief Pop two halfwords into D_800704A8.unk102/unk104; clear unk106.
+ *
+ * Writes the popped values into the SystemState block: first POP →
+ * @c unk104, second POP → @c unk102. Also zeros @c unk106. Leaf
+ * function.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8FA8(Eline *eline) {
+    do {
+        D_800704A8.unk104 = POP(eline);
+        D_800704A8.unk102 = POP(eline);
+        D_800704A8.unk106 = 0;
+    } while (0);
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B9030);
+/**
+ * @brief Pop one byte from the bytecode stack and store it to
+ *        @c eline->field_0x240.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9000(Eline *eline) {
+    eline->field_0x240 = POP_BYTE(eline);
+    return 2;
+}
+
+extern void func_800A97E4(u8, s32, s32, s32);
+
+/**
+ * @brief Animation/sound dispatch for the speaker's voice/SFX slot.
+ *
+ * Updates @c eline->flags by clearing bits @c 0x280000 and setting
+ * bit @c 0x100000, then dispatches @c func_800A97E4 with the
+ * @c field_0x256 byte as the slot/voice ID, command @c 0x2E, and
+ * two zero args. Likely starts a queued voice/SFX cue.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9030(Eline *eline) {
+    eline->flags = (eline->flags & ~0x280000) | 0x100000;
+    func_800A97E4(eline->field_0x256, 0x2E, 0, 0);
+    return 2;
+}
