@@ -275,7 +275,23 @@ s32 func_800B2AD8(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2AF0);
+/**
+ * Clear bit 0x80 in the flags word of every active @c BattleFieldEntity
+ * slot (count @c D_80085388, stride 0x264 at @c D_80085224). Used by a
+ * script opcode to reset a per-entity activation flag across the party.
+ *
+ * @param eline Pointer to the Eline event-script context (unused).
+ * @return 2 (continue processing).
+ */
+s32 func_800B2AF0(Eline *eline) {
+    s32 i;
+    BattleFieldEntity *p = D_80085224;
+    for (i = 0; i < D_80085388; i++) {
+        p->flags &= ~0x80;
+        p++;
+    }
+    return 2;
+}
 
 /**
  * Sets bytes at offsets 0x188 and 0x189 to 0xFF, returns 2.
