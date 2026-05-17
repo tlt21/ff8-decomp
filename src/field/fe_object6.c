@@ -1333,7 +1333,22 @@ s32 func_800B51E0(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B5248);
+/**
+ * Variant of @c func_800B51E0 that operates on @c dreamGil instead of
+ * @c gil and mirrors the result into @c g_seedState->dreamGilMirror.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B5248(Eline *eline) {
+    s32 delta = POP(eline);
+    g_gameState.mainData.party.dreamGil += delta;
+    if (g_gameState.mainData.party.dreamGil > 0x05F5E0FE) {
+        g_gameState.mainData.party.dreamGil = 0x05F5E0FF;
+    }
+    g_seedState->dreamGilMirror = g_gameState.mainData.party.dreamGil;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B52B0);
 
