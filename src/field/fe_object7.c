@@ -1895,7 +1895,30 @@ s32 func_800B8BE0(Eline *eline, s32 a1) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8CD4);
+/**
+ * @brief Pop seven halfwords into animation fields with @c unk245 = 2.
+ *
+ * Identical to @c func_800B8BE0 except @c unk245 is set to @c 2 (a
+ * different sub-mode marker). Same pop sequence and field layout.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8CD4(Eline *eline, s32 a1) {
+    do {
+        eline->unk245 = 2;
+        eline->field_0x1F2 = POP(eline);
+        eline->field_0x1F0 = POP(eline);
+        eline->field_0x1EA = POP(eline);
+        eline->field_0x1E4 = POP(eline);
+        eline->field_0x1EE = POP(eline);
+        eline->field_0x1E8 = POP(eline);
+        eline->field_0x1E2 = POP(eline);
+        eline->field_0x1F4 = 0;
+    } while (0);
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8DC8);
 
