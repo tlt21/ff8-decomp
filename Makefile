@@ -37,10 +37,10 @@ PSYQ43_MASPSXFLAGS := --aspsx-version=2.77  # used by PSYQ43_SRCS
 
 # Source files compiled with PsyQ 4.3 (default is PsyQ 4.1)
 PSYQ43_SRCS := src/snd_init.c src/snd_dma.c src/snd_voice.c src/snd_bank.c src/snd_param.c src/snd_note.c src/snd_track.c src/snd_cmd.c \
-               src/ovl/world_engine/we_object1.c src/ovl/world_engine/we_object2.c src/ovl/world_engine/we_object3.c \
-               src/ovl/world_engine/we_object4.c src/ovl/world_engine/we_object5.c src/ovl/world_engine/we_object6.c \
-               src/ovl/world_engine/we_object7.c src/ovl/world_engine/we_object8.c src/ovl/world_engine/we_object9.c \
-               src/ovl/world_engine/we_object10.c
+               src/world/we_object1.c src/world/we_object2.c src/world/we_object3.c \
+               src/world/we_object4.c src/world/we_object5.c src/world/we_object6.c \
+               src/world/we_object7.c src/world/we_object8.c src/world/we_object9.c \
+               src/world/we_object10.c
 
 # Source files compiled without -G0 (default is -G0)
 NO_G0_SRCS := src/main.c src/snd_cmd.c
@@ -87,27 +87,27 @@ MENU_OVERLAYS := menumain menucfg menupty menusts menuabl menushop menuext \
                  menuitem menumgc menugf menujnc2 menusav menucrd menututo \
                  menutmag menutips menutest
 CODE_OVERLAYS := field_init intro field \
-                 battle_engine battle_render battle_code world_engine
+                 tripletriad battle_render battle world
 OVERLAYS      := $(MENU_OVERLAYS) $(CODE_OVERLAYS)
 
 # Per-overlay C source files. Each overlay points to its own source location.
-menumain_C_SRCS      := $(wildcard src/ovl/menumain/*.c)
-menucfg_C_SRCS       := $(wildcard src/ovl/menucfg/*.c)
-menupty_C_SRCS       := $(wildcard src/ovl/menupty/*.c)
-menusts_C_SRCS       := $(wildcard src/ovl/menusts/*.c)
-menuabl_C_SRCS       := $(wildcard src/ovl/menuabl/*.c)
-menushop_C_SRCS      := $(wildcard src/ovl/menushop/*.c)
-menuext_C_SRCS       := $(wildcard src/ovl/menuext/*.c)
-menuitem_C_SRCS      := $(wildcard src/ovl/menuitem/*.c)
-menumgc_C_SRCS       := $(wildcard src/ovl/menumgc/*.c)
-menugf_C_SRCS        := $(wildcard src/ovl/menugf/*.c)
-menujnc2_C_SRCS      := $(wildcard src/ovl/menujnc2/*.c)
-menusav_C_SRCS       := $(wildcard src/ovl/menusav/*.c)
-menucrd_C_SRCS       := $(wildcard src/ovl/menucrd/*.c)
-menututo_C_SRCS      := $(wildcard src/ovl/menututo/*.c)
-menutmag_C_SRCS      := $(wildcard src/ovl/menutmag/*.c)
-menutips_C_SRCS      := $(wildcard src/ovl/menutips/*.c)
-menutest_C_SRCS      := $(wildcard src/ovl/menutest/*.c)
+menumain_C_SRCS      := $(wildcard src/menu/menumain/*.c)
+menucfg_C_SRCS       := $(wildcard src/menu/menucfg/*.c)
+menupty_C_SRCS       := $(wildcard src/menu/menupty/*.c)
+menusts_C_SRCS       := $(wildcard src/menu/menusts/*.c)
+menuabl_C_SRCS       := $(wildcard src/menu/menuabl/*.c)
+menushop_C_SRCS      := $(wildcard src/menu/menushop/*.c)
+menuext_C_SRCS       := $(wildcard src/menu/menuext/*.c)
+menuitem_C_SRCS      := $(wildcard src/menu/menuitem/*.c)
+menumgc_C_SRCS       := $(wildcard src/menu/menumgc/*.c)
+menugf_C_SRCS        := $(wildcard src/menu/menugf/*.c)
+menujnc2_C_SRCS      := $(wildcard src/menu/menujnc2/*.c)
+menusav_C_SRCS       := $(wildcard src/menu/menusav/*.c)
+menucrd_C_SRCS       := $(wildcard src/menu/menucrd/*.c)
+menututo_C_SRCS      := $(wildcard src/menu/menututo/*.c)
+menutmag_C_SRCS      := $(wildcard src/menu/menutmag/*.c)
+menutips_C_SRCS      := $(wildcard src/menu/menutips/*.c)
+menutest_C_SRCS      := $(wildcard src/menu/menutest/*.c)
 field_init_C_SRCS    := $(wildcard src/ovl/field_init/*.c)
 intro_C_SRCS         := src/intro.c src/intro_assets.c src/intro_state.c
 intro_DIR            := build/intro
@@ -115,10 +115,10 @@ intro_ASM_DIR        := asm/intro
 field_C_SRCS         := $(wildcard src/field/*.c)
 field_DIR            := build/field
 field_ASM_DIR        := asm/field
-battle_engine_C_SRCS := $(wildcard src/ovl/battle_engine/*.c)
+tripletriad_C_SRCS   := $(wildcard src/tripletriad/*.c)
 battle_render_C_SRCS := $(wildcard src/ovl/battle_render/*.c)
-battle_code_C_SRCS   := $(wildcard src/ovl/battle_code/*.c)
-world_engine_C_SRCS  := $(wildcard src/ovl/world_engine/*.c)
+battle_C_SRCS        := $(wildcard src/battle/*.c)
+world_C_SRCS         := $(wildcard src/world/*.c)
 
 # C sources (compiled via cpp → cc1 → maspsx → GAS).
 # Main-binary sources = everything under src/ except files claimed by an overlay.
