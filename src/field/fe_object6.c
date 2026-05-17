@@ -996,7 +996,24 @@ s32 func_800B47E4(Eline *eline, s32 a1) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B48EC);
+/**
+ * Mode-1 init seeded with @c 0x7FFF sentinels in the inner-loop bounds
+ * and a single-pop @c unk00C parameter. Mode is set to 1.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 1 (yield to dispatcher without advancing PC).
+ */
+s32 func_800B48EC(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        D_800704A8.mode = 1;
+        D_800704A8.unk00E = 0;
+        D_800704A8.unk00C = (u16)POP(eline);
+        D_800704A8.unk004 = 0x7FFF;
+        D_800704A8.unk006 = 0x7FFF;
+        D_800704A8.counter = (u16)POP(eline);
+    }
+    return 1;
+}
 
 /**
  * Clears the global byte D_8007064A, returns 2.
