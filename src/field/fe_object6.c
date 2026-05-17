@@ -14,6 +14,8 @@ extern u8 D_8007065C[];
 extern u8 *D_800D5EA4;
 extern u8 *func_8003974C(u8 *base, s32 idx);
 extern s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void sndCmd21(s32 a0, s32 a1);
+extern s32 func_800131A8(void);
 
 /**
  * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
@@ -147,7 +149,26 @@ s32 func_800B2648(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B26BC);
+/**
+ * Peek the top stack value as an SFX target; if the entity is the active
+ * script slot, dispatch @c sndCmd21(0, top). If the SPU is still busy
+ * with a matching channel (queried via @c func_800131A8), keep the stack
+ * intact and return 1 (wait). Otherwise pop the value and return 2.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 once the SPU is free, 1 while still waiting.
+ */
+s32 func_800B26BC(Eline *eline) {
+    s32 top = PEEK(eline);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        sndCmd21(0, top);
+    }
+    if ((func_800131A8() & top) != 0) {
+        return 1;
+    }
+    eline->stackPtr--;
+    return 2;
+}
 
 /**
  * Pops a parameter, calls func_80013210, stores result at offset 0x140.
