@@ -5,15 +5,6 @@
 #include "psxsdk/libgte.h"
 
 
-/** @brief System state block (at D_800704A8). */
-typedef struct {
-    /* 0x000 */ u8 mode;
-    /* 0x001 */ u8 pad001;
-    /* 0x002 */ s16 counter;
-    /* 0x004 */ u8 pad004[0x18C];
-    /* 0x190 */ u8 slotActive[16];
-} SystemState;
-
 /** @brief Battle encounter setup parameters (at D_80082C90). */
 typedef struct {
     /* 0x00 */ s32 encounterPtr;
@@ -27,9 +18,7 @@ typedef struct {
     /* 0x0C */ u8 result;
 } EncounterParams;
 
-extern SystemState D_800704A8;
 extern u8 D_8007064C;
-extern u8 D_80070656[];
 extern s16 D_8007737C;
 extern Eline *D_80085224;
 extern Eline *D_80085230[];
@@ -1598,15 +1587,18 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B83FC);
 INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B84D8);
 
 /**
- * Pops a word from the stack and stores the low byte to D_80070656.
+ * @brief Pop a word from the bytecode stack and store its low byte to
+ *        @c D_800704A8.unk1AE.
  *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * The @c volatile cast on the load is required to prevent gcc 2.7.2
+ * from narrowing the @c lw to @c lbu — the target reads a full s32
+ * even though only the low byte is stored.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
  */
-s32 func_800B85C8(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)D_80070656 = *(volatile s32 *)(a0 + (s8)idx * 4);
+s32 func_800B85C8(Eline *eline) {
+    D_800704A8.unk1AE = *(volatile s32 *)&POP(eline);
     return 2;
 }
 

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "field.h"
 #include "psxsdk/libgte.h"
 #include "psxsdk/libgpu.h"
 
@@ -61,17 +62,6 @@ typedef struct {
     /* 0x0B */ u8 field_0B;
 } AnimParam;
 
-/** @brief System state block (at D_800704A8). */
-typedef struct {
-    /* 0x000 */ u8 mode;
-    /* 0x001 */ u8 pad001;
-    /* 0x002 */ s16 counter;
-    /* 0x004 */ u8 pad004[0x0E];
-    /* 0x012 */ u8 entityIndex[3];
-    /* 0x015 */ u8 pad015[0x17B];
-    /* 0x190 */ u8 slotActive[16];
-} SystemState;
-
 /** @brief 12-byte path waypoint (64 entries per table, indexed by angle/64). */
 typedef struct {
     /* 0x00 */ s16 x;       /**< Position X (fixed-point, << 12 when written). */
@@ -84,7 +74,6 @@ typedef struct {
 } PathEntry;
 
 extern Entity *D_80085224;
-extern SystemState D_800704A8;
 extern u16 D_8005F118;
 extern u16 D_8005F11A;
 extern u16 D_8005F144;

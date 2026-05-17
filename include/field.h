@@ -48,6 +48,31 @@ typedef struct {
     u8 unk24C;              /**< 0x24C */
 } FieldEntity;              /* size >= 0x24D */
 
+/** @brief System state block (at @c D_800704A8). */
+typedef struct {
+    /* 0x000 */ u8 mode;
+    /* 0x001 */ u8 pad001;
+    /* 0x002 */ s16 counter;
+    /* 0x004 */ u8 pad004[0x0E];
+    /* 0x012 */ u8 entityIndex[3];  /**< Per-active-slot field-entity index (mirror of g_seedState->memberSlot[]). */
+    /* 0x015 */ u8 pad015[0xED];
+    /* 0x102 */ u16 unk102;
+    /* 0x104 */ u16 unk104;
+    /* 0x106 */ u16 unk106;
+    /* 0x108 */ u8 pad108[0x1A];
+    /* 0x122 */ u8 unk122;          /**< Cleared together with @c unk130 by an fe_object6 opcode. */
+    /* 0x123 */ u8 pad123[0x0D];
+    /* 0x130 */ u8 unk130;
+    /* 0x131 */ u8 pad131[0x5F];
+    /* 0x190 */ u8 slotActive[16];
+    /* 0x1A0 */ u8 pad1A0[0x0B];
+    /* 0x1AB */ u8 unk1AB;          /**< Sub-mode byte; written together with @c mode by fe_object6 opcodes. */
+    /* 0x1AC */ u8 pad1AC[0x02];
+    /* 0x1AE */ u8 unk1AE;          /**< Script-writable byte (set by opcode handler @c func_800B85C8, read by @c func_8009FE18). */
+} SystemState;
+
+extern SystemState D_800704A8;
+
 /**
  * @brief 256-byte misc3 region of @c GameState — held at @c g_gameState+0xD60
  * and aliased through the @c g_seedState pointer.
