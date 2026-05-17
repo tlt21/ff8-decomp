@@ -25,6 +25,8 @@ extern s32 func_80040DE4(SVECTOR *v0, s32 *sxy, s32 *p, s32 *flag);
 extern Eline *D_80085230[];
 extern void setCameraShakeParams(s32 a, s32 b);
 extern void setCameraVibrateState(s32 enable);
+extern u8 D_8007064E;
+extern void func_800A97E4(s32 a, s32 b, s32 c, s32 d);
 
 /**
  * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
@@ -894,7 +896,22 @@ s32 func_800B4320(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B43FC);
+/**
+ * Pop a value (masked to 2 bits) into the global mode byte @c D_8007064E
+ * and then fire @c func_800A97E4(i, 0x25, 0, 0) once per active
+ * @c BattleFieldEntity slot (count from @c D_80085388).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B43FC(Eline *eline) {
+    s32 i;
+    D_8007064E = POP(eline) & 0x3;
+    for (i = 0; i < D_80085388; i++) {
+        func_800A97E4(i, 0x25, 0, 0);
+    }
+    return 2;
+}
 
 /** @brief Pop byte, store to global D_8007064F. Returns 2. */
 s32 func_800B448C(Eline *eline) {
