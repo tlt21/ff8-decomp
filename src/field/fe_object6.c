@@ -1132,7 +1132,18 @@ s32 func_800B4D0C(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4D34);
+/**
+ * Mode-5 init with counter 0x1D — variant of @c func_800B4A40.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B4D34(Eline *eline) {
+    D_800704A8.mode = 5;
+    D_800704A8.counter = 0x1D;
+    D_800704A8.unk1AB = POP_BYTE(eline);
+    return 3;
+}
 
 /**
  * Pops a parameter, masks it with 0x7F, and calls setFieldFlag, returns 2.
@@ -1167,7 +1178,19 @@ s32 func_800B4DDC(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4DFC);
+/**
+ * Pop a halfword HP value and a character index, then set
+ * @c g_gameState.chars[charId].currentHp to the popped value.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B4DFC(Eline *eline) {
+    u16 hp = (u16)POP(eline);
+    s32 charId = POP(eline);
+    g_gameState.chars[charId].currentHp = hp;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4E60);
 
