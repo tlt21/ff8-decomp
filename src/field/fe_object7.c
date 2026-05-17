@@ -1920,7 +1920,35 @@ s32 func_800B8CD4(Eline *eline, s32 a1) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8DC8);
+/**
+ * @brief Animation handler — rotate current XY/Z fields into "saved"
+ *        slots and pop new values in (unk245 = 1 variant).
+ *
+ * Sister of @c func_800B8E74 with @c unk245 = 1. Same shape and
+ * matching scaffold — see @c func_800B8E74 for the reg-alloc trick.
+ *
+ * @param eline Script context.
+ * @param a1    Ignored.
+ * @return 2 (advance PC).
+ */
+s32 func_800B8DC8(Eline *eline, s32 a1) {
+    s32 s1E4 = eline->field_0x1E4;
+    s32 s1F0 = eline->field_0x1F0;
+    s32 s1EA;
+    eline->unk245 = 1;
+    eline->field_0x1F2 = POP(eline);
+    s1EA = eline->field_0x1EA;
+    eline->field_0x1E2 = s1E4;
+    eline->field_0x1EE = s1F0;
+    eline->field_0x1E8 = s1EA;
+    s1EA = (s8)(eline->stackPtr--);
+    eline->field_0x1F0 = ((s32 *)eline)[s1EA];
+    s1F0 = (s8)(eline->stackPtr--);
+    eline->field_0x1EA = ((s32 *)eline)[s1F0];
+    eline->field_0x1E4 = POP(eline);
+    eline->field_0x1F4 = 0;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B8E74);
 
