@@ -330,7 +330,33 @@ void func_800B2B48(Eline *eline) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2BA0);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2D40);
+/**
+ * Initialize a movement sweep from @p a1 toward @p a2: stores both
+ * endpoints (scaled by 64) into @c unk18C / @c unk18E, primes
+ * @c unk188 with the start, clears the high-mode flag bits and the
+ * direction bit, then sets the appropriate direction marker and
+ * pre-offsets the start position by 0x3F.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @param a1    Source value (scaled by 64 into @c unk18E).
+ * @param a2    Destination value (scaled by 64 into @c unk18C).
+ */
+void func_800B2D40(Eline *eline, s32 a1, s32 a2) {
+    eline->unk18C = a2 << 6;
+    eline->unk18E = a1 << 6;
+
+    eline->flags &= 0xFFFF07FF;
+    eline->flags &= ~0x100;
+    *(u16 *)&eline->unk188 = eline->unk18C;
+
+    if (a1 < a2) {
+        eline->flags |= 0x100;
+        *(u16 *)&eline->unk188 = eline->unk18C + 0x3F;
+        eline->unk18C = eline->unk18C + 0x3F;
+    } else {
+        eline->unk18E += 0x3F;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2DC0);
 
