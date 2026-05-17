@@ -1480,7 +1480,49 @@ s32 func_800B79C8(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B7D44);
+/**
+ * @brief Start a proximity-anchored message at an explicit XYZ position.
+ *
+ * Sister of @c func_800B788C, but takes the anchor coordinates directly
+ * as args rather than via a target entity. Computes the planar distance
+ * from @c eline to @c (x, y) (Q20.12 fixed-point), picks one of two
+ * sound-channel scalings and one of two script-param byte offsets
+ * (field_0x251 for "far" ≥ ~509 units, field_0x250 for "near") based on
+ * the squared distance threshold @c 0x3F47F. Issues the chosen command
+ * via @c func_800B912C, primes the message at the supplied position,
+ * and sets flag @c 0x2000. Window ID is fixed to @c 8.
+ *
+ * @param eline Script context.
+ * @param x     Anchor X (Q19.12 fixed-point).
+ * @param y     Anchor Y (Q19.12 fixed-point).
+ * @param z     Anchor Z (Q19.12 fixed-point).
+ */
+void func_800B7D44(Eline *eline, s32 x, s32 y, s32 z) {
+    s32 dx, dy, distSq;
+
+    dx = (x - eline->posX) / 4096;
+    dy = (y - eline->posY) / 4096;
+    dx = dx * dx;
+    dy = dy * dy;
+    dx = dx + dy;
+    distSq = dx;
+
+    if (distSq > 0x3F47F) {
+        eline->savedChannel = (u32)(D_800704B2 * 25375) >> 6;
+        func_800B912C(eline, eline->field_0x251);
+    } else {
+        eline->savedChannel = (u32)(D_800704B2 * 17255) >> 7;
+        func_800B912C(eline, eline->field_0x250);
+    }
+
+    eline->msgActive = 1;
+    eline->msgState = 0;
+    eline->windowId = 8;
+    eline->msgTextPtr = x;
+    eline->msgPosX = y;
+    eline->msgPosY = z;
+    eline->flags |= 0x2000;
+}
 
 /**
  * @brief 3-party walk opcode handler.
