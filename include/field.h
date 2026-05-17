@@ -159,7 +159,8 @@ typedef struct {
     /* 0x1CC */ u8 pad1CC[0x0C];
     /* 0x1D8 */ u16 field_0x1D8;
     /* 0x1DA */ u16 field_0x1DA;
-    /* 0x1DC */ u8 pad1DC[0x20];
+    /* 0x1DC */ u8 pad1DC[0x1E];
+    /* 0x1FA */ u16 field_0x1FA;
     /* 0x1FC */ u16 field_0x1FC;
     /* 0x1FE */ s16 savedChannel;   /**< Previous message channel. */
     /* 0x200 */ u16 msgChannel;     /**< Current message channel. */

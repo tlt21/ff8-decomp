@@ -1692,7 +1692,41 @@ s32 func_800B83FC(Eline *eline, s32 a1) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B84D8);
+/**
+ * @brief Positioned-message opcode handler — anchor at a party member.
+ *
+ * Variant of the @c func_800B8344 / @c func_800B83FC pattern that
+ * copies the anchor coordinates from a party-member entity instead
+ * of taking them as args. Pops a window/format halfword (stored to
+ * @c field_0x1D8) and a slot index, looks up the entity through
+ * @c g_seedState->memberSlot[], and copies the entity's @c posX /
+ * @c posY / @c posZ to @c msgTextPtr / @c msgPosX / @c msgPosY plus
+ * @c field_0x1FA to @c field_0x1FC.
+ *
+ * @param eline Script context.
+ * @return 1 while running, 3 once the message has been read.
+ */
+s32 func_800B84D8(Eline *eline) {
+    if (!((eline->activeMask >> eline->scriptGroup) & 1)) {
+        if (eline->msgState != 2) {
+            return 1;
+        }
+        eline->msgActive = 0;
+        return 3;
+    }
+    do {
+        s32 m;
+        eline->msgActive = 2;
+        eline->msgState = 0;
+        eline->field_0x1D8 = POP(eline);
+        m = g_seedState->memberSlot[POP(eline)];
+        eline->msgTextPtr = D_80085224[m].posX;
+        eline->msgPosX = D_80085224[m].posY;
+        eline->msgPosY = D_80085224[m].posZ;
+        eline->field_0x1FC = D_80085224[m].field_0x1FA;
+    } while (0);
+    return 1;
+}
 
 /**
  * @brief Pop a word from the bytecode stack and store its low byte to
