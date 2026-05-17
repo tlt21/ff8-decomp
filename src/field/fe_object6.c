@@ -1,6 +1,7 @@
 #include "common.h"
 #include "field.h"
 #include "gamestate.h"
+#include "psxsdk/libgte.h"
 
 extern SeedState *g_seedState;
 extern u8 D_80070652;
@@ -16,6 +17,10 @@ extern u8 *func_8003974C(u8 *base, s32 idx);
 extern s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3);
 extern void sndCmd21(s32 a0, s32 a1);
 extern s32 func_800131A8(void);
+extern u8 *func_800A8DAC(s32 entityIdx, s32 mode, void *buf, s32 flag);
+extern void func_800406A4(u8 *p);
+extern void func_80040734(u8 *p);
+extern s32 func_80040DE4(SVECTOR *v0, s32 *sxy, s32 *p, s32 *flag);
 
 /**
  * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
@@ -187,7 +192,30 @@ s32 func_800B2790(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B27C4);
+/**
+ * Compute the on-screen projection of entity @p entityIdx through the
+ * GTE. Loads the entity's rotation and translation matrices (via the
+ * per-entity matrix buffer from @c func_800A8DAC), projects the local
+ * origin @c (0,0,0), writes the perspective parameter into @p *out, and
+ * narrows the projected packed @c SXY pair to its low @c s16 (X only,
+ * sign-extended) at @p *sxy.
+ *
+ * @param entityIdx Entity slot whose matrices to set up.
+ * @param sxy       In/out: receives the projected screen X (low s16,
+ *                  sign-extended back to s32).
+ * @param out       Output: GTE perspective Z parameter.
+ */
+void func_800B27C4(s32 entityIdx, s32 *sxy, s32 *out) {
+    SVECTOR v;
+    s32 p, flag;
+    func_800406A4(func_800A8DAC(entityIdx, 0x1F, 0, 0));
+    func_80040734(func_800A8DAC(entityIdx, 0x1F, 0, 0));
+    v.vx = 0;
+    v.vy = 0;
+    v.vz = 0;
+    *out = func_80040DE4(&v, sxy, &p, &flag);
+    *sxy = (s16)*sxy;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2864);
 
