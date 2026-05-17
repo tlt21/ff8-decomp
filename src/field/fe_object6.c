@@ -1350,7 +1350,23 @@ s32 func_800B5248(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B52B0);
+/**
+ * Pop a delta and add it to @c g_seedState->seedExp, clamping the
+ * resulting value to the legal SeeD-rank range [@c 100, @c 3100].
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B52B0(Eline *eline) {
+    s32 delta = POP(eline);
+    g_seedState->seedExp += delta;
+    if ((s16)g_seedState->seedExp < 100) {
+        g_seedState->seedExp = 100;
+    } else if ((s16)g_seedState->seedExp >= 3100) {
+        g_seedState->seedExp = 3100;
+    }
+    return 2;
+}
 
 /**
  * Pops a parameter, calls markItemPresent, stores result in resultSlots[0].
