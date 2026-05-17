@@ -629,7 +629,23 @@ s32 func_800B348C(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B34EC);
+/**
+ * Pop three halfwords (third param, then @c unk032 / @c unk030 pair)
+ * into SystemState, set mode @c unk020 = 4 and clear submode
+ * @c unk022. Return value differs from @c func_800B348C (returns 2
+ * here, ending the opcode normally).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B34EC(Eline *eline) {
+    D_800704A8.unk024 = (u16)POP(eline);
+    D_800704A8.unk032 = (u16)POP(eline);
+    D_800704A8.unk030 = (u16)POP(eline);
+    D_800704A8.unk020 = 4;
+    D_800704A8.unk022 = 0;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3574);
 

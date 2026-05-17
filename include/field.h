@@ -77,7 +77,9 @@ typedef struct {
     /* 0x020 */ u8 unk020;          /**< Mode marker, set together with @c unk022 and the @c 0x30 / @c 0x32 halfword pair. */
     /* 0x021 */ u8 pad021;
     /* 0x022 */ u8 unk022;
-    /* 0x023 */ u8 pad023[0x0D];
+    /* 0x023 */ u8 pad023;
+    /* 0x024 */ u16 unk024;         /**< Mode-4 only: third parameter halfword. */
+    /* 0x026 */ u8 pad026[0x0A];
     /* 0x030 */ u16 unk030;         /**< Mode parameter halfword (paired with @c unk032). */
     /* 0x032 */ u16 unk032;
     /* 0x034 */ u8 pad034[0xCE];
