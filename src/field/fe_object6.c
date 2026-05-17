@@ -868,7 +868,31 @@ s32 func_800B42E0(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4320);
+/**
+ * If this entity is the active script and the mode-7 reentry guard
+ * (@c D_800704A8.unk1A2) is clear, pop three halfwords into the
+ * mode-7 parameter slots @c unk00E / @c unk00C / @c counter, switch
+ * @c mode to 7, and call @c func_800B4F40 to launch the operation.
+ * If @c unk1A2 is set (operation already in progress), rewind the
+ * stack pointer by 3 instead so the script re-runs the opcode.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 1 (yield to dispatcher without advancing PC).
+ */
+s32 func_800B4320(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        if (D_800704A8.unk1A2 != 0) {
+            eline->stackPtr -= 3;
+        } else {
+            D_800704A8.mode = 7;
+            D_800704A8.unk00E = (u16)POP(eline);
+            D_800704A8.unk00C = (u16)POP(eline);
+            D_800704A8.counter = (u16)POP(eline);
+            func_800B4F40();
+        }
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B43FC);
 
