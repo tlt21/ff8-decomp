@@ -2075,11 +2075,15 @@ s32 func_800B8FA8(Eline *eline) {
     return 2;
 }
 
-/** @brief Pop byte from stack and store to offset 0x240. Returns 2. */
-s32 func_800B9000(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)(a0 + 0x240) = *(u8 *)(a0 + (s8)idx * 4);
+/**
+ * @brief Pop one byte from the bytecode stack and store it to
+ *        @c eline->field_0x240.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9000(Eline *eline) {
+    eline->field_0x240 = POP_BYTE(eline);
     return 2;
 }
 
