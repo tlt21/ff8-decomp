@@ -1,8 +1,23 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
+#include "psxsdk/libetc.h"
 #include "battle.h"
 
 extern s32 g_menuColor[];
+
+/**
+ * @brief Scene render context staged in PS1 scratchpad each frame.
+ *
+ * Populated by @c func_80034DBC during scene setup. Holds packed GPU
+ * GP0 command words that @c func_8003334C emits as a DR_AREA primitive
+ * once per frame. Only the fields used by the emitter are named; the
+ * preceding 16 bytes are other render-state slots.
+ */
+typedef struct {
+    u8  pad00[0x10];
+    u32 drawAreaTL;  /**< 0x10: GP0(0xE3) "Drawing Area Top Left" command. */
+    u32 drawAreaBR;  /**< 0x14: GP0(0xE4) "Drawing Area Bottom Right" command. */
+} ColorRenderScratch;
 
 INCLUDE_ASM("asm/nonmatchings/color", func_800330F4);
 
@@ -59,7 +74,28 @@ void drawMenuColorDefault(s32 a0, s32 a1, s32 a2, s32 a3) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/color", func_8003334C);
+/**
+ * @brief Emit a @c DR_AREA primitive into the OT and advance the packet.
+ *
+ * Loads the current frame's drawing-area GP0 commands from the scratchpad
+ * @c ColorRenderScratch staged by @c func_80034DBC, packs them into the
+ * @c DR_AREA primitive at @c prim, links @c prim into @c ot's slot chain
+ * via the @c addPrimFastNoV0V1 variant, and returns the next packet cursor.
+ *
+ * @param ot   OT slot pointer.
+ * @param prim Storage for the new primitive (must have space for one DR_AREA).
+ * @return Cursor for the next primitive (@c prim @c + @c 1).
+ */
+DR_AREA *func_8003334C(P_TAG *ot, DR_AREA *prim) {
+    ColorRenderScratch *ctx = (ColorRenderScratch *)getScratchAddr(0);
+    u32 c0 = ctx->drawAreaTL;
+    u32 c1 = ctx->drawAreaBR;
+    setlen(prim, 2);
+    prim->code[0] = c0;
+    prim->code[1] = c1;
+    addPrimFastNoV0V1(ot, prim);
+    return prim + 1;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/color", func_80033380);
