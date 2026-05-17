@@ -146,7 +146,8 @@ typedef struct {
     /* 0xCA */ s8 audioChannel2State;   /**< Audio channel 2 state byte; -1 = reset/inactive. */
     /* 0xCB */ u8 padCB;
     /* 0xCC */ u8 expectedDiscId;       /**< Currently inserted disc (1..4). The intro/disc-swap screen waits for @c getDiscId() to match. */
-    /* 0xCD */ u8 padCD[0x02];
+    /* 0xCD */ u8 cameraShakeX;         /**< Camera shake X intensity, popped from stack. */
+    /* 0xCE */ u8 cameraShakeY;         /**< Camera shake Y intensity, popped from stack. */
     /* 0xCF */ u8 fieldCF;              /**< Used by fe_object7 dispatch (purpose TBD). */
     /* 0xD0 */ u8 padD0;
     /* 0xD1 */ u8 fieldD1;              /**< Bit 0 toggled by fe_object6 helper. */

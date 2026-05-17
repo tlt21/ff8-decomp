@@ -1,6 +1,7 @@
 #include "common.h"
 #include "field.h"
 #include "gamestate.h"
+#include "battle.h"
 #include "psxsdk/libgte.h"
 
 extern SeedState *g_seedState;
@@ -22,6 +23,8 @@ extern void func_800406A4(u8 *p);
 extern void func_80040734(u8 *p);
 extern s32 func_80040DE4(SVECTOR *v0, s32 *sxy, s32 *p, s32 *flag);
 extern Eline *D_80085230[];
+extern void setCameraShakeParams(s32 a, s32 b);
+extern void setCameraVibrateState(s32 enable);
 
 /**
  * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
@@ -818,7 +821,25 @@ s32 func_800B41B0(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B41CC);
+/**
+ * Trigger camera-shake mode: pop two intensity bytes into
+ * @c g_seedState->cameraShakeY / @c cameraShakeX, arm the related
+ * field flag bits and the battle-config bit, then drive
+ * @c setCameraShakeParams + @c setCameraVibrateState(1).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B41CC(Eline *eline) {
+    g_seedState->cameraShakeY = POP_BYTE(eline);
+    g_seedState->cameraShakeX = POP_BYTE(eline);
+    g_seedState->stateFlags |= 0x40;
+    g_seedState->fieldB6 |= 0x4;
+    g_battleConfig.unk2 |= 0x4;
+    setCameraShakeParams(g_seedState->cameraShakeX, g_seedState->cameraShakeY);
+    setCameraVibrateState(1);
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4288);
 
