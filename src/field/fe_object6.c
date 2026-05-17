@@ -702,9 +702,38 @@ s32 func_800B3650(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B36C8);
+/**
+ * Variant of @c func_800B3650 with mode @c unk020 = 2.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B36C8(Eline *eline) {
+    s32 val1 = POP(eline);
+    s32 val2 = POP(eline);
+    D_800704A8.unk024 = val1;
+    D_800704A8.unk021 = D_80085230[val2]->field_0x256;
+    D_800704A8.unk020 = 2;
+    D_800704A8.unk022 = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3740);
+/**
+ * Pop a party-slot index, look up the active battle-field-entity index
+ * for that slot in @c g_seedState->memberSlot, and stage it into
+ * SystemState @c unk021 with mode @c unk020 = 0.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B3740(Eline *eline) {
+    SeedState *ss = g_seedState;
+    s32 val = POP(eline);
+    D_800704A8.unk021 = ss->memberSlot[val];
+    D_800704A8.unk020 = 0;
+    D_800704A8.unk022 = 0;
+    return 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3788);
 
