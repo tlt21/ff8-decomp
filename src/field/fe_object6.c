@@ -647,7 +647,22 @@ s32 func_800B34EC(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3574);
+/**
+ * Pop three halfwords into SystemState parameter slots and set mode
+ * @c unk020 = 5. Identical structure to @c func_800B34EC apart from the
+ * mode byte.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3574(Eline *eline) {
+    D_800704A8.unk024 = (u16)POP(eline);
+    D_800704A8.unk032 = (u16)POP(eline);
+    D_800704A8.unk030 = (u16)POP(eline);
+    D_800704A8.unk020 = 5;
+    D_800704A8.unk022 = 0;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B35FC);
 
