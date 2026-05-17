@@ -1315,7 +1315,23 @@ s32 func_800B5188(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B51E0);
+/**
+ * Pop a gil delta and add it to @c g_gameState.mainData.party.gil,
+ * clamped to the FF gil cap of 99,999,999. Mirror the new total into
+ * @c g_seedState->gilMirror.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B51E0(Eline *eline) {
+    s32 delta = POP(eline);
+    g_gameState.mainData.party.gil += delta;
+    if (g_gameState.mainData.party.gil > 0x05F5E0FE) {
+        g_gameState.mainData.party.gil = 0x05F5E0FF;
+    }
+    g_seedState->gilMirror = g_gameState.mainData.party.gil;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B5248);
 
