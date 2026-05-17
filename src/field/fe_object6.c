@@ -974,7 +974,27 @@ s32 func_800B46E4(Eline *eline, s32 a1) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B47E4);
+/**
+ * Mode-6 init: identical structure to @c func_800B46E4 but sets
+ * @c mode = 6 and also flags @c slotActive[0] = 1.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @param a1    Dispatcher-supplied mode-6 trigger word.
+ * @return 1 (yield to dispatcher without advancing PC).
+ */
+s32 func_800B47E4(Eline *eline, s32 a1) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        D_800704A8.mode = 6;
+        D_800704A8.unk1A0 = 1;
+        D_800704A8.unk00C = a1;
+        D_800704A8.unk00E = (u16)POP(eline);
+        D_800704A8.unk008 = (u16)POP(eline);
+        D_800704A8.unk006 = (u16)POP(eline);
+        D_800704A8.unk004 = (u16)POP(eline);
+        D_800704A8.counter = (u16)POP(eline);
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B48EC);
 

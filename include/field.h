@@ -106,7 +106,8 @@ typedef struct {
     /* 0x13A */ u16 unk13A;
     /* 0x13C */ u8 pad13C[0x54];
     /* 0x190 */ u8 slotActive[16];
-    /* 0x1A0 */ u8 pad1A0[0x02];
+    /* 0x1A0 */ u8 unk1A0;          /**< Mode-6 active marker, set with mode = 6 by fe_object6 opcode. */
+    /* 0x1A1 */ u8 pad1A1;
     /* 0x1A2 */ u8 unk1A2;          /**< Mode-7 reentry guard byte. */
     /* 0x1A3 */ u8 pad1A3[0x08];
     /* 0x1AB */ u8 unk1AB;          /**< Sub-mode byte; written together with @c mode by fe_object6 opcodes. */
