@@ -841,7 +841,7 @@ s32 func_800B68B8(Eline *eline) {
 }
 
 /**
- * @brief MES opcode 0x50 handler — show dialog message on screen.
+ * @brief MES opcode 0x3E handler — show dialog message on screen.
  *
  * Checks if the entity is active, then pops window ID, Y position,
  * X position, and message text pointer from the bytecode stack. Saves
