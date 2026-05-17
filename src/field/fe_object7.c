@@ -2087,4 +2087,21 @@ s32 func_800B9000(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object7", func_800B9030);
+extern void func_800A97E4(u8, s32, s32, s32);
+
+/**
+ * @brief Animation/sound dispatch for the speaker's voice/SFX slot.
+ *
+ * Updates @c eline->flags by clearing bits @c 0x280000 and setting
+ * bit @c 0x100000, then dispatches @c func_800A97E4 with the
+ * @c field_0x256 byte as the slot/voice ID, command @c 0x2E, and
+ * two zero args. Likely starts a queued voice/SFX cue.
+ *
+ * @param eline Script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9030(Eline *eline) {
+    eline->flags = (eline->flags & ~0x280000) | 0x100000;
+    func_800A97E4(eline->field_0x256, 0x2E, 0, 0);
+    return 2;
+}
