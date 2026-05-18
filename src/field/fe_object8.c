@@ -104,15 +104,39 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B96EC);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9798);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9844);
+/**
+ * Sign-extend @p a1 to @c s16 and call @c func_800B912C, then set bit
+ * @c 0x4000 in @c flags. Returns @c 3.
+ */
+s32 func_800B9844(u8 *eline, s32 a1) {
+    func_800B912C(eline, (s16)a1);
+    *(s32 *)(eline + 0x160) |= 0x4000;
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9888);
+/**
+ * Sign-extend @p a1 to @c s16 and call @c func_800B912C, then set bit
+ * @c 0x8000 in @c flags. Returns @c 3.
+ */
+s32 func_800B9888(u8 *eline, s32 a1) {
+    func_800B912C(eline, (s16)a1);
+    *(s32 *)(eline + 0x160) |= 0x8000;
+    return 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B98CC);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9944);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B99BC);
+/**
+ * Sign-extend @p a1 to @c s16 and call @c func_800B912C, then set bit
+ * @c 0x2000 in @c flags. Returns @c 3.
+ */
+s32 func_800B99BC(u8 *eline, s32 a1) {
+    func_800B912C(eline, (s16)a1);
+    *(s32 *)(eline + 0x160) |= 0x2000;
+    return 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9A00);
 
