@@ -30,6 +30,9 @@ extern u8 D_8007064E;
 extern void func_800A97E4(s32 a, s32 b, s32 c, s32 d);
 extern s32 func_80037C6C(s32 charId);
 extern s32 func_800211B4(s32 partyMember, s32 code);
+extern u16 D_800704AA;
+extern void setGfExists(s32 gfId);
+extern void enableChocoboWorld(void);
 
 /**
  * Pops 3 stack values (target, volume, pan), looks up an SFX entry in
@@ -1369,7 +1372,48 @@ s32 func_800B4A40(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4A88);
+/**
+ * Mode-5 init dispatched by a 21-case switch on the popped value. The
+ * counter halfword @c D_800704AA is set per case (mostly @c val+2 with
+ * two paired swaps and special cases for @c 19 = chocobo-world enable
+ * and @c 20 = stand-alone counter 28). Cases 3..18 also call
+ * @c setGfExists for the corresponding GF id; the @c 8 / @c 9 and
+ * @c 14 / @c 15 pairs are deliberately written swapped in source to
+ * match the original case body order.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B4A88(Eline *eline) {
+    s32 val;
+    D_800704A8.mode = 5;
+    D_800704A8.unk1AB = 1;
+    val = POP(eline);
+    switch (val) {
+    case 0:  D_800704AA = 2;  break;
+    case 1:  D_800704AA = 3;  break;
+    case 2:  D_800704AA = 4;  break;
+    case 3:  D_800704AA = 5;  setGfExists(0);  break;
+    case 4:  D_800704AA = 6;  setGfExists(1);  break;
+    case 5:  D_800704AA = 7;  setGfExists(2);  break;
+    case 6:  D_800704AA = 8;  setGfExists(3);  break;
+    case 7:  D_800704AA = 9;  setGfExists(4);  break;
+    case 9:  D_800704AA = 10; setGfExists(5);  break;
+    case 8:  D_800704AA = 11; setGfExists(6);  break;
+    case 10: D_800704AA = 12; setGfExists(7);  break;
+    case 11: D_800704AA = 13; setGfExists(8);  break;
+    case 12: D_800704AA = 14; setGfExists(9);  break;
+    case 13: D_800704AA = 15; setGfExists(0xA); break;
+    case 15: D_800704AA = 16; setGfExists(0xB); break;
+    case 14: D_800704AA = 17; setGfExists(0xC); break;
+    case 16: D_800704AA = 18; setGfExists(0xD); break;
+    case 17: D_800704AA = 19; setGfExists(0xE); break;
+    case 18: D_800704AA = 20; setGfExists(0xF); break;
+    case 19: D_800704AA = 27; enableChocoboWorld(); break;
+    case 20: D_800704AA = 28; break;
+    }
+    return 3;
+}
 
 /**
  * Sets D_800704A8 to 5, sets the halfword at D_800704A8+2 to 0x1A,
