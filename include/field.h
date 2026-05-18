@@ -309,7 +309,20 @@ typedef struct {
     /* 0x21A */ u16 windowId;       /**< Message window ID. */
     /* 0x21C */ u16 field_0x21C;    /**< Saved window ID for async restore. */
     /* 0x21E */ s16 msgState;       /**< Message state (0=init, 2=complete). */
-    /* 0x220 */ u8 pad220[0x1C];
+    /* 0x220 */ u8 pad220[0x02];
+    /* 0x222 */ u16 field_0x222;
+    /* 0x224 */ u16 field_0x224;
+    /* 0x226 */ u16 field_0x226;
+    /* 0x228 */ u8 pad228[0x02];
+    /* 0x22A */ u16 field_0x22A;
+    /* 0x22C */ u8 pad22C[0x02];
+    /* 0x22E */ u16 field_0x22E;
+    /* 0x230 */ u8 pad230[0x02];
+    /* 0x232 */ u16 field_0x232;
+    /* 0x234 */ u16 field_0x234;
+    /* 0x236 */ u16 field_0x236;
+    /* 0x238 */ u8 pad238[0x03];
+    /* 0x23B */ u8 field_0x23B;
     /* 0x23C */ u8 msgActive;       /**< Message active flag. */
     /* 0x23D */ u8 pad23D[0x03];
     /* 0x240 */ u8 field_0x240;

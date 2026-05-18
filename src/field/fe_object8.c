@@ -430,7 +430,23 @@ s32 func_800BAC18(u8 *a0) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAC38);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAD00);
+/**
+ * @brief Op 0x0FD handler — pop 4 halfwords into facing slot then dispatch.
+ *
+ * Like @c func_800BB1F0 (active path) but ends by calling
+ * @c func_800BAC18 to apply the queued facing state.
+ */
+s32 func_800BAD00(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        eline->field_0x226 = POP(eline);
+        eline->field_0x224 = POP(eline);
+        eline->field_0x222 = POP(eline);
+        eline->field_0x236 = 0;
+        eline->field_0x23B = 1;
+    }
+    return func_800BAC18((u8 *)eline);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BADCC);
 
@@ -438,6 +454,40 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAF14);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BB05C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BB140);
+/**
+ * @brief Helper that pops 4 halfwords and stores them as a facing-state block.
+ *
+ * While the entity's @c activeMask bit is set: pops four halfwords from
+ * the script stack (top → @c field_0x234, then @c field_0x232, then
+ * @c field_0x22E, then @c field_0x22A); clears @c field_0x236 and
+ * @c field_0x23B. Returns 2.
+ */
+s32 func_800BB140(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        eline->field_0x232 = POP(eline);
+        eline->field_0x22E = POP(eline);
+        eline->field_0x22A = POP(eline);
+        eline->field_0x236 = 0;
+        eline->field_0x23B = 0;
+    }
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BB1F0);
+/**
+ * @brief Helper that pops 4 halfwords into another facing-state slot.
+ *
+ * Like @c func_800BB140 but stores into @c field_0x222/0x224/0x226/0x234
+ * and sets @c field_0x23B to 1 (instead of 0). Returns 2.
+ */
+s32 func_800BB1F0(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        eline->field_0x226 = POP(eline);
+        eline->field_0x224 = POP(eline);
+        eline->field_0x222 = POP(eline);
+        eline->field_0x236 = 0;
+        eline->field_0x23B = 1;
+    }
+    return 2;
+}
