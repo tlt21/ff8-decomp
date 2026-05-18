@@ -229,7 +229,65 @@ void func_800B27C4(s32 entityIdx, s32 *sxy, s32 *out) {
     *sxy = (s16)*sxy;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2864);
+/**
+ * Play a positional SFX for the entity. If the entity's @c 0x80 flag
+ * is set, project the entity's screen position via @c func_800B27C4,
+ * clamp the resulting screen X to @c [-0x200, 0x1FC] and remap to
+ * @c [0x40, 0xFF] for stereo pan, clamp the perspective Z to
+ * @c [8, 0x6E] and invert to volume (@c 0x7F-p). Then dispatch by
+ * channel: @c 0 plays via the left bus (@c 0x400000), @c 1 plays via
+ * the right bus (@c 0x800000). Within each channel, when @c msgActive
+ * is @c 3 or @c 4 (special states), a fixed SFX (@c 0x40 or @c 0x3F)
+ * is queued; otherwise if the per-channel SFX index byte
+ * (@c unk188 / @c unk189) is non-sentinel (not @c -1 as @c s8), the
+ * looked-up bank SFX is played directly; otherwise a fallback SFX is
+ * selected based on the @c 0x4000000 emphasis flag.
+ *
+ * @param eline   Pointer to the Eline event-script context.
+ * @param channel Output channel (0 = left bus, 1 = right bus).
+ */
+void func_800B2864(Eline *eline, s32 channel) {
+    s32 pitch;
+    s32 volume;
+
+    if (!(eline->flags & 0x80)) return;
+
+    func_800B27C4(eline->field_0x256, &pitch, &volume);
+
+    if (pitch < -0x200) pitch = -0x200;
+    else if (pitch >= 0x1FC) pitch = 0x1FC;
+    pitch = pitch / 4 + 0x80;
+
+    volume /= 24;
+    if (volume < 8) volume = 8;
+    else if (volume >= 0x6E) volume = 0x6E;
+    volume = 0x7F - volume;
+
+    switch (channel) {
+    case 0:
+        if ((u32)(eline->msgActive - 3) < 2) {
+            sndPlaySfx(0x40, 0x400000, pitch, volume);
+        } else if ((s8)eline->unk188 != -1) {
+            sndPlayBankSfx((s32)func_8003974C(D_800D5EA4, (s8)eline->unk188), 0x400000, pitch, volume);
+        } else if (eline->flags & 0x4000000) {
+            sndPlaySfx(0x36, 0x400000, pitch, volume);
+        } else {
+            sndPlaySfx(3, 0x400000, pitch, volume);
+        }
+        break;
+    case 1:
+        if ((u32)(eline->msgActive - 3) < 2) {
+            sndPlaySfx(0x3F, 0x400000, pitch, volume);
+        } else if ((s8)eline->unk189 != -1) {
+            sndPlayBankSfx((s32)func_8003974C(D_800D5EA4, (s8)eline->unk189), 0x800000, pitch, volume);
+        } else if (eline->flags & 0x4000000) {
+            sndPlaySfx(0x35, 0x400000, pitch, volume);
+        } else {
+            sndPlaySfx(2, 0x400000, pitch, volume);
+        }
+        break;
+    }
+}
 
 /**
  * Pops a byte from the stack, stores it at offset 0x188, and stores
