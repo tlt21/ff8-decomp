@@ -3,8 +3,60 @@
 
 #include "common.h"
 
+/*
+ * ============================================================================
+ * Field entity overlay (FieldEntity / Eline)
+ * ============================================================================
+ *
+ * One field entity slot is 612 bytes (0x264). Both @ref FieldEntity and
+ * @ref Eline below describe the SAME memory — they are two struct typedefs
+ * over identical addresses, used by different parts of the engine to express
+ * different valid type-interpretations of the bytes.
+ *
+ * The original 1998 source almost certainly used a single struct containing
+ * an actual `union` at the variant regions (e.g. 0x190+). We can't write that
+ * cleanly because gcc 2.7.2 does not support C11 anonymous union members, and
+ * named-union access (`e->u.pos.x`) would churn every caller in fe_object1..11
+ * for marginal benefit. So the layout is split into two parallel typedefs
+ * and each function takes the view matching its dominant operation:
+ *
+ *   - @ref FieldEntity  — animation / movement view. Use when the function
+ *                         decrements `walkSpeed`, walks the `unk1A7..unk1B3`
+ *                         byte grid, accesses `unk160` as a movement-flag
+ *                         word, or otherwise treats 0x190+ as u16 speeds.
+ *
+ *   - @ref Eline        — script-VM / opcode-handler view. Use when the
+ *                         function reads from `resultSlots[]`, walks the
+ *                         bytecode stack via `stackPtr`, manipulates
+ *                         message-state fields (`msgActive`, `msgChannel`,
+ *                         …), or treats 0x190+ as fixed-point `posX/Y/Z`.
+ *
+ * Where the views disagree on TYPE at the same offset, the function casts at
+ * the access site (e.g. `*(s16 *)&eline->unk188` to read the 0x188 halfword
+ * from the byte-pair view). Those casts are doing union-member access by
+ * hand; they look ugly but they are semantically honest.
+ *
+ * Key overlapping offsets (incomplete list):
+ *   0x160 : FieldEntity.unk160 (s32)        ≡ Eline.flags (s32)        same type
+ *   0x184 : FieldEntity.stackIdx (u8)       ≡ Eline.stackPtr (s8)      sign diff
+ *   0x188 : two u8 bytes (sfxIndex pair)    ≡ one s16/u16 (script param) UNION
+ *   0x190 : u16 walkSpeed / walkSpeed2 /    ≡ s32 posX / posY / posZ   UNION
+ *           runSpeed (movement mode)          (positioned/render mode)
+ *   0x1A8 : u8 unk1A8 (byte grid)           ≡ s32 unk1A8 (slot)        UNION
+ *   0x1AC : u8 unk1AC                       ≡ s32 unk1AC               UNION
+ *   0x1B0 : u8 unk1B0                       ≡ s32 unk1B0               UNION
+ *
+ * When you touch one struct, mirror the offset/pad change in the other so
+ * both views stay aligned to the same 612-byte layout. If you discover a
+ * cast at a new offset that suggests a third valid interpretation, prefer
+ * widening the cast at the call site over fragmenting either struct.
+ * ============================================================================
+ */
+
 /**
- * @brief Field script entity / VM execution context.
+ * @brief Field script entity / VM execution context — movement/animation view.
+ *
+ * See the overlay comment block above for the relationship to @ref Eline.
  *
  * Used by the field engine's stack-based virtual machine. Each entity
  * has a stack of s32 values (slots 0-95), a stack pointer, result
@@ -231,10 +283,14 @@ typedef struct {
 } SeedState; /* 0x100 = 256 bytes */
 
 /**
- * @brief Eline (event line) — opcode handler view of the script context.
+ * @brief Eline (event line) — opcode handler / script-VM view.
  *
- * Same memory as FieldEntity, but with fields named for opcode handler usage.
- * Total size: 416 bytes (0x1A0), confirmed by sizeof(eline) debug print.
+ * See the overlay comment block before @ref FieldEntity for the relationship
+ * between the two typedefs. Both describe the same 612-byte field entity
+ * slot, with this view named for opcode handler usage. The size discrepancy
+ * (FieldEntity ≥ 0x24D, Eline ~0x264) is because each typedef only declares
+ * up through the highest offset its callers reference; both bound the same
+ * 612-byte allocation.
  */
 typedef struct {
     /* 0x000 */ u8 pad000[0x140];
