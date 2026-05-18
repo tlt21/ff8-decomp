@@ -746,9 +746,43 @@ s32 func_800B3740(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3788);
+/**
+ * Pop a timer halfword, cache the seedState pointer, then pop a
+ * party-slot index; arm slot[0] with @c mode = 1 and the active
+ * battle-entity index from @c g_seedState->memberSlot.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3788(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    SeedState *ss = g_seedState;
+    s32 partySlot;
+    D_800704A8.slots[0].timer = timer;
+    partySlot = POP(eline);
+    D_800704A8.slots[0].param = ss->memberSlot[partySlot];
+    D_800704A8.slots[0].mode = 1;
+    D_800704A8.slots[0].submode = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B37F8);
+/**
+ * Variant of @c func_800B3788 that arms @c mode = 2.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B37F8(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    SeedState *ss = g_seedState;
+    s32 partySlot;
+    D_800704A8.slots[0].timer = timer;
+    partySlot = POP(eline);
+    D_800704A8.slots[0].param = ss->memberSlot[partySlot];
+    D_800704A8.slots[0].mode = 2;
+    D_800704A8.slots[0].submode = 0;
+    return 2;
+}
 
 /**
  * Returns 2 if D_800704CA equals 2, otherwise returns 1.
