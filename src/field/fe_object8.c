@@ -5,6 +5,7 @@ extern u8 D_80085230[];
 extern void func_800A97E4(u8 spatialIdx, s32 a1, s32 a2, s32 a3);
 extern void func_800B912C(Eline *eline, s32 byte);
 extern void func_800B91D8(Eline *eline, s32 a1, s32 v2, s32 v1);
+extern s32 func_8009E604();
 
 /**
  * Clear bits @c 0x180000 and set bit @c 0x200000 in @c flags, then call
@@ -488,13 +489,97 @@ void func_800BA3E0(u8 *a0) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA424);
+/**
+ * @brief Op 0x082 handler — pop byte+halfword, queue turn (kind 1, shortest path).
+ *
+ * Same as @c func_800BA1D0 but delegates the heading-wrap math to
+ * @c func_800BA3E0 (which picks the shortest rotation direction).
+ * Sets @c field_0x244 to @c 1.
+ */
+s32 func_800BA424(Eline *eline) {
+    s32 raw;
+    u8 byte1;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA4D4);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 1;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        func_800BA3E0((u8 *)eline);
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA584);
+/**
+ * @brief Op 0x083 handler — identical to @c func_800BA424.
+ */
+s32 func_800BA4D4(Eline *eline) {
+    s32 raw;
+    u8 byte1;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA634);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 1;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        func_800BA3E0((u8 *)eline);
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
+
+/**
+ * @brief CTURNR opcode 0x084 handler — same shape as @c func_800BA424 with kind 2.
+ */
+s32 func_800BA584(Eline *eline) {
+    s32 raw;
+    u8 byte1;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 2;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        func_800BA3E0((u8 *)eline);
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
+
+/**
+ * @brief CTURNL opcode 0x085 handler — identical to CTURNR (@c func_800BA584).
+ */
+s32 func_800BA634(Eline *eline) {
+    s32 raw;
+    u8 byte1;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 2;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        func_800BA3E0((u8 *)eline);
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA6E4);
 
