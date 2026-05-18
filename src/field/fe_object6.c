@@ -562,7 +562,35 @@ s32 func_800B3050(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3080);
+/**
+ * Per-frame helper for the dual-axis movement state when the entity's
+ * @c activeMask bit for the current @c scriptGroup is set: clears the
+ * @c 0x600 axis-active flags, zeros @c unk19E, and pops a fresh
+ * parameter block of six bytes (@c unk1AC..@c unk1A7) plus a halfword
+ * (@c unk19C) from the script stack. When the bit is clear, returns
+ * @c 2 only if the @c unk19C counter has hit zero (otherwise @c 1 to
+ * keep waiting).
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 1 to keep the opcode active, 2 once the wait counter drains.
+ */
+s32 func_800B3080(Eline *eline) {
+    FieldEntity *e = (FieldEntity *)eline;
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        e->unk160 &= ~0x600;
+        e->unk19E = 0;
+        e->unk1AC = POP_BYTE(eline);
+        e->unk1AB = POP_BYTE(eline);
+        e->unk1AA = POP_BYTE(eline);
+        e->unk1A9 = POP_BYTE(eline);
+        e->unk1A8 = POP_BYTE(eline);
+        e->unk1A7 = POP_BYTE(eline);
+        e->unk19C = (u16)POP(eline);
+    } else if ((s16)e->unk19C == 0) {
+        return 2;
+    }
+    return 1;
+}
 
 /**
  * Set movement state from a stack-pushed parameter block. Sets the
