@@ -4,7 +4,7 @@
  *
  *   Indices 0x000-0x011 (18 entries) — stack arithmetic sub-table.
  *     Indexed by func_800AE048 (the "meta-dispatcher", which receives
- *     a sub-opcode in @c a1 and tail-calls @c D_800C6760[a1]). The 18
+ *     a sub-opcode in @c a1 and tail-calls @c g_fieldOpcodeTable[a1]). The 18
  *     entries are pure stack ops on the eline's value stack at offset
  *     0x184: ADD, SUB, MUL, DIV, MOD, NEG, EQ, ... AND, OR, XOR, etc.
  *
@@ -12,7 +12,7 @@
  *     The runtime dispatcher (fe_object10 func_800BEBD0/func_800BD9C4)
  *     reads packed bytecode words (@c func_80037B7C extracts the
  *     high byte as the opcode and sign-extends the lower 24 bits as
- *     the arg) and indexes @c D_800C6760 + 0x48 (i.e. our 0x012) by
+ *     the arg) and indexes @c g_fieldOpcodeTable + 0x48 (i.e. our 0x012) by
  *     @c opcode * 4. So wiki opcode N (0x000-0x175) corresponds to
  *     our table index N + 0x12.
  *
@@ -420,7 +420,7 @@ extern void func_800B629C();
 
 typedef s32 (*OpcodeFn)(Eline *);
 
-s32 (*D_800C6760[392])(Eline *) = {
+s32 (*g_fieldOpcodeTable[392])(Eline *) = {
     /* 0x000  arith ADD              */ (OpcodeFn)func_800ADCA4,
     /* 0x001  arith SUB              */ (OpcodeFn)func_800ADCD8,
     /* 0x002  arith MUL              */ (OpcodeFn)func_800ADD30,

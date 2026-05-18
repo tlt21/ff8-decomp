@@ -346,20 +346,19 @@ extern u16 g_seedSalaryTable[];
 /**
  * @brief Field script-VM opcode dispatch table.
  *
- * 392-entry function-pointer table at @c 0x800C6760. The script
- * interpreter reads one byte from the bytecode stream and indexes into
- * this table to call the corresponding opcode handler with the
- * current @c Eline as the argument. Opcode @c 19 (@c func_800AE048)
- * is the "extended opcode" entry — it re-dispatches through this same
- * table using a second byte as the index.
+ * 392-entry function-pointer table at @c 0x800C6760. Indices 0-17
+ * are a 18-entry stack-arithmetic sub-table (ADD, SUB, MUL, DIV, MOD,
+ * NEG, EQ, ..., AND, OR, XOR, ...) accessed by @c func_800AE048
+ * (the "meta-dispatcher") which receives the sub-opcode in @c a1 and
+ * tail-calls @c g_fieldOpcodeTable[a1].
  *
- * Indices 0-17 are the arithmetic/logic stack ops (ADD, SUB, MUL, DIV,
- * MOD, NEG, EQ, GT, GE, LT, LE, NEQ, AND, OR, XOR, NOT, SHR, SHL).
- * Higher indices cover script-VM ops (PUSH/POP, conditional branches,
- * call helpers, message dispatch, etc.) defined across @c fe_object3
- * through @c fe_object11.
+ * Indices 18-391 are the main opcode dispatch table. The runtime
+ * dispatcher (@c func_800BEBD0 / @c func_800BD9C4) loads
+ * @c g_fieldOpcodeTable + 0x48 (i.e. our index 18) as its base, so
+ * wiki opcode @c N (0x000-0x175) corresponds to our index @c N + 0x12.
+ * See @c src/field/opcodes.c for the full opcode-to-handler mapping.
  */
-extern s32 (*D_800C6760[392])(Eline *eline);
+extern s32 (*g_fieldOpcodeTable[392])(Eline *eline);
 
 /** @brief Read the 2-bit packed flag at the given key (256-entry table). */
 extern s32 getPackedField2Bit(s32 key);

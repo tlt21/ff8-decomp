@@ -239,7 +239,7 @@ void func_800AE014(u8 *a0) {
 /**
  * @brief Dispatch an extended opcode handler from the 391-entry table.
  *
- * Indexes D_800C6760 by the given opcode index and calls the handler
+ * Indexes g_fieldOpcodeTable by the given opcode index and calls the handler
  * with the eline context. Used for multi-byte opcode dispatch — this
  * function is itself at table index 0x13.
  *
@@ -248,7 +248,7 @@ void func_800AE014(u8 *a0) {
  * @return 2 (continue processing).
  */
 s32 func_800AE048(u8 *eline, s32 index) {
-    D_800C6760[index]((Eline *)eline);
+    g_fieldOpcodeTable[index]((Eline *)eline);
     return 2;
 }
 
