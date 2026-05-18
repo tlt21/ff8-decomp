@@ -830,18 +830,25 @@ s32 func_800B68B8(Eline *eline) {
 }
 
 /**
- * @brief MES opcode 0x3E handler — show dialog message on screen.
+ * @brief MOVE opcode 0x3E handler — start entity movement to a target position.
  *
- * Checks if the entity is active, then pops window ID, Y position,
- * X position, and message text pointer from the bytecode stack. Saves
- * the current message channel, initializes message state, and calls
- * func_800B6738 to set up the message display. If message state reaches
- * 2 (complete), calls func_800B67F4 to finalize.
+ * Checks if the entity is active, then pops a window-slot index and three
+ * 20.12 fixed-point coordinates (Z, X, Y target) from the bytecode stack
+ * and stores them into the eline's target-position fields. Calls
+ * func_800B6738 to dispatch the motion command (cmd 0xD) to the entity
+ * via func_800B912C. Yields each frame until the motion completes
+ * (msgState == 2), at which point func_800B67F4 finalizes.
+ *
+ * @note Previously misnamed @c opHandler_MES — the three @c <<12 pops are
+ *       fixed-point coordinates, not message text/positions; the eline
+ *       fields named @c msgPos[XY] / @c msgTextPtr actually hold motion
+ *       target coords (see also func_800B69E8 which copies them from
+ *       @c D_80085230[idx]->pos[XYZ]).
  *
  * @param eline Pointer to the event line (script context).
- * @return 2 if message display is complete, 1 otherwise (yield).
+ * @return 2 if motion is complete, 1 otherwise (yield).
  */
-s32 opHandler_MES(Eline *eline) {
+s32 opHandler_MOVE(Eline *eline) {
     s32 new_var;
     u16 saved;
 
@@ -1066,7 +1073,7 @@ s32 func_800B6F4C(Eline *eline) {
  * @brief Pending-message MES variant — set flag 0x20000, init display, return 3.
  *
  * Unconditionally initializes the message with 4 stack values and sets the
- * pending-message flag (0x20000). Unlike opHandler_MES, there is no activeMask
+ * pending-message flag (0x20000). Unlike opHandler_MOVE, there is no activeMask
  * guard or msgState==2 check — it schedules the display and yields with 3.
  *
  * @param eline Pointer to the event line (script context).
