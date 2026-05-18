@@ -5,6 +5,8 @@
 </p>
 
 ## About
+![Discord](https://img.shields.io/discord/1499425449984393438?style=plastic&logo=discord&label=Discord&link=https%3A%2F%2Fdiscord.gg%2FjuRjsHgXuV)
+
 This is a work-in-progress decompilation project of Final Fantasy VIII (PS1, USA — `SLUS_008.92`).
 
 ## Progress
@@ -38,10 +40,6 @@ A more detailed progress report is available on [decomp.dev](https://decomp.dev/
 | battle_render.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-render-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-render-code.json) |
 | battle.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fbattle-code.json) |
 | world.bin | ![Functions](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fworld-functions.json) | ![Code](https://img.shields.io/endpoint?url=https%3A%2F%2Froengstrom.github.io%2Fff8-decomp%2Fbadges%2Fworld-code.json) |
-
-## Contact
-
-[Discord server](https://discord.gg/juRjsHgXuV)
 
 ## Development
 
