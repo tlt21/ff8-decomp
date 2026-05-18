@@ -776,17 +776,116 @@ s32 func_800B388C(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B38E0);
+/**
+ * Pop two halfword parameters and a slot index, store the parameters
+ * into @c slots[idx].p1 / @c .p2, then arm the slot with @c mode = 3
+ * and @c submode = 0.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B38E0(Eline *eline) {
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    s32 idx = POP(eline);
+    D_800704A8.slots[idx].p2 = p2;
+    D_800704A8.slots[idx].p1 = p1;
+    D_800704A8.slots[idx].mode = 3;
+    D_800704A8.slots[idx].submode = 0;
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3964);
+/**
+ * Pop a timer halfword, two parameter halfwords, and a slot index;
+ * arm @c slots[idx] with @c mode = 4 and the popped parameters.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3964(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    s32 idx = POP(eline);
+    D_800704A8.slots[idx].timer = timer;
+    D_800704A8.slots[idx].p2 = p2;
+    D_800704A8.slots[idx].p1 = p1;
+    D_800704A8.slots[idx].mode = 4;
+    D_800704A8.slots[idx].submode = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3A04);
+/**
+ * Variant of @c func_800B3964 that arms the slot with @c mode = 5.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3A04(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    s32 idx = POP(eline);
+    D_800704A8.slots[idx].timer = timer;
+    D_800704A8.slots[idx].p2 = p2;
+    D_800704A8.slots[idx].p1 = p1;
+    D_800704A8.slots[idx].mode = 5;
+    D_800704A8.slots[idx].submode = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3AA4);
+/**
+ * Pop an entity index and a slot index, look up the entity's
+ * @c field_0x256 byte via @c D_80085230 and stage it into
+ * @c slots[slotIdx].param with @c mode = 0.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B3AA4(Eline *eline) {
+    s32 entityIdx = POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].param = D_80085230[entityIdx]->field_0x256;
+    D_800704A8.slots[slotIdx].mode = 0;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3B20);
+/**
+ * Pop a timer halfword, an entity index, and a slot index; arm
+ * @c slots[slotIdx] with @c mode = 1, the timer, and the entity's
+ * @c field_0x256 byte from @c D_80085230.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3B20(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    s32 entityIdx = POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].timer = timer;
+    D_800704A8.slots[slotIdx].param = D_80085230[entityIdx]->field_0x256;
+    D_800704A8.slots[slotIdx].mode = 1;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3BC0);
+/**
+ * Variant of @c func_800B3B20 that arms @c mode = 2.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3BC0(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    s32 entityIdx = POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].timer = timer;
+    D_800704A8.slots[slotIdx].param = D_80085230[entityIdx]->field_0x256;
+    D_800704A8.slots[slotIdx].mode = 2;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3C60);
 
