@@ -83,10 +83,16 @@ typedef struct {
     /* 0x02 */ u8 submode;
     /* 0x03 */ u8 pad03;
     /* 0x04 */ u16 timer;
-    /* 0x06 */ u8 pad06[0x0A];
+    /* 0x06 */ u8 pad06[0x02];
+    /* 0x08 */ u16 q1;
+    /* 0x0A */ u16 q2;
+    /* 0x0C */ u8 pad0C[0x04];
     /* 0x10 */ u16 p1;
     /* 0x12 */ u16 p2;
-    /* 0x14 */ u8 pad14[0x08];
+    /* 0x14 */ u16 p3;
+    /* 0x16 */ u16 p4;
+    /* 0x18 */ u16 p5;
+    /* 0x1A */ u16 p6;
 } SystemSubMode; /* 0x1C = 28 bytes */
 
 /** @brief System state block (at @c D_800704A8). */

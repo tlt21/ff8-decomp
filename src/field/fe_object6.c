@@ -910,15 +910,109 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3CD0);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3D60);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3DF0);
+/**
+ * Pop four extra parameter halfwords and a slot index; stage them into
+ * @c slots[slotIdx].p3..p6 (tail parameters used by the wider mode
+ * bodies). Does not change @c mode or @c submode.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3DF0(Eline *eline) {
+    u16 p6 = (u16)POP(eline);
+    u16 p5 = (u16)POP(eline);
+    u16 p4 = (u16)POP(eline);
+    u16 p3 = (u16)POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].p3 = p3;
+    D_800704A8.slots[slotIdx].p4 = p4;
+    D_800704A8.slots[slotIdx].p5 = p5;
+    D_800704A8.slots[slotIdx].p6 = p6;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3EA0);
+/**
+ * Pop two tail parameters and a slot index; stage them into
+ * @c slots[slotIdx].p5 / @c .p6.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3EA0(Eline *eline) {
+    u16 p6 = (u16)POP(eline);
+    u16 p5 = (u16)POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].p5 = p5;
+    D_800704A8.slots[slotIdx].p6 = p6;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3F18);
+/**
+ * Pop two parameters and a slot index; stage them into
+ * @c slots[slotIdx].p1 / @c .p2 and arm with @c mode = 3.
+ * Sibling of @c func_800B38E0 with stores in @c p1 / @c p2 order.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 3 (yield to dispatcher with state change).
+ */
+s32 func_800B3F18(Eline *eline) {
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].p1 = p1;
+    D_800704A8.slots[slotIdx].p2 = p2;
+    D_800704A8.slots[slotIdx].mode = 3;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B3F9C);
+/**
+ * Pop a timer halfword, four parameter halfwords (@c q1 / @c q2 / @c p1 /
+ * @c p2), and a slot index; arm @c slots[slotIdx] with @c mode = 4 and
+ * the popped values. Used by movement-with-vector mode opcodes.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B3F9C(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    u16 q2 = (u16)POP(eline);
+    u16 q1 = (u16)POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].q1 = q1;
+    D_800704A8.slots[slotIdx].q2 = q2;
+    D_800704A8.slots[slotIdx].p1 = p1;
+    D_800704A8.slots[slotIdx].p2 = p2;
+    D_800704A8.slots[slotIdx].timer = timer;
+    D_800704A8.slots[slotIdx].mode = 4;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B4074);
+/**
+ * Variant of @c func_800B3F9C that arms @c mode = 5.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (continue processing).
+ */
+s32 func_800B4074(Eline *eline) {
+    u16 timer = (u16)POP(eline);
+    u16 p2 = (u16)POP(eline);
+    u16 p1 = (u16)POP(eline);
+    u16 q2 = (u16)POP(eline);
+    u16 q1 = (u16)POP(eline);
+    s32 slotIdx = POP(eline);
+    D_800704A8.slots[slotIdx].q1 = q1;
+    D_800704A8.slots[slotIdx].q2 = q2;
+    D_800704A8.slots[slotIdx].p1 = p1;
+    D_800704A8.slots[slotIdx].p2 = p2;
+    D_800704A8.slots[slotIdx].timer = timer;
+    D_800704A8.slots[slotIdx].mode = 5;
+    D_800704A8.slots[slotIdx].submode = 0;
+    return 2;
+}
 
 /**
  * @brief Pop a byte from the stack and store to D_80070652.
