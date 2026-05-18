@@ -2,6 +2,7 @@
 
 extern u8 D_80085230[];
 extern void func_800A97E4(u8 spatialIdx, s32 a1, s32 a2, s32 a3);
+extern void func_800B912C(u8 *eline, s32 byte);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9078);
 
@@ -83,18 +84,17 @@ s32 func_800B95A0(u8 *a0) {
 }
 
 /**
- * Call func_800B912C with entity byte 0x24F, set bit 0x2000 in flags. Returns 3.
+ * Call @c func_800B912C with the entity's byte at offset @c 0x24F as
+ * the second arg, then set bit @c 0x2000 in @c flags. Returns @c 3.
  *
- * @param a0 Pointer to the script/object structure.
+ * @param eline Pointer to the Eline event-script context.
  * @return 3.
  */
-/**
- * Call func_800B912C with entity and byte 0x24F, set bit 0x2000 in flags. Returns 3.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 3.
- */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B95C0);
+s32 func_800B95C0(u8 *eline) {
+    func_800B912C(eline, *(u8 *)(eline + 0x24F));
+    *(s32 *)(eline + 0x160) |= 0x2000;
+    return 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9604);
 
