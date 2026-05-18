@@ -367,7 +367,6 @@ typedef struct {
     /* 0x256 */ u8 pad256[0xE];
 } BattleFieldEntity; /* 0x264 */
 
-extern BattleFieldEntity *D_80085224;
 extern u8 D_80085388;                  /**< BattleFieldEntity count. */
 
 #endif /* GAMESTATE_H */

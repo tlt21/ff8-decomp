@@ -66,6 +66,29 @@ typedef struct {
     u8 unk24C;              /**< 0x24C */
 } FieldEntity;              /* size >= 0x24D */
 
+/**
+ * @brief One slot of the @c SystemState mode-slot table at
+ *        @c D_800704A8.slots, stride 28 bytes.
+ *
+ * Each slot encodes a mode-dispatched operation: @c mode selects which
+ * code path runs in the field engine's per-frame poller, @c param
+ * carries a target-entity byte (e.g. partyId), @c submode is a
+ * sub-state byte cleared on init, @c timer is a halfword countdown,
+ * and @c p1 / @c p2 are two halfword parameters consumed by the mode
+ * body.
+ */
+typedef struct {
+    /* 0x00 */ u8 mode;
+    /* 0x01 */ u8 param;
+    /* 0x02 */ u8 submode;
+    /* 0x03 */ u8 pad03;
+    /* 0x04 */ u16 timer;
+    /* 0x06 */ u8 pad06[0x0A];
+    /* 0x10 */ u16 p1;
+    /* 0x12 */ u16 p2;
+    /* 0x14 */ u8 pad14[0x08];
+} SystemSubMode; /* 0x1C = 28 bytes */
+
 /** @brief System state block (at @c D_800704A8). */
 typedef struct {
     /* 0x000 */ u8 mode;
@@ -80,15 +103,8 @@ typedef struct {
     /* 0x010 */ u8 pad010[0x02];
     /* 0x012 */ u8 entityIndex[3];  /**< Per-active-slot field-entity index (mirror of g_seedState->memberSlot[]). */
     /* 0x015 */ u8 pad015[0x0B];
-    /* 0x020 */ u8 unk020;          /**< Mode marker, set together with @c unk022 and the @c 0x30 / @c 0x32 halfword pair. */
-    /* 0x021 */ u8 unk021;          /**< Per-entity byte set from @c FieldEntity::field_0x256 by mode-0 opcodes. */
-    /* 0x022 */ u8 unk022;
-    /* 0x023 */ u8 pad023;
-    /* 0x024 */ u16 unk024;         /**< Mode-4 only: third parameter halfword. */
-    /* 0x026 */ u8 pad026[0x0A];
-    /* 0x030 */ u16 unk030;         /**< Mode parameter halfword (paired with @c unk032). */
-    /* 0x032 */ u16 unk032;
-    /* 0x034 */ u8 pad034[0xCE];
+    /* 0x020 */ SystemSubMode slots[8]; /**< 8 mode/param slots, stride 28; slot 0 corresponds to the legacy @c unk020..unk032 fields. */
+    /* 0x100 */ u8 pad100[0x02];
     /* 0x102 */ u16 unk102;
     /* 0x104 */ u16 unk104;
     /* 0x106 */ u16 unk106;

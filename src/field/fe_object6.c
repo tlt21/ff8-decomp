@@ -13,6 +13,7 @@ extern u8 D_8007064D;
 extern u8 D_8007064F[];
 extern u8 D_8007065C[];
 
+extern BattleFieldEntity *D_80085224;
 extern u8 *D_800D5EA4;
 extern u8 *func_8003974C(u8 *base, s32 idx);
 extern s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3);
@@ -628,10 +629,10 @@ s32 func_800B3474(Eline *eline) {
  * @return 3 (yield to dispatcher with state change).
  */
 s32 func_800B348C(Eline *eline) {
-    D_800704A8.unk032 = (u16)POP(eline);
-    D_800704A8.unk030 = (u16)POP(eline);
-    D_800704A8.unk020 = 3;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].p2 = (u16)POP(eline);
+    D_800704A8.slots[0].p1 = (u16)POP(eline);
+    D_800704A8.slots[0].mode = 3;
+    D_800704A8.slots[0].submode = 0;
     return 3;
 }
 
@@ -645,11 +646,11 @@ s32 func_800B348C(Eline *eline) {
  * @return 2 (continue processing).
  */
 s32 func_800B34EC(Eline *eline) {
-    D_800704A8.unk024 = (u16)POP(eline);
-    D_800704A8.unk032 = (u16)POP(eline);
-    D_800704A8.unk030 = (u16)POP(eline);
-    D_800704A8.unk020 = 4;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].timer = (u16)POP(eline);
+    D_800704A8.slots[0].p2 = (u16)POP(eline);
+    D_800704A8.slots[0].p1 = (u16)POP(eline);
+    D_800704A8.slots[0].mode = 4;
+    D_800704A8.slots[0].submode = 0;
     return 2;
 }
 
@@ -662,11 +663,11 @@ s32 func_800B34EC(Eline *eline) {
  * @return 2 (continue processing).
  */
 s32 func_800B3574(Eline *eline) {
-    D_800704A8.unk024 = (u16)POP(eline);
-    D_800704A8.unk032 = (u16)POP(eline);
-    D_800704A8.unk030 = (u16)POP(eline);
-    D_800704A8.unk020 = 5;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].timer = (u16)POP(eline);
+    D_800704A8.slots[0].p2 = (u16)POP(eline);
+    D_800704A8.slots[0].p1 = (u16)POP(eline);
+    D_800704A8.slots[0].mode = 5;
+    D_800704A8.slots[0].submode = 0;
     return 2;
 }
 
@@ -682,9 +683,9 @@ s32 func_800B3574(Eline *eline) {
 s32 func_800B35FC(Eline *eline) {
     s32 val = POP(eline);
     u8 byte = D_80085230[val]->field_0x256;
-    D_800704A8.unk020 = 0;
-    D_800704A8.unk022 = 0;
-    D_800704A8.unk021 = byte;
+    D_800704A8.slots[0].mode = 0;
+    D_800704A8.slots[0].submode = 0;
+    D_800704A8.slots[0].param = byte;
     return 3;
 }
 
@@ -700,10 +701,10 @@ s32 func_800B35FC(Eline *eline) {
 s32 func_800B3650(Eline *eline) {
     s32 val1 = POP(eline);
     s32 val2 = POP(eline);
-    D_800704A8.unk024 = val1;
-    D_800704A8.unk021 = D_80085230[val2]->field_0x256;
-    D_800704A8.unk020 = 1;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].timer = val1;
+    D_800704A8.slots[0].param = D_80085230[val2]->field_0x256;
+    D_800704A8.slots[0].mode = 1;
+    D_800704A8.slots[0].submode = 0;
     return 2;
 }
 
@@ -716,10 +717,10 @@ s32 func_800B3650(Eline *eline) {
 s32 func_800B36C8(Eline *eline) {
     s32 val1 = POP(eline);
     s32 val2 = POP(eline);
-    D_800704A8.unk024 = val1;
-    D_800704A8.unk021 = D_80085230[val2]->field_0x256;
-    D_800704A8.unk020 = 2;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].timer = val1;
+    D_800704A8.slots[0].param = D_80085230[val2]->field_0x256;
+    D_800704A8.slots[0].mode = 2;
+    D_800704A8.slots[0].submode = 0;
     return 2;
 }
 
@@ -734,9 +735,9 @@ s32 func_800B36C8(Eline *eline) {
 s32 func_800B3740(Eline *eline) {
     SeedState *ss = g_seedState;
     s32 val = POP(eline);
-    D_800704A8.unk021 = ss->memberSlot[val];
-    D_800704A8.unk020 = 0;
-    D_800704A8.unk022 = 0;
+    D_800704A8.slots[0].param = ss->memberSlot[val];
+    D_800704A8.slots[0].mode = 0;
+    D_800704A8.slots[0].submode = 0;
     return 3;
 }
 
