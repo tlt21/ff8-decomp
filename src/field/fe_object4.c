@@ -237,18 +237,25 @@ void func_800AE014(u8 *a0) {
 }
 
 /**
- * @brief Dispatch an extended opcode handler from the 391-entry table.
+ * @brief Meta-dispatcher — invokes a handler from g_fieldOpcodeTable by raw index.
  *
- * Indexes g_fieldOpcodeTable by the given opcode index and calls the handler
- * with the eline context. Used for multi-byte opcode dispatch — this
- * function is itself at table index 0x13.
+ * Reads the second-byte sub-opcode (@p opcode) from the script bytecode
+ * stream, looks up the handler in @c g_fieldOpcodeTable[opcode], and
+ * tail-calls it with the current eline. This is itself bound to entry
+ * 0x13 of the table (wiki opcode @c 0x001) — the runtime dispatcher
+ * hits it when the bytecode contains a "0x01 NN" pair, with @c NN
+ * decoded as the sub-opcode and arriving in @c a1.
  *
- * @param eline Pointer to the event line (script context).
- * @param index Opcode handler table index (0..390).
+ * Used both for the 18 stack-arithmetic ops (sub-opcodes 0x00-0x11)
+ * and to re-enter the main opcode table by raw index when the bytecode
+ * needs an opcode that does not have its own direct entry.
+ *
+ * @param eline  Pointer to the event line (script context).
+ * @param opcode Raw index into @c g_fieldOpcodeTable (0..391).
  * @return 2 (continue processing).
  */
-s32 func_800AE048(u8 *eline, s32 index) {
-    g_fieldOpcodeTable[index]((Eline *)eline);
+s32 func_800AE048(Eline *eline, s32 opcode) {
+    g_fieldOpcodeTable[opcode](eline);
     return 2;
 }
 
