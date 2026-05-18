@@ -758,7 +758,23 @@ s32 func_800B3868(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B388C);
+/**
+ * Peek the top stack value as a SystemState slot index. If that slot's
+ * @c submode is 2 (terminal state), pop and return 2 — the script
+ * advances past the wait opcode. Otherwise keep the stack intact and
+ * return 1 to retry next frame.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 once the slot reaches submode 2, 1 while still waiting.
+ */
+s32 func_800B388C(Eline *eline) {
+    s32 idx = PEEK(eline);
+    if (D_800704A8.slots[idx].submode == 2) {
+        eline->stackPtr--;
+        return 2;
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B38E0);
 
