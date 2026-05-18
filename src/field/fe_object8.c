@@ -144,9 +144,52 @@ s32 func_800B9678(Eline *eline, s32 a1) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B96EC);
+/**
+ * @brief CANIME opcode 0x02F handler — start curved animation, wait for completion.
+ *
+ * Blocking variant of RCANIME. While the entity's @c activeMask bit is
+ * set: pop two signed halfwords from the stack, dispatch via
+ * @c func_800B91D8 with the bytecode arg, set the animation-active
+ * flag (0x4000), and yield. Once the script-group bit clears, check
+ * flag 0x800 (animation complete) to decide between return 3 and
+ * return 1.
+ */
+s32 func_800B96EC(Eline *eline, s32 a1) {
+    s32 v2;
+    s32 v1;
+    s32 tmp;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9798);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        v2 = POP_HALF(eline);
+        v1 = POP_HALF(eline);
+        func_800B91D8(eline, a1, v2, v1);
+        tmp = eline->flags | 0x4000;
+        eline->flags = tmp;
+    } else if (eline->flags & 0x800) {
+        return 3;
+    }
+    return 1;
+}
+
+/**
+ * @brief CANIMEKEEP opcode 0x030 handler — same as CANIME but flag 0x8000.
+ */
+s32 func_800B9798(Eline *eline, s32 a1) {
+    s32 v2;
+    s32 v1;
+    s32 tmp;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        v2 = POP_HALF(eline);
+        v1 = POP_HALF(eline);
+        func_800B91D8(eline, a1, v2, v1);
+        tmp = eline->flags | 0x8000;
+        eline->flags = tmp;
+    } else if (eline->flags & 0x800) {
+        return 3;
+    }
+    return 1;
+}
 
 /**
  * Sign-extend @p a1 to @c s16 and call @c func_800B912C, then set bit
