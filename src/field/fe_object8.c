@@ -618,7 +618,24 @@ s32 func_800BAC18(u8 *a0) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAC38);
+/**
+ * @brief Op 0x108 handler — like @c func_800BB140 then dispatch via @c func_800BAC18.
+ *
+ * Pops 4 halfwords into @c field_0x22A/0x22E/0x232/0x234 (clearing
+ * @c field_0x236 and @c field_0x23B), then tail-calls
+ * @c func_800BAC18 to apply the queued state.
+ */
+s32 func_800BAC38(Eline *eline) {
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        eline->field_0x232 = POP(eline);
+        eline->field_0x22E = POP(eline);
+        eline->field_0x22A = POP(eline);
+        eline->field_0x236 = 0;
+        eline->field_0x23B = 0;
+    }
+    return func_800BAC18((u8 *)eline);
+}
 
 /**
  * @brief Op 0x0FD handler — pop 4 halfwords into facing slot then dispatch.
