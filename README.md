@@ -41,7 +41,7 @@ A more detailed progress report is available on [decomp.dev](https://decomp.dev/
 
 ## Contact
 
-[Discord server](https://discord.gg/cUrPXfnh)
+[Discord server](https://discord.gg/juRjsHgXuV)
 
 ## Development
 
