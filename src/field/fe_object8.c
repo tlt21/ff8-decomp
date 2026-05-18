@@ -32,7 +32,6 @@ s32 func_800B90C0(u8 *eline) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B912C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B91B4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B91D8);
 
