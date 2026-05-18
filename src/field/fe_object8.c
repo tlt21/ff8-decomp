@@ -350,13 +350,118 @@ s32 func_800BA034(u8 *a0) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA09C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA120);
+/**
+ * @brief Helper — pop byte + halfword, queue turn (subtract variant, kind 1).
+ *
+ * Same shape as @c func_800BA1D0 but with reversed comparison: subtracts
+ * @c 0x100 from the heading if @c field_0x1DC is less than @c (s16)raw.
+ * Sets @c field_0x244 to @c 1.
+ */
+s32 func_800BA120(Eline *eline) {
+    s32 raw;
+    u8 byte1;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA1D0);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 1;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        if (eline->field_0x1DC < (s16)raw) {
+            eline->field_0x1DE = raw - 0x100;
+        }
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA280);
+/**
+ * @brief Helper — pop byte + halfword, queue turn state, wrap to +0x100 if needed.
+ *
+ * Active path: pops a byte (top), then sets up turn state with
+ * @c field_0x244=1, @c field_0x243=0, @c field_0x1DC seeded from
+ * @c field_0x241, @c field_0x242 set to the popped byte. Then pops
+ * the next halfword as the requested heading, stores it to
+ * @c field_0x1DE, and if the signed value is less than @c field_0x1DC
+ * adds @c 0x100 (forces forward rotation).
+ *
+ * Inactive path: return 2 unless @c field_0x244 == 3, otherwise 1.
+ */
+s32 func_800BA1D0(Eline *eline) {
+    s32 raw;
+    u8 byte1;
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA330);
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 1;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        if ((s16)raw < eline->field_0x1DC) {
+            eline->field_0x1DE = raw + 0x100;
+        }
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
+
+/**
+ * @brief Helper — pop byte + halfword, queue turn (subtract variant, kind 2).
+ *
+ * Same as @c func_800BA120 but sets @c field_0x244 to @c 2.
+ */
+s32 func_800BA280(Eline *eline) {
+    s32 raw;
+    u8 byte1;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 2;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        if (eline->field_0x1DC < (s16)raw) {
+            eline->field_0x1DE = raw - 0x100;
+        }
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
+
+/**
+ * @brief Helper — pop byte + halfword, queue turn (add variant, kind 2).
+ *
+ * Same as @c func_800BA1D0 but sets @c field_0x244 to @c 2.
+ */
+s32 func_800BA330(Eline *eline) {
+    s32 raw;
+    u8 byte1;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        byte1 = POP_BYTE(eline);
+        eline->field_0x244 = 2;
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x242 = byte1;
+        raw = (u16)POP(eline);
+        eline->field_0x1DE = raw;
+        if ((s16)raw < eline->field_0x1DC) {
+            eline->field_0x1DE = raw + 0x100;
+        }
+    } else if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
 
 /**
  * Adjust halfword at 0x1DE based on distance from 0x1DC.

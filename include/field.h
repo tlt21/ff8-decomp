@@ -286,7 +286,8 @@ typedef struct {
     /* 0x1CC */ u8 pad1CC[0x0C];
     /* 0x1D8 */ u16 field_0x1D8;
     /* 0x1DA */ u16 field_0x1DA;
-    /* 0x1DC */ u8 pad1DC[0x04];
+    /* 0x1DC */ s16 field_0x1DC;
+    /* 0x1DE */ s16 field_0x1DE;
     /* 0x1E0 */ u16 field_0x1E0;
     /* 0x1E2 */ u16 field_0x1E2;
     /* 0x1E4 */ u16 field_0x1E4;
@@ -326,7 +327,10 @@ typedef struct {
     /* 0x23C */ u8 msgActive;       /**< Message active flag. */
     /* 0x23D */ u8 pad23D[0x03];
     /* 0x240 */ u8 field_0x240;
-    /* 0x241 */ u8 pad241[0x04];
+    /* 0x241 */ u8 field_0x241;
+    /* 0x242 */ u8 field_0x242;
+    /* 0x243 */ u8 field_0x243;
+    /* 0x244 */ u8 field_0x244;
     /* 0x245 */ u8 unk245;
     /* 0x246 */ u8 pad246[0x08];
     /* 0x24E */ u8 field_0x24E;
