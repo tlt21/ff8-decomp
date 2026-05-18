@@ -340,7 +340,82 @@ void func_800B2B48(Eline *eline) {
     eline->flags |= 0x800;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object6", func_800B2BA0);
+/**
+ * Per-frame movement-step tick. If the @c 0x200 axis-active flag is set
+ * and the inner counter @c unk19C is zero, refill the active movement
+ * state from one of two saved snapshots (selected by the @c 0x400
+ * direction bit) and decrement the tick counter @c unk1A4. Then decrement
+ * the @c walkSpeed countdown; when it hits zero, reload it from
+ * @c walkSpeed2, apply a @c +/- @c unk18A step to @c unk188 (direction
+ * gated by the @c 0x100 flag, suppressed by the @c 0x1000 stop marker),
+ * and either advance toward the @c unk18E target (helper
+ * @c func_800B2B48) or — once the target is reached — clear the
+ * @c 0x800 done marker.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ */
+void func_800B2BA0(Eline *eline) {
+#define E(field) (((FieldEntity *)eline)->field)
+    s32 flags = E(unk160);
+
+    if ((flags & 0x200) && (s16)E(unk19C) == 0) {
+        if (E(unk1A4) == 0) {
+            if (flags & 0x400) {
+                E(unk160) = flags & ~0x400;
+                E(unk19E) = 0;
+                E(unk1A4) = E(unk1A6);
+                E(unk19C) = E(unk1A2);
+                E(unk1AC) = E(unk1AF);
+                E(unk1AB) = E(unk1AE);
+                E(unk1AA) = E(unk1AD);
+                E(unk1A9) = E(unk1B2);
+                E(unk1A8) = E(unk1B1);
+                E(unk1A7) = E(unk1B0);
+            } else {
+                E(unk160) = flags | 0x400;
+                E(unk19E) = 0;
+                E(unk1A4) = E(unk1A5);
+                E(unk19C) = E(unk1A0);
+                E(unk1AC) = E(unk1B2);
+                E(unk1AB) = E(unk1B1);
+                E(unk1AA) = E(unk1B0);
+                E(unk1A9) = E(unk1AF);
+                E(unk1A8) = E(unk1AE);
+                E(unk1A7) = E(unk1AD);
+            }
+        }
+        E(unk1A4)--;
+    }
+
+    E(walkSpeed) -= 1;
+    if ((s16)E(walkSpeed) <= 0) {
+        s32 f1, f2;
+        E(walkSpeed) = E(walkSpeed2);
+        f1 = E(unk160);
+        if (!(f1 & 0x1000)) {
+            if (f1 & 0x100) {
+                *(u16 *)&eline->unk188 = *(u16 *)&eline->unk188 - eline->unk18A;
+            } else {
+                *(u16 *)&eline->unk188 = *(u16 *)&eline->unk188 + eline->unk18A;
+            }
+        }
+        f2 = E(unk160);
+        if (f2 & 0x100) {
+            if (*(s16 *)&eline->unk188 < (s16)eline->unk18E) {
+                func_800B2B48(eline);
+            } else {
+                E(unk160) = f2 & ~0x800;
+            }
+        } else {
+            if (*(s16 *)&eline->unk188 >= (s16)eline->unk18E) {
+                func_800B2B48(eline);
+            } else {
+                E(unk160) = f2 & ~0x800;
+            }
+        }
+    }
+#undef E
+}
 
 /**
  * Initialize a movement sweep from @p a1 toward @p a2: stores both
