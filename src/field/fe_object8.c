@@ -904,7 +904,38 @@ s32 func_800BA6E4(Eline *eline) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA7DC);
+/**
+ * @brief Variant of @c func_800BA6E4 that marks the turn state as @c 2.
+ *
+ * Same control flow as @c func_800BA6E4, but writes @c field_0x244 = 2
+ * (instead of @c 1) when a turn needs to start. The "turn complete"
+ * sentinel is still @c 3 in the bit-clear branch.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ */
+s32 func_800BA7DC(Eline *eline) {
+    s32 first;
+    s32 idx;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        first = POP(eline);
+        idx = POP(eline);
+        eline->field_0x243 = 0;
+        eline->field_0x1DC = eline->field_0x241;
+        eline->field_0x1DE = func_8009E604(eline, D_80085230[idx]) & 0xFF;
+        eline->field_0x242 = first;
+        if (eline->field_0x1DC == eline->field_0x1DE) {
+            return 2;
+        }
+        eline->field_0x244 = 2;
+        func_800BA3E0(eline);
+        return 1;
+    }
+    if (eline->field_0x244 == 3) {
+        return 2;
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA8D4);
 
