@@ -9,6 +9,7 @@ typedef struct {
     u8 pad54[0x0C];
     u8 unk60;
     u8 unk61;
+    u16 unk62;
 } EntityRenderSlot;
 
 extern EntityRenderSlot *D_800D9630[];
@@ -480,7 +481,23 @@ s32 func_800B9C58(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9CBC);
+/**
+ * Pop one halfword from the script stack and store it into
+ * @c eline->field_0x220. If @c D_800DE8CC bit @c 0x2 is clear, also
+ * store the same halfword into the entity's render slot at
+ * @c D_800D9630[eline->field_0x256]->unk62.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9CBC(Eline *eline) {
+    u16 half = POP(eline);
+    *(volatile u16 *)&eline->field_0x220 = half;
+    if (!(D_800DE8CC & 0x2)) {
+        D_800D9630[eline->field_0x256]->unk62 = half;
+    }
+    return 2;
+}
 
 /**
  * Pop value, divide by 4 (signed, round toward zero), store to 8 entity bytes.

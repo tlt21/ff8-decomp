@@ -319,7 +319,7 @@ typedef struct {
     /* 0x21A */ u16 windowId;       /**< Message window ID. */
     /* 0x21C */ u16 field_0x21C;    /**< Saved window ID for async restore. */
     /* 0x21E */ s16 msgState;       /**< Message state (0=init, 2=complete). */
-    /* 0x220 */ u8 pad220[0x02];
+    /* 0x220 */ u16 field_0x220;
     /* 0x222 */ u16 field_0x222;
     /* 0x224 */ u16 field_0x224;
     /* 0x226 */ u16 field_0x226;
