@@ -1,15 +1,16 @@
 #include "common.h"
 #include "field.h"
 #include "gamestate.h"
-#include "battle.h"
 
 /*
  * The animation/SFX helpers below are declared @c void in battle.h
  * (their canonical signature from btl_color.c / btl_entity.c), but
  * this translation unit's call sites only produce byte-matching
  * codegen when gcc thinks the helpers return @c u8. Redeclaring them
- * locally with @c u8 returns is a per-TU prototype override — the
- * linker resolves to the canonical symbol regardless of return type.
+ * with @c u8 returns is a per-TU prototype override — the linker
+ * resolves to the canonical symbol regardless of return type. The
+ * conflict with battle.h's void prototypes is why this TU does not
+ * include @c battle.h.
  */
 extern u8 setupAnimEntry(s32 idx_bit, s32 v4, u16 *buf, s32 v3, s32 v2, s32 v1);
 extern u8 setupAnimEntryFull(s32 idx_bit, s32 v4, u16 *buf, s32 v3, s32 v2, s32 v1, s32 v0);
@@ -17,6 +18,15 @@ extern u8 updateAnimEntry(s32 idx, s32 val);
 extern u8 setSfxEntryVolume(s32 idx, s32 vol);
 extern u8 setSfxEntityType(s32 idx, s32 type);
 
+/* Other SFX helpers (canonical signatures from battle.h, declared
+ * locally because this TU avoids #include "battle.h"). */
+extern s32  getSfxGlobalFlag(void);
+extern void setSfxGlobalFlag(s32 idx);
+extern void startSfxSlow(s32 idx);
+extern void fadeOutSfxSlow(s32 idx);
+extern s32  getSfxField1C(s32 idx);
+extern s32  getSfxField28(s32 idx);
+extern void initSfxPlayback(s32 idx, u8 *data);
 extern void func_8002D784(s32 sfxIdx, u8 *data, s32 paramY, s32 paramZ, s32 paramW, s32 paramV);
 
 /*
@@ -526,8 +536,8 @@ s32 func_800BC034(Eline *eline) {
  * @param src  4-halfword source block, copied into @c entry->rect.
  */
 void func_800BC12C(s32 idx, s32 val, u16 *src) {
-    SfxEntry *base = D_80085300;
-    SfxEntry *entry = base + idx;
+    FieldSfxSlot *base = D_80085300;
+    FieldSfxSlot *entry = base + idx;
     entry->payload = val;
     entry->rect[0] = src[0];
     entry->rect[1] = src[1];

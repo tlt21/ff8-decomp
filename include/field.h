@@ -537,26 +537,28 @@ extern void setTransitionPhase7(void);
 /* ======================================================================== */
 
 /**
- * @brief One slot in the field SFX-entry table @ref D_80085300.
+ * @brief One slot in the field SFX-shadow table @ref D_80085300.
  *
  * Populated by the field-script VM when an SFX instance is registered.
  * @c rect is a 4-halfword on-screen rectangle (used by text/balloon
  * SFX), @c payload typically holds the SFX data pointer cast to s32,
  * and @c volume / @c type mirror the values previously set via
- * @c setSfxEntryVolume / @c setSfxEntityType for the slot.
+ * @c setSfxEntryVolume / @c setSfxEntityType for the slot. Distinct
+ * from the runtime @c SfxEntry in @c battle.h, which is the active
+ * playback state — this is just the script-VM's last-set shadow.
  */
 typedef struct {
     /* 0x0 */ u16 rect[4];
     /* 0x8 */ s32 payload;
     /* 0xC */ u16 volume;
     /* 0xE */ u16 type;
-} SfxEntry;
+} FieldSfxSlot;
 
-/** @brief Per-slot SFX entry table populated by field-VM SFX opcodes. */
-extern SfxEntry D_80085300[];
+/** @brief Per-slot SFX shadow table populated by field-VM SFX opcodes. */
+extern FieldSfxSlot D_80085300[];
 
 /**
- * @brief One slot in the field anim-entry table @ref D_80085398.
+ * @brief One slot in the field anim-shadow table @ref D_80085398.
  *
  * Eight halfwords of opcode-supplied animation parameters. @c flag at
  * @c 0x0 is the slot-active marker (cleared by @c func_800BD1A4),
@@ -572,10 +574,10 @@ typedef struct {
     /* 0xA */ u16 fieldA;
     /* 0xC */ u16 fieldC;
     /* 0xE */ u16 fieldE;
-} AnimEntry;
+} FieldAnimSlot;
 
-/** @brief Per-slot anim entry table populated by field-VM anim opcodes. */
-extern AnimEntry D_80085398[];
+/** @brief Per-slot anim shadow table populated by field-VM anim opcodes. */
+extern FieldAnimSlot D_80085398[];
 
 /** @brief Small on-screen rectangle in halfword coords (used by SFX balloons). */
 typedef struct {
