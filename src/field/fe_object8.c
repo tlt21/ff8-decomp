@@ -6,6 +6,9 @@ typedef struct {
     u16 unk0C;
     u8 pad0E[0x44];
     u16 unk52;
+    u8 pad54[0x0C];
+    u8 unk60;
+    u8 unk61;
 } EntityRenderSlot;
 
 extern EntityRenderSlot *D_800D9630[];
@@ -406,6 +409,7 @@ s32 func_800B9A00(Eline *eline, s32 a1) {
 }
 
 extern s32 D_800DE8C8[];
+extern s32 D_800DE8CC;
 
 /**
  * @brief Pop 3 bytes into the 0x18A vector slot and dispatch cmd 0x10.
@@ -459,7 +463,22 @@ s32 func_800B9B24(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9C58);
+/**
+ * @brief Pop a byte into @c field_0x257 and mirror to the active render slot.
+ *
+ * Pops one byte from the script stack, stores it into
+ * @c eline->field_0x257. If @c D_800DE8C8[1] bit @c 0x2 is clear,
+ * also stores the same byte into the active entity's render slot
+ * (@c D_800D9630[D_800DE4FC]->unk61).
+ */
+s32 func_800B9C58(Eline *eline) {
+    u8 byte = POP_BYTE(eline);
+    eline->field_0x257 = byte;
+    if (!(D_800DE8CC & 0x2)) {
+        D_800D9630[D_800DE4FC]->unk61 = byte;
+    }
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9CBC);
 
