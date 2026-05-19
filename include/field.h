@@ -306,7 +306,16 @@ typedef struct {
     /* 0x200 */ u16 msgChannel;     /**< Current message channel. */
     /* 0x202 */ u16 field_0x202;    /**< Saved channel for async restore. */
     /* 0x204 */ s16 field_0x204;
-    /* 0x206 */ u8 pad206[0x14];
+    /* 0x206 */ u16 field_0x206;
+    /* 0x208 */ u16 field_0x208;
+    /* 0x20A */ u16 field_0x20A;
+    /* 0x20C */ u16 field_0x20C;
+    /* 0x20E */ u16 field_0x20E;
+    /* 0x210 */ u16 field_0x210;
+    /* 0x212 */ u16 field_0x212;
+    /* 0x214 */ u16 field_0x214;
+    /* 0x216 */ u16 field_0x216;
+    /* 0x218 */ u8 pad218[0x02];
     /* 0x21A */ u16 windowId;       /**< Message window ID. */
     /* 0x21C */ u16 field_0x21C;    /**< Saved window ID for async restore. */
     /* 0x21E */ s16 msgState;       /**< Message state (0=init, 2=complete). */
@@ -332,7 +341,8 @@ typedef struct {
     /* 0x243 */ u8 field_0x243;
     /* 0x244 */ u8 field_0x244;
     /* 0x245 */ u8 unk245;
-    /* 0x246 */ u8 pad246[0x08];
+    /* 0x246 */ u8 pad246[0x07];
+    /* 0x24D */ u8 field_0x24D;
     /* 0x24E */ u8 field_0x24E;
     /* 0x24F */ u8 field_0x24F;
     /* 0x250 */ u8 field_0x250;
@@ -340,7 +350,16 @@ typedef struct {
     /* 0x252 */ u8 pad252[0x03];
     /* 0x255 */ u8 field_0x255;
     /* 0x256 */ u8 field_0x256;
-    /* 0x257 */ u8 pad257[0x0B];
+    /* 0x257 */ u8 pad257[0x02];
+    /* 0x259 */ u8 field_0x259;
+    /* 0x25A */ u8 field_0x25A;
+    /* 0x25B */ u8 field_0x25B;
+    /* 0x25C */ u8 field_0x25C;
+    /* 0x25D */ u8 field_0x25D;
+    /* 0x25E */ u8 field_0x25E;
+    /* 0x25F */ u8 field_0x25F;
+    /* 0x260 */ u8 field_0x260;
+    /* 0x261 */ u8 field_0x261;
     /* 0x262 */ u8 field_0x262;
     /* 0x263 */ u8 field_0x263;
 } Eline;

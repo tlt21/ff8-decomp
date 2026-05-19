@@ -1,7 +1,7 @@
 #include "common.h"
 #include "field.h"
 
-extern u8 D_80085230[];
+extern Eline *D_80085230[];
 extern void func_800A97E4(u8 spatialIdx, s32 a1, s32 a2, s32 a3);
 extern void func_800B912C(Eline *eline, s32 byte);
 extern void func_800B91D8(Eline *eline, s32 a1, s32 v2, s32 v1);
@@ -31,15 +31,10 @@ s32 func_800B9078(Eline *eline) {
  * @return 2 (advance PC).
  */
 s32 func_800B90C0(Eline *eline) {
-    s8 idx;
     u8 byte;
 
     eline->flags = (eline->flags & 0xFFCFFFFF) | 0x80000;
-
-    idx = eline->stackPtr;
-    eline->stackPtr = idx - 1;
-    byte = *(u8 *)((u8 *)eline + idx * 4);
-
+    byte = POP_BYTE(eline);
     eline->field_0x263 = byte;
     func_800A97E4(eline->field_0x256, 0x27, 0, eline->field_0x263);
     return 2;
@@ -53,45 +48,37 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B91D8);
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9288);
 
 /**
- * Copies several entity fields: 0x160->0x20E, 0x24E->0x24D,
- * 0x206->0x210, 0x208->0x212, 0x20A->0x214, 0x20C->0x216.
+ * @brief Snapshot live animation state into the 0x210-0x216 backup slots.
  *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * Copies the low halfword of @c flags into @c field_0x20E, mirrors
+ * @c field_0x24E into @c field_0x24D, and saves the four halfwords
+ * @c field_0x206/208/20A/20C into @c field_0x210/212/214/216.
  */
-s32 func_800B9488(u8 *a0) {
-    *(u16 *)(a0 + 0x20E) = *(u16 *)(a0 + 0x160);
-    *(u8 *)(a0 + 0x24D) = *(u8 *)(a0 + 0x24E);
-    *(u16 *)(a0 + 0x210) = *(u16 *)(a0 + 0x206);
-    *(u16 *)(a0 + 0x212) = *(u16 *)(a0 + 0x208);
-    *(u16 *)(a0 + 0x214) = *(u16 *)(a0 + 0x20A);
-    *(u16 *)(a0 + 0x216) = *(u16 *)(a0 + 0x20C);
+s32 func_800B9488(Eline *eline) {
+    eline->field_0x20E = eline->flags;
+    eline->field_0x24D = eline->field_0x24E;
+    eline->field_0x210 = eline->field_0x206;
+    eline->field_0x212 = eline->field_0x208;
+    eline->field_0x214 = eline->field_0x20A;
+    eline->field_0x216 = eline->field_0x20C;
     return 2;
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B94C0);
 
 /**
- * Pops a halfword from the stack and stores it to offset 0x208.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop the top stack slot as a halfword into @c field_0x208.
  */
-s32 func_800B9570(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u16 *)(a0 + 0x208) = *(u16 *)(a0 + (s8)idx * 4);
+s32 func_800B9570(Eline *eline) {
+    eline->field_0x208 = POP(eline);
     return 2;
 }
 
 /**
- * Returns 2 if bit 0x800 is set in the flags at offset 0x160, otherwise 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 if flag 0x800 is set, else 1.
+ * @brief Returns 2 if the animation-complete flag (0x800) is set, else 1.
  */
-s32 func_800B95A0(u8 *a0) {
-    if (*(s32 *)(a0 + 0x160) & 0x800) {
+s32 func_800B95A0(Eline *eline) {
+    if (eline->flags & 0x800) {
         return 2;
     }
     return 1;
@@ -289,63 +276,49 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9CBC);
  * @param a0 Pointer to the script/object structure.
  * @return 2 (continue processing).
  */
-s32 func_800B9D20(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    s32 val;
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    val = *(s32 *)(a0 + (s8)idx * 4) / 4;
-    *(u8 *)(a0 + 0x25C) = val;
-    *(u8 *)(a0 + 0x25B) = val;
-    *(u8 *)(a0 + 0x25A) = val;
-    *(u8 *)(a0 + 0x259) = val;
-    *(u8 *)(a0 + 0x260) = val;
-    *(u8 *)(a0 + 0x25F) = val;
-    *(u8 *)(a0 + 0x25E) = val;
-    *(u8 *)(a0 + 0x25D) = val;
+s32 func_800B9D20(Eline *eline) {
+    s32 val = POP(eline) / 4;
+    eline->field_0x25C = val;
+    eline->field_0x25B = val;
+    eline->field_0x25A = val;
+    eline->field_0x259 = val;
+    eline->field_0x260 = val;
+    eline->field_0x25F = val;
+    eline->field_0x25E = val;
+    eline->field_0x25D = val;
     return 2;
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9D7C);
 
 /**
- * Pops a byte from the stack and stores it to offset 0x261.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop a byte from the script stack into @c field_0x261.
  */
-s32 func_800B9F28(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)(a0 + 0x261) = *(u8 *)(a0 + (s8)idx * 4);
+s32 func_800B9F28(Eline *eline) {
+    eline->field_0x261 = POP_BYTE(eline);
     return 2;
 }
 
 /**
- * Pops a byte from the stack and stores it to offset 0x241.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop a byte from the script stack into @c field_0x241.
  */
-s32 func_800B9F58(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)(a0 + 0x241) = *(u8 *)(a0 + (s8)idx * 4);
+s32 func_800B9F58(Eline *eline) {
+    eline->field_0x241 = POP_BYTE(eline);
     return 2;
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9F88);
 
 /**
- * Pops a value from the stack, looks up a pointer in D_80085230[val],
- * calls func_8009E604, and stores the byte result at offset 0x241.
+ * @brief Pop an entity index, dispatch the bearing-resolver, store byte to @c field_0x241.
  *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * Pops one s32 from the script stack and uses it as an index into
+ * @c D_80085230 to fetch a target @c Eline. Calls @c func_8009E604 with
+ * the current entity and the target, and writes the byte result into
+ * @c field_0x241 (seeds turn-state for the next CTURN-family helper).
  */
-s32 func_800BA034(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u8 *)(a0 + 0x241) = func_8009E604(a0, *(s32 *)(D_80085230 + *(s32 *)(a0 + (s8)idx * 4) * 4));
+s32 func_800BA034(Eline *eline) {
+    eline->field_0x241 = func_8009E604(eline, D_80085230[POP(eline)]);
     return 2;
 }
 
@@ -471,20 +444,28 @@ s32 func_800BA330(Eline *eline) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800BA3E0(u8 *a0) {
-    s16 de = *(s16 *)(a0 + 0x1DE);
-    s16 dc = *(s16 *)(a0 + 0x1DC);
-    u16 deu = *(u16 *)(a0 + 0x1DE);
+/**
+ * @brief Wrap the target heading to the shorter arc when |target-current|>0x80.
+ *
+ * Computes the absolute heading delta between @c field_0x1DC (current) and
+ * @c field_0x1DE (target). If the gap is more than half a turn (@c >=0x81),
+ * adjusts @c field_0x1DE by @c ±0x100 so the rotation takes the short way
+ * around. Also clears the per-step kind byte @c field_0x243.
+ */
+void func_800BA3E0(Eline *eline) {
+    s16 de = eline->field_0x1DE;
+    s16 dc = eline->field_0x1DC;
+    u16 deu = eline->field_0x1DE;
     s32 diff = de - dc;
     if (diff < 0) {
         diff = -diff;
     }
-    *(u8 *)(a0 + 0x243) = 0;
+    eline->field_0x243 = 0;
     if (diff >= 0x81) {
         if (dc < de) {
-            *(u16 *)(a0 + 0x1DE) = deu - 0x100;
+            eline->field_0x1DE = deu - 0x100;
         } else {
-            *(u16 *)(a0 + 0x1DE) = deu + 0x100;
+            eline->field_0x1DE = deu + 0x100;
         }
     }
 }
@@ -508,7 +489,7 @@ s32 func_800BA424(Eline *eline) {
         eline->field_0x242 = byte1;
         raw = (u16)POP(eline);
         eline->field_0x1DE = raw;
-        func_800BA3E0((u8 *)eline);
+        func_800BA3E0(eline);
     } else if (eline->field_0x244 == 3) {
         return 2;
     }
@@ -530,7 +511,7 @@ s32 func_800BA4D4(Eline *eline) {
         eline->field_0x242 = byte1;
         raw = (u16)POP(eline);
         eline->field_0x1DE = raw;
-        func_800BA3E0((u8 *)eline);
+        func_800BA3E0(eline);
     } else if (eline->field_0x244 == 3) {
         return 2;
     }
@@ -552,7 +533,7 @@ s32 func_800BA584(Eline *eline) {
         eline->field_0x242 = byte1;
         raw = (u16)POP(eline);
         eline->field_0x1DE = raw;
-        func_800BA3E0((u8 *)eline);
+        func_800BA3E0(eline);
     } else if (eline->field_0x244 == 3) {
         return 2;
     }
@@ -574,7 +555,7 @@ s32 func_800BA634(Eline *eline) {
         eline->field_0x242 = byte1;
         raw = (u16)POP(eline);
         eline->field_0x1DE = raw;
-        func_800BA3E0((u8 *)eline);
+        func_800BA3E0(eline);
     } else if (eline->field_0x244 == 3) {
         return 2;
     }
@@ -592,27 +573,20 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA9E8);
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAAFC);
 
 /**
- * Returns 2 if the byte at offset 0x244 equals 3, otherwise returns 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 if object byte 0x244 is 3, else 1.
+ * @brief Returns 2 once the turn-state kind byte reaches 3, otherwise 1.
  */
-s32 func_800BABFC(u8 *a0) {
-    if (*(u8 *)(a0 + 0x244) == 3) {
+s32 func_800BABFC(Eline *eline) {
+    if (eline->field_0x244 == 3) {
         return 2;
     }
     return 1;
 }
 
 /**
- * Returns 2 if the halfwords at offsets 0x234 and 0x236 are equal,
- * otherwise returns 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 if values match, else 1.
+ * @brief Returns 2 once the queued facing matches the current facing.
  */
-s32 func_800BAC18(u8 *a0) {
-    if (*(u16 *)(a0 + 0x234) == *(u16 *)(a0 + 0x236)) {
+s32 func_800BAC18(Eline *eline) {
+    if (eline->field_0x234 == eline->field_0x236) {
         return 2;
     }
     return 1;
@@ -634,7 +608,7 @@ s32 func_800BAC38(Eline *eline) {
         eline->field_0x236 = 0;
         eline->field_0x23B = 0;
     }
-    return func_800BAC18((u8 *)eline);
+    return func_800BAC18(eline);
 }
 
 /**
@@ -652,7 +626,7 @@ s32 func_800BAD00(Eline *eline) {
         eline->field_0x236 = 0;
         eline->field_0x23B = 1;
     }
-    return func_800BAC18((u8 *)eline);
+    return func_800BAC18(eline);
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BADCC);
