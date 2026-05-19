@@ -284,11 +284,32 @@ s32 func_800BBA3C(Eline *eline) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBB20);
+/**
+ * @brief Initialise dialog state 5 + pop 7 halfwords.
+ *
+ * Like @c func_800BB958 but pops three more halfwords into
+ * @c field_0x118 / @c field_0x116 / @c field_0x114 instead of
+ * copying from the lower triple.
+ *
+ * @note Originally split by splat into three parts (BBB20, BBBB4,
+ * BBC08); the trailing symbols were removed from
+ * @c symbol_addrs.field to merge them back.
+ */
+s32 func_800BBB20(Eline *eline) {
+    D_800704A8.dialogState = 5;
+    D_800704A8.dialogTimer = 0;
+    D_800704A8.dialogCount = POP(eline);
+    D_800704A8.field_0x11E = POP(eline);
+    D_800704A8.field_0x11C = POP(eline);
+    D_800704A8.field_0x11A = POP(eline);
+    D_800704A8.field_0x118 = POP(eline);
+    D_800704A8.field_0x116 = POP(eline);
+    D_800704A8.field_0x114 = POP(eline);
+    func_800BB6C8();
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBBB4);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBC08);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBC64);
 
