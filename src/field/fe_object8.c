@@ -1,5 +1,6 @@
 #include "common.h"
 #include "field.h"
+#include "gamestate.h"
 
 typedef struct {
     u8 pad00[0x0C];
@@ -605,7 +606,24 @@ s32 func_800BA034(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BA09C);
+/**
+ * @brief Variant of @c func_800BA034 that looks up the target via the
+ *        SeeD party-member slot table.
+ *
+ * Pops one s32 from the stack as a slot index, uses it to read
+ * @c g_seedState->memberSlot[slot], indexes that into the entity
+ * array @c D_80085224 to fetch a target @c Eline, dispatches
+ * @c func_8009E604 with the current entity and the target, and writes
+ * the byte result into @c field_0x241.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800BA09C(Eline *eline) {
+    s32 slot = POP(eline);
+    eline->field_0x241 = func_8009E604(eline, &D_80085224[g_seedState->memberSlot[slot]]);
+    return 2;
+}
 
 /**
  * @brief Helper — pop byte + halfword, queue turn (subtract variant, kind 1).
