@@ -21,7 +21,12 @@ extern u8 *func_8003974C(u8 *base, s32 idx);
 extern s32 func_8002E680(u8 *text);
 extern void func_8002E064(s32 idx, s16 *rect);
 extern void func_8002D784(s32 a0, u8 *text, s32 a2, s32 a3, s32 a4, s32 a5);
-extern void func_800BC258(s16 *rect);
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 w;
+    s16 h;
+} Rect;
 
 /**
  * @brief Snapshot a target entity's grid-cell position into the queued
@@ -455,7 +460,27 @@ s32 func_800BC170(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC258);
+/**
+ * @brief Clip a rect to the visible screen area (8,8 → 0x130x0xE0).
+ *
+ * Adjusts @c r->x so the rect doesn't run off the right edge
+ * (@c x+w < 0x130), then clamps @c x >= 8. Same for @c y / @c h
+ * against the bottom edge (0xE0) and top edge (8).
+ */
+void func_800BC258(Rect *r) {
+    if (r->x + r->w >= 0x130) {
+        r->x = 0x138 - (u16)r->w;
+    }
+    if (r->x < 8) {
+        r->x = 8;
+    }
+    if (r->y + r->h >= 0xE0) {
+        r->y = 0xE0 - (u16)r->h;
+    }
+    if (r->y < 8) {
+        r->y = 8;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC2E0);
 
