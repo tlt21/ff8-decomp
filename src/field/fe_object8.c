@@ -1131,7 +1131,34 @@ s32 func_800BADCC(Eline *eline, s32 arg1) {
     return ((s32 (*)(Eline *, s32))func_800BAC18)(eline, arg1);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BAF14);
+/**
+ * @brief Variant of @c func_800BADCC that resolves the target via the
+ *        SeeD party-member slot table.
+ *
+ * Same body as @c func_800BADCC, but the index popped from the stack
+ * is treated as a SeeD party-slot. The target entity is the one whose
+ * Eline lives at @c &D_80085224[g_seedState->memberSlot[slot]], and
+ * that same byte index is the spatial argument to @c func_800A8DAC.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @param arg1  Forwarded as the second argument to @c func_800BAC18.
+ */
+s32 func_800BAF14(Eline *eline, s32 arg1) {
+    u8 slot;
+    s16 buf[4];
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        slot = g_seedState->memberSlot[POP(eline)];
+        func_800A8DAC(slot, 0x1E, D_800C71F8, buf);
+        eline->field_0x222 = D_80085224[slot].posX / 4096;
+        eline->field_0x224 = D_80085224[slot].posY / 4096;
+        eline->field_0x226 = buf[2] + D_80085224[slot].posZ / 4096;
+        eline->field_0x23B = 1;
+        eline->field_0x236 = 0;
+    }
+    return ((s32 (*)(Eline *, s32))func_800BAC18)(eline, arg1);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800BB05C);
 
