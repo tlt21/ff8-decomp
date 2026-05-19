@@ -220,9 +220,24 @@ s32 func_800BB810(Eline *eline) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB8B4);
+/**
+ * @brief Initialise dialog state (variant 8) and pop three halfwords.
+ *
+ * Same as @c func_800BB810 but with @c dialogState=8.
+ *
+ * @note Originally split by splat at @c func_800BB90C — symbol removed
+ * from @c symbol_addrs.field so the two halves merge back.
+ */
+s32 func_800BB8B4(Eline *eline) {
+    D_800704A8.dialogState = 8;
+    D_800704A8.dialogTimer = 0;
+    D_800704A8.field_0x112 = POP(eline);
+    D_800704A8.field_0x110 = POP(eline);
+    D_800704A8.field_0x10E = POP(eline);
+    func_800BB6C8();
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB90C);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB958);
 
