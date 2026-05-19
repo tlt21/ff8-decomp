@@ -860,7 +860,26 @@ s32 func_800BCCAC(Eline *e) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCDA0);
+/**
+ * @brief Tear down (or fade) an SFX entry slot — single-arg variant.
+ *
+ * Peek @c sfxIdx, then if the SFX is still releasing
+ * (@c getSfxField1C != 0), kick a slow fade and return 1. Once it's
+ * fully done, clear both @c sfxStartMask and @c sfxEntryMask bits,
+ * pop one, and return 2.
+ */
+s32 func_800BCDA0(Eline *e) {
+    s32 sfxIdx = e->stack[(s8)e->stackPtr];
+
+    if (!getSfxField1C(sfxIdx)) {
+        g_seedState->sfxStartMask &= ~(1 << sfxIdx);
+        g_seedState->sfxEntryMask &= ~(1 << sfxIdx);
+        e->stackPtr -= 1;
+        return 2;
+    }
+    fadeOutSfxSlow(sfxIdx);
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCE44);
 
