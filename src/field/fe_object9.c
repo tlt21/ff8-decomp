@@ -894,7 +894,22 @@ s32 func_800BCDA0(Eline *e) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCE44);
+extern u8 updateAnimEntry(s32 idx, s32 val);
+
+/**
+ * @brief Update the @c field4 slot of a @c D_80085398 entry.
+ *
+ * Pops @c (idx, val) from the Eline stack, calls @c updateAnimEntry
+ * to refresh whatever runtime state the helper tracks, then writes
+ * @c val into @c D_80085398[idx].field4 and returns 2.
+ */
+s32 func_800BCE44(Eline *e) {
+    s32 val = POP(e);
+    s32 idx = POP(e);
+    updateAnimEntry(idx, val);
+    D_80085398[idx].field4 = val;
+    return 2;
+}
 
 /**
  * @brief Set up a 7-arg animation entry in the @c D_80085398 table.
