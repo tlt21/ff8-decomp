@@ -13,6 +13,7 @@ extern Eline *D_80085230[];
 extern void func_800A97E4(u8 spatialIdx, s32 a1, s32 a2, s32 a3);
 extern void func_800B912C(Eline *eline, s16 a1);
 extern void func_800B91D8(Eline *eline, s32 a1, s32 v2, s32 v1);
+extern void func_800AA46C(u8 spatialIdx, s32 cmd, s32 arg, s32 arg4);
 extern u8 D_800DE4FC;
 extern s32 func_8009E604();
 
@@ -184,7 +185,29 @@ s32 func_800B9488(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B94C0);
+/**
+ * @brief Restore animation state from the 0x210-0x216 backup slots.
+ *
+ * Inverse of @c func_800B9488: copies the saved halfwords back into
+ * the live motion state (@c field_0x206/208/20A/20C), mirrors
+ * @c field_0x24D into @c field_0x24E, dispatches motion command
+ * @c 0xD via @c func_800AA46C, copies @c field_0x206 into the render
+ * slot's @c unk52, and restores the saved 0xF800 flag band from
+ * @c field_0x20E.
+ */
+s32 func_800B94C0(Eline *eline) {
+    eline->field_0x24E = eline->field_0x24D;
+    eline->field_0x206 = eline->field_0x210;
+    eline->field_0x208 = eline->field_0x212;
+    eline->field_0x20A = eline->field_0x214;
+    eline->field_0x20C = eline->field_0x216;
+    func_800AA46C(eline->field_0x256, 0xD, eline->field_0x24E, 0);
+    D_800D9630[eline->field_0x256]->unk52 = eline->field_0x206;
+    eline->flags &= ~0xF800;
+    eline->field_0x20E &= 0xF800;
+    eline->flags |= eline->field_0x20E;
+    return 2;
+}
 
 /**
  * @brief Pop the top stack slot as a halfword into @c field_0x208.
