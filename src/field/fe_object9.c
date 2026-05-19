@@ -174,7 +174,28 @@ s32 func_800BB768(void) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB7BC);
+/**
+ * @brief Initialise the dialog-state block (variant: state=3, count=8).
+ *
+ * Similar to @c func_800BB768 but with the boot values
+ * (D_800DE8D2=3, dialogState=3, dialogTimer=0, dialogCount=8, then
+ * three 0xFF sentinels). The empty @c do/while(0) breaks gcc's
+ * scheduler at the right point so the @c sh @c zero (dialogTimer)
+ * lands before the @c sh @c v1 (dialogCount) — without it gcc emits
+ * the count store first and burns an extra @c li.
+ */
+s32 func_800BB7BC(void) {
+    D_800DE8D2 = 3;
+    D_800704A8.dialogState = 3;
+    D_800704A8.dialogTimer = 0;
+    D_800704A8.dialogCount = 8;
+    do { } while (0);
+    D_800704A8.field_0x10E = 0xFF;
+    D_800704A8.field_0x110 = 0xFF;
+    D_800704A8.field_0x112 = 0xFF;
+    func_800BB6C8();
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB810);
 
