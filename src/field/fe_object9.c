@@ -3,10 +3,13 @@
 #include "gamestate.h"
 
 extern u8 *D_800704C0;
+extern u32 D_800C71F8;
 extern s32 D_800DE4DC;
 extern u8 D_800DE8D2;
 extern u8 D_80085398[];
 extern u8 D_80085300[];
+
+extern void func_800A8DAC(u8 spatialIdx, s32 a1, u32 a2, void *a3);
 
 extern s32 getSfxGlobalFlag(void);
 extern void setSfxGlobalFlag(s32 idx);
@@ -20,7 +23,29 @@ extern void func_8002E064(s32 idx, s16 *rect);
 extern void func_8002D784(s32 a0, u8 *text, s32 a2, s32 a3, s32 a4, s32 a5);
 extern void func_800BC258(s16 *rect);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB2A4);
+/**
+ * @brief Snapshot a target entity's grid-cell position into the queued
+ *        turn-state fields.
+ *
+ * Same body as @c func_800BADCC in fe_object8 but standalone — no
+ * @c func_800BAC18 tail call, always returns 2.
+ */
+s32 func_800BB2A4(Eline *eline) {
+    s16 buf[4];
+    s32 idx;
+
+    if ((eline->activeMask >> eline->scriptGroup) & 1) {
+        eline->field_0x234 = POP(eline);
+        idx = POP(eline);
+        func_800A8DAC(D_80085230[idx]->field_0x256, 0x1E, D_800C71F8, buf);
+        eline->field_0x222 = D_80085230[idx]->posX / 4096;
+        eline->field_0x224 = D_80085230[idx]->posY / 4096;
+        eline->field_0x226 = buf[2] + D_80085230[idx]->posZ / 4096;
+        eline->field_0x23B = 1;
+        eline->field_0x236 = 0;
+    }
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB3D8);
 
