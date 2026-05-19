@@ -266,7 +266,22 @@ s32 func_800BB958(Eline *eline) {
 }
 
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBA3C);
+/**
+ * @brief Same shape as @c func_800BB958 with @c dialogState=6.
+ */
+s32 func_800BBA3C(Eline *eline) {
+    D_800704A8.dialogState = 6;
+    D_800704A8.dialogTimer = 0;
+    D_800704A8.dialogCount = POP(eline);
+    D_800704A8.field_0x11E = POP(eline);
+    D_800704A8.field_0x11C = POP(eline);
+    D_800704A8.field_0x11A = POP(eline);
+    D_800704A8.field_0x118 = D_800704A8.field_0x112;
+    D_800704A8.field_0x116 = D_800704A8.field_0x110;
+    D_800704A8.field_0x114 = D_800704A8.field_0x10E;
+    func_800BB6C8();
+    return 2;
+}
 
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBB20);
