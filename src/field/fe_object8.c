@@ -94,7 +94,78 @@ void func_800B91D8(Eline *eline, s32 a1, s32 a2, s32 a3) {
     eline->flags &= ~0xF800;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9288);
+extern s32 func_800B2864();
+
+/**
+ * @brief Per-frame motion tick for the entity.
+ *
+ * Advances @c field_0x206 (current position) by @c field_0x208 (step)
+ * each frame. When @c flags & 0x80 is set and the entity is in
+ * @c msgActive == 1, fires @c func_800B2864 hooks if the half-range
+ * boundary or zero-crossing on @c (val - 0x80) flips during the step.
+ *
+ * When @c field_0x206 reaches @c field_0x20C, dispatches based on
+ * flag bits 0x2000 (loop-rewind), 0x8000 (loop-step-back), or
+ * 0x4000 (one-shot via @c func_800B912C), and sets the completion
+ * flag 0x800. Otherwise clears flag 0x800. Always writes
+ * @c field_0x206 into the render slot's @c unk52 at the end (unless
+ * the early @c 0x4 disable bit was set on entry).
+ */
+void func_800B9288(Eline *eline) {
+    s32 flags;
+    s32 newPos;
+    s32 oldSigned;
+    s32 oldMid;
+    s32 newMid;
+    s32 halfRange;
+    s32 s1_v;
+    s32 s2_v;
+
+    flags = eline->flags;
+    if (flags & 0x4) {
+        return;
+    }
+    if (!(flags & 0x1000)) {
+        u16 oldUnsigned = eline->field_0x206;
+        oldSigned = (s16)eline->field_0x206;
+        newPos = oldUnsigned;
+        newPos = newPos + (u16)eline->field_0x208;
+        eline->field_0x206 = newPos;
+        if ((eline->flags & 0x80) && eline->msgActive == 1) {
+            newMid = (s16)newPos - 0x80;
+            oldMid = 0x80;
+            oldMid = oldSigned - oldMid;
+            halfRange = ((s16)eline->field_0x20C - (s16)eline->field_0x208) >> 1;
+            s2_v = newMid - halfRange;
+            s1_v = oldMid - halfRange;
+            if ((((u32)newMid >> 31) & ((u32)~oldMid >> 31))
+                || (((u32)oldMid >> 31) & ((u32)~newMid >> 31))) {
+                func_800B2864(eline, 1, 0x40, 0x80);
+            }
+            if ((((u32)s2_v >> 31) & ((u32)~s1_v >> 31))
+                || (((u32)s1_v >> 31) & ((u32)~s2_v >> 31))) {
+                func_800B2864(eline, 0, 0x40, 0x80);
+            }
+        }
+    }
+    if ((s16)eline->field_0x206 >= (s16)eline->field_0x20C) {
+        flags = eline->flags;
+        if (flags & 0x2000) {
+            eline->field_0x206 = eline->field_0x20A;
+        } else if (flags & 0x8000) {
+            eline->flags = (flags & ~0xF800) | 0x1000;
+            eline->field_0x20C -= eline->field_0x208;
+            eline->field_0x206 = eline->field_0x20C;
+        } else if (flags & 0x4000) {
+            func_800B912C(eline, eline->field_0x24F);
+            eline->flags = (eline->flags & ~0xF800) | 0x2000;
+        }
+        eline->flags |= 0x800;
+    } else {
+        eline->flags &= ~0x800;
+    }
+    D_800D9630[eline->field_0x256]->unk52 = eline->field_0x206;
+}
 
 /**
  * @brief Snapshot live animation state into the 0x210-0x216 backup slots.
