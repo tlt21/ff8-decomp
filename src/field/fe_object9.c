@@ -574,7 +574,45 @@ s32 func_800BC44C(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC58C);
+/**
+ * @brief SFX trigger that pops 4 stack slots up front (vs peeking).
+ *
+ * Variant of @c func_800BC44C that consumes its 4 args with @c POP
+ * instead of peeking. Sets only @c sfxStartMask (no @c sfxEntryMask),
+ * registers the entry, and returns 2 (vs 3 for the peeking version).
+ *
+ * @return 5 if slot busy, 2 on success.
+ */
+s32 func_800BC58C(Eline *eline) {
+    Rect buf;
+    s32 sfxIdx;
+    s32 textIdx;
+    u8 *data;
+    s32 dims;
+
+    buf.y   = POP(eline);
+    buf.x   = POP(eline);
+    textIdx = POP(eline);
+    sfxIdx  = POP(eline);
+
+    if ((g_seedState->sfxStartMask >> sfxIdx) & 1) {
+        return 5;
+    }
+
+    data = func_8003974C(D_800704C0, textIdx);
+    initSfxPlayback(sfxIdx, data);
+    dims = func_8002E680(data);
+    buf.w = (dims & 0xFFFF) + 0x10;
+    buf.h = (dims >> 16) + 0x11;
+    func_800BC258(&buf);
+    func_8002E064(sfxIdx, &buf);
+    startSfxSlow(sfxIdx);
+    setSfxGlobalFlag(sfxIdx);
+
+    g_seedState->sfxStartMask |= (1 << sfxIdx);
+    func_800BC12C(sfxIdx, (s32)data, (u8 *)&buf);
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC6F0);
 
