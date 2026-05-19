@@ -370,7 +370,40 @@ s32 func_800BBDA8(void) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BBDE0);
+/**
+ * @brief Dialog ready/idle predicate dispatched on @c D_800DE8D2.
+ *
+ * When @c D_800DE8D2 == 2 the function reports 2 only if
+ * @c D_800704A8.dialogState is currently 0 (idle), otherwise 1.
+ * For every other value of @c D_800DE8D2 the function waits for
+ * @c dialogState == 3 AND @c dialogTimer == 0xFF before reporting 2.
+ *
+ * The @c dlg=1; return dlg pattern in the first arm forces gcc to
+ * reuse @c v0 for both the loaded dialog state and the return value,
+ * matching the target's register allocation.
+ *
+ * @return 2 when the polled state is ready, 1 while still waiting.
+ */
+s32 func_800BBDE0(void) {
+    u16 dlg;
+    volatile SystemState *ss;
+    if (D_800DE8D2 == 2) {
+        dlg = ((volatile SystemState *)&D_800704A8)->dialogState;
+        if (dlg != 0) {
+            dlg = 1;
+            return dlg;
+        }
+        return 2;
+    }
+    ss = &D_800704A8;
+    if ((s16)ss->dialogState != 3) {
+        return 1;
+    }
+    if ((s16)ss->dialogTimer == 0xFF) {
+        return 2;
+    }
+    return 1;
+}
 
 /**
  * @brief Clear the dialog state and mirror it into @c g_seedState.
