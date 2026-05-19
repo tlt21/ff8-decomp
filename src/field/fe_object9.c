@@ -773,7 +773,56 @@ s32 func_800BC8CC(Eline *e) {
     return 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCB14);
+extern s32 D_80070600;
+extern s32 getSfxField28(s32 idx);
+
+/**
+ * @brief Tear down an entry-registered SFX slot.
+ *
+ * Peeks @c sfxIdx from the top of the stack and decides whether the
+ * slot can be torn down.
+ *
+ * If the entry bit (@c sfxEntryMask) is set: also requires
+ * @c sfxStartMask to be set (else return 1). Optionally fades out via
+ * @c fadeOutSfxSlow when @c D_80070600 has the @c 0xC0 flag bits,
+ * @c getSfxField28 reports something, and the slot is no longer active.
+ * Waits for @c getSfxField1C to drop to 0 and @c getSfxField28 to
+ * become non-zero, then clears both @c sfxStartMask and @c sfxEntryMask
+ * bits, pops one stack slot, and returns 2.
+ *
+ * If the entry bit is clear: only waits for @c sfxStartMask to clear,
+ * then pops one and returns 2.
+ *
+ * @return 1 while waiting, 2 when torn down.
+ */
+s32 func_800BCB14(Eline *e) {
+    s32 sfxIdx = e->stack[(s8)e->stackPtr];
+
+    if ((g_seedState->sfxEntryMask >> sfxIdx) & 1) {
+        if (!((g_seedState->sfxStartMask >> sfxIdx) & 1)) {
+            return 1;
+        }
+        if ((D_80070600 & 0xC0) && getSfxField28(sfxIdx)
+            && !((g_seedState->sfxActiveMask >> sfxIdx) & 1)) {
+            fadeOutSfxSlow(sfxIdx);
+        }
+        if (getSfxField1C(sfxIdx)) {
+            return 1;
+        }
+        if (!getSfxField28(sfxIdx)) {
+            return 1;
+        }
+        g_seedState->sfxStartMask &= ~(1 << sfxIdx);
+        g_seedState->sfxEntryMask &= ~(1 << sfxIdx);
+        e->stackPtr -= 1;
+        return 2;
+    }
+    if ((g_seedState->sfxStartMask >> sfxIdx) & 1) {
+        return 1;
+    }
+    e->stackPtr -= 1;
+    return 2;
+}
 
 /**
  * @brief Pop the top stack slot and pass it to @c setSfxGlobalFlag.
