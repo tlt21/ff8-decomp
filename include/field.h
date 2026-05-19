@@ -617,6 +617,79 @@ extern s32 D_800DE8C8[];
 /** @brief Status word at @c D_800DE8C8[1] (separate symbol for codegen). */
 extern s32 D_800DE8CC;
 
+/** @brief Dialog-companion flag byte tested by some opcodes. */
+extern u8 D_800DE8D0;
+
+/* ======================================================================== */
+/* Battle encounter params (populated by field-VM opcode 0x14C)             */
+/* ======================================================================== */
+
+/**
+ * @brief Battle encounter setup parameters at @ref D_80082C90.
+ *
+ * Populated by the field-VM @c initiateBattleEncounter opcode just
+ * before it kicks off the battle transition. The trailing @c result
+ * is written by the battle overlay once the fight finishes and is
+ * read back on the @c return-pass of the same field opcode.
+ */
+typedef struct {
+    /* 0x00 */ s32 encounterPtr;
+    /* 0x04 */ u8 field_04;
+    /* 0x05 */ u8 field_05;
+    /* 0x06 */ u8 field_06;
+    /* 0x07 */ u8 field_07;
+    /* 0x08 */ u8 field_08;
+    /* 0x09 */ u8 field_09;
+    /* 0x0A */ u8 pad0A[2];
+    /* 0x0C */ u8 result;
+} EncounterParams;
+
+extern EncounterParams D_80082C90;
+
+/** @brief Mirrored from @ref SeedState.fieldF3 when @c stateFlags & 0x800 is set. */
+extern u8 D_80082C10;
+
+/** @brief Stashed sound-bank selector across the battle transition. */
+extern u8 D_80082C11;
+
+/* ======================================================================== */
+/* Field-side scalars consumed by fe_object7 / fe_object8 / fe_object9       */
+/* ======================================================================== */
+
+/** @brief Sound-load handshake byte for the battle-fade sequence. */
+extern u8 D_8007064C;
+
+/** @brief Misc menu/field share scalar (also read as @c u16 by @c menumain). */
+extern s16 D_8007737C;
+
+/** @brief Field-side post-battle flag byte. */
+extern u8 D_800773C0;
+
+/** @brief Stashed text-id buffer base shared by field-VM string opcodes. */
+extern u8 D_8005630C[];
+
+/** @brief Sound-init parameter passed to @c func_80037FB0. */
+extern s32 D_8005F13C;
+
+/** @brief Field-side rotation/orientation halfword consumed by encounter setup. */
+extern s16 D_800704B2;
+
+/** @brief Dialog companion halfword (mirrors @c D_800DE4DC s32 view). */
+extern s16 D_800DE4D0;
+
+/** @brief Per-script-group scratch bytes used by fe_object7 dialog opcodes. */
+extern s8 D_800DE4D2;
+extern s8 D_800DE4D3;
+extern s8 D_800DE4D4;
+
+/** @brief Eline-pointer slots used by fe_object7 to remember last-active entities. */
+extern Eline *D_800DE4F0;
+extern Eline *D_800DE4F4;
+extern Eline *D_800DE4F8;
+
+/** @brief Per-text status array consumed by fe_object7 dialog flow. */
+extern u8 D_800DE880[];
+
 /** @brief Dialog dispatch mode shared with @ref D_800704A8.dialogState. */
 extern u8 D_800DE8D2;
 

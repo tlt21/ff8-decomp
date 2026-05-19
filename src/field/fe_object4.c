@@ -9,7 +9,6 @@ extern s32 D_800705F8;
 extern s32 D_800852F0;
 extern u8 D_80077E5F;
 extern u8 D_800780D8[];
-extern u8 D_80082C10;
 extern u8 g_gameState[];
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object4", func_800ADB68);
