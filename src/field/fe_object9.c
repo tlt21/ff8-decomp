@@ -531,7 +531,48 @@ s32 func_800BC2E0(Eline *eline) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC44C);
+/**
+ * @brief Unconditional SFX trigger with text-measured rect.
+ *
+ * Like @c func_800BC2E0 but no @c activeMask gate — always runs once
+ * the slot is free. Sets both @c sfxStartMask and @c sfxEntryMask,
+ * pops four stack slots, registers the entry, and returns 3.
+ *
+ * @return 5 if slot busy, 3 otherwise.
+ */
+s32 func_800BC44C(Eline *eline) {
+    Rect buf;
+    s32 sfxIdx;
+    s32 textIdx;
+    u8 *data;
+    s32 dims;
+
+    sfxIdx  = eline->stack[(s8)eline->stackPtr - 3];
+    textIdx = eline->stack[(s8)eline->stackPtr - 2];
+    buf.x   = (u16)eline->stack[(s8)eline->stackPtr - 1];
+    buf.y   = (u16)eline->stack[(s8)eline->stackPtr];
+
+    if ((g_seedState->sfxStartMask >> sfxIdx) & 1) {
+        return 5;
+    }
+
+    data = func_8003974C(D_800704C0, textIdx);
+    initSfxPlayback(sfxIdx, data);
+    dims = func_8002E680(data);
+    buf.w = (dims & 0xFFFF) + 0x10;
+    buf.h = (dims >> 16) + 0x11;
+    func_800BC258(&buf);
+    func_8002E064(sfxIdx, &buf);
+    startSfxSlow(sfxIdx);
+    setSfxGlobalFlag(sfxIdx);
+
+    g_seedState->sfxStartMask |= (1 << sfxIdx);
+    g_seedState->sfxEntryMask |= (1 << sfxIdx);
+
+    eline->stackPtr -= 4;
+    func_800BC12C(sfxIdx, (s32)data, (u8 *)&buf);
+    return 3;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BC58C);
 
