@@ -1,9 +1,17 @@
 #include "common.h"
 #include "field.h"
 
+typedef struct {
+    u8 pad00[0x0C];
+    u16 unk0C;
+    u8 pad0E[0x44];
+    u16 unk52;
+} EntityRenderSlot;
+
+extern EntityRenderSlot *D_800D9630[];
 extern Eline *D_80085230[];
 extern void func_800A97E4(u8 spatialIdx, s32 a1, s32 a2, s32 a3);
-extern void func_800B912C(Eline *eline, s32 byte);
+extern void func_800B912C(Eline *eline, s16 a1);
 extern void func_800B91D8(Eline *eline, s32 a1, s32 v2, s32 v1);
 extern s32 func_8009E604();
 
@@ -40,8 +48,26 @@ s32 func_800B90C0(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B912C);
-
+/**
+ * @brief Dispatch motion command 0xD with the given byte arg.
+ *
+ * Sends command @c 0xD to the entity at @c field_0x256 (via the global
+ * cmd table @c func_800AA46C) carrying the sign-extended low byte of
+ * @p a1, mirrors @p a1 into @c field_0x24E, zeroes the live motion
+ * halfwords (@c field_0x206/20A), snapshots the render slot's
+ * @c unk0C into @c field_0x20C, clears the same render slot's
+ * @c unk52, and clears the @c 0xF800 flag band. Called by the RANIME
+ * family handlers in this file.
+ */
+void func_800B912C(Eline *eline, s16 a1) {
+    func_800AA46C(eline->field_0x256, 0xD, a1, 0);
+    eline->field_0x24E = a1;
+    eline->field_0x206 = 0;
+    eline->field_0x20A = 0;
+    eline->field_0x20C = D_800D9630[eline->field_0x256]->unk0C;
+    D_800D9630[eline->field_0x256]->unk52 = eline->field_0x206;
+    eline->flags &= ~0xF800;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B91D8);
 
