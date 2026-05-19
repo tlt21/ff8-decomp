@@ -6,8 +6,21 @@ extern u8 *D_800704C0;
 extern u32 D_800C71F8;
 extern s32 D_800DE4DC;
 extern u8 D_800DE8D2;
-extern u8 D_80085398[];
 extern u8 D_80085300[];
+
+typedef struct {
+    /* 0x0 */ u16 flag;
+    /* 0x2 */ u16 field2;
+    /* 0x4 */ u16 field4;
+    /* 0x6 */ u16 field6;
+    /* 0x8 */ u16 field8;
+    /* 0xA */ u16 fieldA;
+    /* 0xC */ u16 fieldC;
+    /* 0xE */ u16 fieldE;
+} AnimEntry;
+
+extern AnimEntry D_80085398[];
+extern u8 setupAnimEntry(s32 idx_bit, s32 v4, u16 *buf, s32 v3, s32 v2, s32 v1);
 
 extern void func_800A8DAC(u8 spatialIdx, s32 a1, u32 a2, void *a3);
 
@@ -883,7 +896,41 @@ s32 func_800BCDA0(Eline *e) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCE44);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCECC);
+/**
+ * @brief Set up a 7-arg animation entry in the @c D_80085398 table.
+ *
+ * Pops 7 stack values: 6 halfwords (v1..v6) plus an entry index. The
+ * low bit of @c idx selects the bank, @c v4 is passed as the second
+ * arg, and the two leading halfwords (@c v5/v6) are passed via a
+ * 4-byte stack-allocated @c buf. The remaining halfwords spread
+ * across the @c setupAnimEntry register args.
+ *
+ * After the helper returns, all six values plus a @c flag=1 marker
+ * are recorded into the per-slot entry at @c D_80085398[idx].
+ */
+s32 func_800BCECC(Eline *e) {
+    u16 buf[2];
+    s32 v1 = POP(e);
+    s32 v2 = POP(e);
+    s32 v3 = POP(e);
+    s32 v4 = POP(e);
+    s32 v5 = POP(e);
+    s32 v6 = POP(e);
+    s32 idx = POP(e);
+
+    buf[0] = v6;
+    buf[1] = v5;
+    setupAnimEntry(idx & 1, v4, buf, v3, v2, v1);
+
+    D_80085398[idx].flag   = 1;
+    D_80085398[idx].fieldE = v6;
+    D_80085398[idx].fieldC = v5;
+    D_80085398[idx].fieldA = v4;
+    D_80085398[idx].field8 = v3;
+    D_80085398[idx].field6 = v2;
+    D_80085398[idx].field4 = v1;
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BD024);
 
@@ -898,7 +945,7 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BD024);
  */
 s32 func_800BD1A4(Eline *eline) {
     s32 val = POP(eline);
-    *(u16 *)(D_80085398 + val * 16) = 0;
+    D_80085398[val].flag = 0;
     clearAnimEntryActive(val);
     return 2;
 }
