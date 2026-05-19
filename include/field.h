@@ -8,12 +8,28 @@
  * Field entity overlay (FieldEntity / Eline)
  * ============================================================================
  *
- * One field entity slot is 612 bytes (0x264). Both @ref FieldEntity and
- * @ref Eline below describe the SAME memory — they are two struct typedefs
- * over identical addresses, used by different parts of the engine to express
- * different valid type-interpretations of the bytes.
+ * One field entity slot is 612 bytes (0x264). Three typedefs describe
+ * the SAME 612-byte memory at @ref D_80085224, each capturing a
+ * different valid type-interpretation of the bytes:
  *
- * TODO: Unify the structs
+ *   - @ref Eline       — bytecode VM view (stack[80], resultSlots[8],
+ *                        msg* / field_0xNN naming, opcode handlers).
+ *   - @ref FieldEntity — movement / animation view (walkSpeed[2],
+ *                        unk1A0..unk1B3 sequencer state, used by
+ *                        movement helpers in fe_object4/6/9/10).
+ *   - @ref FieldActor  — animation slot view (AnimRec rows[4] /
+ *                        timers[4] / animOffset / mode at the upper
+ *                        half of the stack region; used by
+ *                        @c func_800A355C only).
+ *
+ * Bytes 0x000..0x13F are the stack/animation/movement union — same
+ * storage, three valid interpretations depending on which engine
+ * subsystem owns the slot at a given moment. Bytes 0x140 onward are
+ * named consistently across views and overlap at the same offsets.
+ *
+ * Cast between views with a plain pointer cast — no union member
+ * notation is needed since the layouts agree at every offset that
+ * isn't aliased.
  */
 
 /**
