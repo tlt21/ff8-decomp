@@ -241,7 +241,7 @@ void func_800B27C4(s32 entityIdx, s32 *sxy, s32 *out) {
  * @param eline   Pointer to the Eline event-script context.
  * @param channel Output channel (0 = left bus, 1 = right bus).
  */
-void func_800B2864(Eline *eline, s32 channel) {
+void func_800B2864(Eline *eline, s32 channel, s32 unused2, s32 unused3) {
     s32 pitch;
     s32 volume;
 

@@ -535,6 +535,24 @@ extern void func_800A97E4(s32 spatialIdx, s32 cmd, s32 arg2, s32 arg3);
 /** @brief Motion-command setup: cmd 0xD with byte arg. */
 extern void func_800B912C(Eline *eline, s16 a1);
 
+/**
+ * @brief Voice/SFX pitch+volume dispatch driven by entity motion hooks.
+ *
+ * Only @c eline and @c channel are read; @c unused2 / @c unused3 are
+ * args the (sole) fe_object8 call site supplies but the callee discards.
+ */
+extern void func_800B2864(Eline *eline, s32 channel, s32 unused2, s32 unused3);
+
+/**
+ * @brief Compute the angular bearing from one entity to another.
+ *
+ * Reads the (@c posX, @c posY) of both entities, shifts to grid coords,
+ * and forwards to @c func_8009A0E8 for the arctan-style bearing lookup.
+ * Returns the 0x00..0xFF bearing byte (callers typically mask with
+ * @c & 0xFF).
+ */
+extern s32 func_8009E604(Eline *a, Eline *b);
+
 /** @brief Update one packed-flag table slot from a step tick. */
 extern void func_800383B8(s32 key, s32 status);
 

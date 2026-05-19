@@ -2,18 +2,6 @@
 #include "field.h"
 #include "gamestate.h"
 
-/*
- * Per-TU prototype overrides for currently-decomped definitions that
- * don't match the true callee signature:
- *   - @c func_800B2864 is decomped with 2 args in fe_object6.c but
- *     this TU's target asm shows 4 register args at the @c jal, so
- *     this prototype lies about the arity until the callee can be
- *     re-decomped with its true signature.
- *   - @c func_8009E604: the @c fe_object1.c definition takes pointer
- *     args, but this TU's only call site passes no args.
- */
-extern void func_800B2864(Eline *eline, s32 channel, s32 a2, s32 a3);
-extern s32  func_8009E604();
 
 /**
  * Clear bits @c 0x180000 and set bit @c 0x200000 in @c flags, then call
