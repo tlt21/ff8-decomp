@@ -602,6 +602,21 @@ extern s32 D_800DE4D8;
 /** @brief Global SFX-status flags packed scalar (tested with 0xC0 etc.). */
 extern s32 D_80070600;
 
+/** @brief Active field-script entity index (mirrors @c eline->field_0x256). */
+extern u8 D_800DE4FC;
+
+/**
+ * @brief Field-engine status word array; @c D_800DE8C8[1] aliases
+ *        @ref D_800DE8CC. The two are different views of the same
+ *        memory — target asm picks one form per call site (the array
+ *        form folds the base+4 into a single lhu, the scalar form
+ *        uses a separate lui+addiu).
+ */
+extern s32 D_800DE8C8[];
+
+/** @brief Status word at @c D_800DE8C8[1] (separate symbol for codegen). */
+extern s32 D_800DE8CC;
+
 /** @brief Dialog dispatch mode shared with @ref D_800704A8.dialogState. */
 extern u8 D_800DE8D2;
 
