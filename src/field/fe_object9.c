@@ -197,9 +197,28 @@ s32 func_800BB7BC(void) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB810);
+/**
+ * @brief Initialise dialog state (variant 7) and pop three halfwords.
+ *
+ * Sets @c dialogState=7 / @c dialogTimer=0, then pops three halfwords
+ * top-down into @c field_0x112 / @c field_0x110 / @c field_0x10E
+ * (so the first push lands in @c field_0x10E). Then dispatches
+ * @c func_800BB6C8 to mirror the block into @c g_seedState.
+ *
+ * @note Originally split by splat at @c func_800BB888 (the tail of
+ * this function) — the symbol was removed from @c symbol_addrs.field
+ * so the two halves merge back into one function.
+ */
+s32 func_800BB810(Eline *eline) {
+    D_800704A8.dialogState = 7;
+    D_800704A8.dialogTimer = 0;
+    D_800704A8.field_0x112 = POP(eline);
+    D_800704A8.field_0x110 = POP(eline);
+    D_800704A8.field_0x10E = POP(eline);
+    func_800BB6C8();
+    return 2;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB888);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BB8B4);
 
