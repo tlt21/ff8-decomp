@@ -832,7 +832,33 @@ s32 func_800BCC6C(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCCAC);
+/**
+ * @brief Register a pre-built rect entry into @c D_80085300 (no SFX kick).
+ *
+ * Peeks @c sfxIdx and a 4-halfword rect from the stack. If the slot is
+ * busy (@c sfxStartMask set) return 5. Otherwise clip the rect, install
+ * it via @c func_8002E064, register an entry with @c data=0 via
+ * @c func_800BC12C, pop 5, and return 2.
+ */
+s32 func_800BCCAC(Eline *e) {
+    Rect buf;
+    s32 sfxIdx = e->stack[(s8)e->stackPtr - 4];
+
+    if ((g_seedState->sfxStartMask >> sfxIdx) & 1) {
+        return 5;
+    }
+
+    buf.h = (u16)e->stack[(s8)e->stackPtr];
+    buf.w = (u16)e->stack[(s8)e->stackPtr - 1];
+    buf.y = (u16)e->stack[(s8)e->stackPtr - 2];
+    buf.x = (u16)e->stack[(s8)e->stackPtr - 3];
+
+    func_800BC258(&buf);
+    func_8002E064(sfxIdx, &buf);
+    e->stackPtr -= 5;
+    func_800BC12C(sfxIdx, 0, (u8 *)&buf);
+    return 2;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object9", func_800BCDA0);
 
