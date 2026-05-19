@@ -518,7 +518,29 @@ s32 func_800B9D20(Eline *eline) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object8", func_800B9D7C);
+/**
+ * Pop 8 values from the script stack, divide each by 4 (signed,
+ * round-toward-zero), and store them as bytes into the entity's
+ * direction-table fields @c field_0x259..field_0x260.
+ *
+ * Store order: @c 0x25C, @c 0x25B, @c 0x25A, @c 0x259, @c 0x260,
+ * @c 0x25F, @c 0x25E, @c 0x25D — the 8-entry vertical strip is
+ * filled outward from the centre.
+ *
+ * @param eline Pointer to the Eline event-script context.
+ * @return 2 (advance PC).
+ */
+s32 func_800B9D7C(Eline *eline) {
+    eline->field_0x25C = POP(eline) / 4;
+    eline->field_0x25B = POP(eline) / 4;
+    eline->field_0x25A = POP(eline) / 4;
+    eline->field_0x259 = POP(eline) / 4;
+    eline->field_0x260 = POP(eline) / 4;
+    eline->field_0x25F = POP(eline) / 4;
+    eline->field_0x25E = POP(eline) / 4;
+    eline->field_0x25D = POP(eline) / 4;
+    return 2;
+}
 
 /**
  * @brief Pop a byte from the script stack into @c field_0x261.
