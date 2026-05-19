@@ -419,7 +419,6 @@ s32 func_800B9A78(Eline *eline) {
 }
 
 extern u8 D_80085388;
-extern Eline *D_80085224;
 
 /**
  * @brief Broadcast 3 popped bytes into the unk18A vector of every active entity.

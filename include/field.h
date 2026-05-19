@@ -300,8 +300,9 @@ typedef struct {
     /* 0x1F0 */ u16 field_0x1F0;
     /* 0x1F2 */ u16 field_0x1F2;
     /* 0x1F4 */ u16 field_0x1F4;
-    /* 0x1F6 */ u8 pad1F6[0x04];
-    /* 0x1FA */ u16 field_0x1FA;
+    /* 0x1F6 */ u16 radius;         /**< Collision radius (used by @c func_8009E468 overlap test). */
+    /* 0x1F8 */ u8 pad1F8[0x02];
+    /* 0x1FA */ u16 field_0x1FA;    /**< Set from path-table entry's @c unk6 by @c func_8009BB18. */
     /* 0x1FC */ u16 field_0x1FC;
     /* 0x1FE */ s16 savedChannel;   /**< Previous message channel. */
     /* 0x200 */ u16 msgChannel;     /**< Current message channel. */
@@ -316,7 +317,7 @@ typedef struct {
     /* 0x212 */ u16 field_0x212;
     /* 0x214 */ u16 field_0x214;
     /* 0x216 */ u16 field_0x216;
-    /* 0x218 */ u8 pad218[0x02];
+    /* 0x218 */ s16 unk218;         /**< -1 = inactive (skipped by collision tests in @c func_8009E468). */
     /* 0x21A */ u16 windowId;       /**< Message window ID. */
     /* 0x21C */ u16 field_0x21C;    /**< Saved window ID for async restore. */
     /* 0x21E */ s16 msgState;       /**< Message state (0=init, 2=complete). */
@@ -342,17 +343,23 @@ typedef struct {
     /* 0x243 */ u8 field_0x243;
     /* 0x244 */ u8 field_0x244;
     /* 0x245 */ u8 unk245;
-    /* 0x246 */ u8 pad246[0x07];
+    /* 0x246 */ u8 pad246[0x02];
+    /* 0x248 */ u8 unk248;          /**< Set to 1 by @c func_8009E468 when colliding with self entity. */
+    /* 0x249 */ u8 unk249;          /**< @c 0 = enable @c unk248 update path in @c func_8009E468. */
+    /* 0x24A */ u8 pad24A[0x02];
+    /* 0x24C */ u8 field_0x24C;
     /* 0x24D */ u8 field_0x24D;
     /* 0x24E */ u8 field_0x24E;
     /* 0x24F */ u8 field_0x24F;
     /* 0x250 */ u8 field_0x250;
     /* 0x251 */ u8 field_0x251;
-    /* 0x252 */ u8 pad252[0x03];
+    /* 0x252 */ u8 field_0x252;
+    /* 0x253 */ u8 field_0x253;
+    /* 0x254 */ u8 field_0x254;
     /* 0x255 */ u8 field_0x255;
     /* 0x256 */ u8 field_0x256;
     /* 0x257 */ u8 field_0x257;
-    /* 0x258 */ u8 pad258;
+    /* 0x258 */ u8 unk258;          /**< Set from path-table entry's @c unk8 by @c func_8009BB18. */
     /* 0x259 */ u8 field_0x259;
     /* 0x25A */ u8 field_0x25A;
     /* 0x25B */ u8 field_0x25B;
@@ -430,6 +437,48 @@ extern EntityRenderSlot *D_800D9630[];
 
 /** @brief Entity Eline pointer table; indexed by raw field-entity id. */
 extern Eline *D_80085230[];
+
+/** @brief Eline entity array (count @c D_80085388, stride 612). */
+extern Eline *D_80085224;
+
+/**
+ * @brief Animation slot record (one of four per actor).
+ *
+ * Used by @c func_800A355C to drive per-actor animation playback. Lives
+ * inside the @c FieldActor view (see below) at offset @c 0x80, which
+ * shares storage with @c Eline.stack[32..49] — the bytecode VM only
+ * uses stack slots @c 0..31 during script execution, so the upper
+ * half of the stack region doubles as animation state.
+ */
+typedef struct {
+    /* 0x00 */ u8 pad00[0x10];
+    /* 0x10 */ s16 id;              /**< Animation ID, -1 = empty slot. */
+} AnimRec; /* 0x12 = 18 bytes */
+
+/**
+ * @brief Animation-mode view of a field entity (alternate typedef
+ *        over the same memory as @ref Eline).
+ *
+ * The bytecode VM's @c stack[80] region (offsets @c 0x00..0x13F of
+ * @c Eline) is repurposed as animation state once the script reaches
+ * a movement opcode and surrenders its stack frame: @c rows[4]
+ * occupies @c 0x80..0xC7, @c timers[4] occupies @c 0xC8..0xCF, and
+ * @c animOffset / @c mode appear at @c 0xF4 / @c 0xFC. The rest of
+ * the struct is identical to @c Eline from offset @c 0x140 onward.
+ *
+ * Use a cast (@c (FieldActor *)&D_80085224[idx]) only inside the
+ * animation engine; everywhere else, access via @c Eline.
+ */
+typedef struct {
+    /* 0x000 */ u8 pad000[0x80];
+    /* 0x080 */ AnimRec rows[4];    /**< Four animation slots, stride 0x12. */
+    /* 0x0C8 */ s16 timers[4];      /**< Per-slot tick counters. */
+    /* 0x0D0 */ u8 padD0[0x24];
+    /* 0x0F4 */ s16 animOffset;     /**< Byte offset from @c rows[] to source row table. */
+    /* 0x0F6 */ u8 padF6[0x06];
+    /* 0x0FC */ s16 mode;           /**< Dispatch mode (1/2/3 = different sources). */
+    /* 0x0FE */ u8 padFE[0x166];    /**< Rest of the 612-byte slot mirrors @c Eline. */
+} FieldActor; /* 0x264 = 612 bytes */
 
 /** @brief Issue a dispatch command via the active spatial-entity table. */
 extern void func_800AA46C(u8 spatialIdx, s32 cmd, s32 arg, s32 arg4);

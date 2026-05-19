@@ -13,7 +13,6 @@ extern u8 D_8007064D;
 extern u8 D_8007064F[];
 extern u8 D_8007065C[];
 
-extern Eline *D_80085224;
 extern u8 *D_800D5EA4;
 extern u8 *func_8003974C(u8 *base, s32 idx);
 extern s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3);
