@@ -60,7 +60,7 @@ void func_800ADC04(void) {
  * @param a0 Pointer to the script/object structure (unused).
  * @return 0.
  */
-s32 func_800ADC9C(Eline *e) {
+s32 opHandler_NOP(Eline *e) {
     return 0;
 }
 
@@ -69,7 +69,7 @@ s32 func_800ADC9C(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADCA4(Eline *e) {
+void opHandler_ADD(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -81,7 +81,7 @@ void func_800ADCA4(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADCD8(Eline *e) {
+void opHandler_SUB(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -93,7 +93,7 @@ void func_800ADCD8(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADD0C(Eline *e) {
+void opHandler_NEG(Eline *e) {
     s32 idx = (s8)e->stackPtr;
     e->stack[idx] = -e->stack[idx];
 }
@@ -103,7 +103,7 @@ void func_800ADD0C(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADD30(Eline *e) {
+void opHandler_MUL(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -111,7 +111,7 @@ void func_800ADD30(Eline *e) {
 }
 
 /** @brief Stack division: [idx] = [idx] / [idx+1]. */
-void func_800ADD68(Eline *e) {
+void opHandler_DIV(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -119,7 +119,7 @@ void func_800ADD68(Eline *e) {
 }
 
 /** @brief Stack modulo: [idx] = [idx] % [idx+1]. */
-void func_800ADDA0(Eline *e) {
+void opHandler_MOD(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -131,7 +131,7 @@ void func_800ADDA0(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADDD8(Eline *e) {
+void opHandler_EQ(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -139,7 +139,7 @@ void func_800ADDD8(Eline *e) {
 }
 
 /** @brief Stack greater-than: [idx] = [idx] > [idx+1]. */
-void func_800ADE10(Eline *e) {
+void opHandler_GT(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -151,7 +151,7 @@ void func_800ADE10(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADE44(Eline *e) {
+void opHandler_GE(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -163,7 +163,7 @@ void func_800ADE44(Eline *e) {
  *
  * @param eline Pointer to the event line (script context).
  */
-void func_800ADE7C(Eline *e) {
+void opHandler_LT(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -175,7 +175,7 @@ void func_800ADE7C(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADEB0(Eline *e) {
+void opHandler_LE(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -187,7 +187,7 @@ void func_800ADEB0(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADEE8(Eline *e) {
+void opHandler_NE(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -199,7 +199,7 @@ void func_800ADEE8(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADF20(Eline *e) {
+void opHandler_AND(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -211,7 +211,7 @@ void func_800ADF20(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADF54(Eline *e) {
+void opHandler_OR(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -223,7 +223,7 @@ void func_800ADF54(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADF88(Eline *e) {
+void opHandler_EOR(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -235,13 +235,13 @@ void func_800ADF88(Eline *e) {
  *
  * @param a0 Pointer to the script/object structure.
  */
-void func_800ADFBC(Eline *e) {
+void opHandler_NOT(Eline *e) {
     s32 idx = (s8)e->stackPtr;
     e->stack[idx] = ~e->stack[idx];
 }
 
 /** @brief Stack arithmetic right shift: [idx] = [idx] >> [idx+1]. */
-void func_800ADFE0(Eline *e) {
+void opHandler_RSH(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -249,7 +249,7 @@ void func_800ADFE0(Eline *e) {
 }
 
 /** @brief Stack left shift: [idx] = [idx] << [idx+1]. */
-void func_800AE014(Eline *e) {
+void opHandler_LSH(Eline *e) {
     s32 idx;
     e->stackPtr--;
     idx = (s8)e->stackPtr;
@@ -274,7 +274,7 @@ void func_800AE014(Eline *e) {
  * @param opcode Raw index into @c g_fieldOpcodeTable (0..391).
  * @return 2 (continue processing).
  */
-s32 func_800AE048(Eline *eline, s32 opcode) {
+s32 opHandler_CAL(Eline *eline, s32 opcode) {
     g_fieldOpcodeTable[opcode](eline);
     return 2;
 }
@@ -286,13 +286,13 @@ s32 func_800AE048(Eline *eline, s32 opcode) {
  * @param a1 Value to add.
  * @return 4.
  */
-s32 func_800AE080(Eline *e, s32 a1) {
+s32 opHandler_JMP(Eline *e, s32 a1) {
     e->pc += a1;
     return 4;
 }
 
 /** @brief Conditional branch: if top-of-stack is zero, add a1 to PC. */
-s32 func_800AE098(Eline *e, s32 a1) {
+s32 opHandler_JPF(Eline *e, s32 a1) {
     if (POP(e) != 0) {
         return 2;
     }
@@ -324,7 +324,7 @@ s32 func_800AE0DC(Eline *e, s32 a1) {
  * @param a1    Ignored (dispatcher-supplied opcode argument).
  * @return 2 (advance PC).
  */
-s32 func_800AE124(Eline *eline, s32 a1) {
+s32 opHandler_LBL(Eline *eline, s32 a1) {
     s32 i;
 
     for (i = 0; i < 8; i++) {
@@ -357,11 +357,11 @@ void func_800AE184(Eline *e) {
  *             @c groupStackBase[a1], reload that group's 8 saved words
  *             into @c resultSlots.
  *
- * Counterpart of @c func_800AE124 which performs the save half of the
+ * Counterpart of @c opHandler_LBL which performs the save half of the
  * context switch (pushes @c resultSlots[0..7] back onto @c stack and
  * zeros them).
  */
-s32 func_800AE1AC(Eline *e, s32 a1) {
+s32 opHandler_RET(Eline *e, s32 a1) {
     s32 i;
     s32 sg;
 
@@ -486,21 +486,21 @@ s32 func_800AE3A4(s32 value, s32 mode) {
 }
 
 /** @brief Call func_800AE3A4 with a1 and mode 4, push result onto stack. Returns 2. */
-s32 func_800AE4C4(Eline *e, s32 a1) {
+s32 opHandler_PSHN_L(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(a1, 4);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load entity slot value a1*4+0x140, call func_800AE3A4 with mode 4, push result. Returns 2. */
-s32 func_800AE518(Eline *e, s32 a1) {
+s32 opHandler_PSHI_L(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(e->resultSlots[a1], 4);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load byte from g_gameState+a1+0xD60, call func_800AE3A4 with mode 5, push result. Returns 2. */
-s32 func_800AE574(Eline *e, s32 a1) {
+s32 opHandler_PSHM_B(Eline *e, s32 a1) {
     /* Script-VM M-memory byte (= seedState[a1]); 0xD60 is the offset of
      * seedState inside g_gameState. Phrased as g_gameState+a1, then
      * [0xD60] so gcc keeps 0xD60 in the lbu instead of folding it into
@@ -512,47 +512,47 @@ s32 func_800AE574(Eline *e, s32 a1) {
 }
 
 /** @brief Load halfword from D_800780D8+a1, call func_800AE3A4 with mode 6, push result. Returns 2. */
-s32 func_800AE5D4(Eline *e, s32 a1) {
+s32 opHandler_PSHM_W(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(*(u16 *)&D_800780D8[a1], 6);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load word from D_800780D8+a1, call func_800AE3A4 with mode 7, push result. Returns 2. */
-s32 func_800AE634(Eline *e, s32 a1) {
+s32 opHandler_PSHM_L(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(*(s32 *)&D_800780D8[a1], 7);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load signed byte from D_800780D8+a1, call func_800AE3A4 with mode 2, push result. Returns 2. */
-s32 func_800AE694(Eline *e, s32 a1) {
+s32 opHandler_PSHSM_B(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(*(s8 *)&D_800780D8[a1], 2);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load signed halfword from D_800780D8+a1, call func_800AE3A4 with mode 3, push result. Returns 2. */
-s32 func_800AE6F4(Eline *e, s32 a1) {
+s32 opHandler_PSHSM_W(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(*(s16 *)&D_800780D8[a1], 3);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Load word from D_800780D8+a1, call func_800AE3A4 with mode 4, push result. Returns 2. */
-s32 func_800AE754(Eline *e, s32 a1) {
+s32 opHandler_PSHSM_L(Eline *e, s32 a1) {
     s32 result = func_800AE3A4(*(s32 *)&D_800780D8[a1], 4);
     PUSH(e, result);
     return 2;
 }
 
 /** @brief Pop top-of-stack and store to result slot a1*4+0x140. Returns 2. */
-s32 func_800AE7B4(Eline *e, s32 a1) {
+s32 opHandler_POPI_L(Eline *e, s32 a1) {
     e->resultSlots[a1] = POP(e);
     return 2;
 }
 
-s32 func_800AE7E4(Eline *e, s32 a1) {
+s32 opHandler_POPM_B(Eline *e, s32 a1) {
     /* Script-VM M-memory byte store (= seedState[a1] = top-of-stack);
      * 0xD60 = seedState offset inside g_gameState. */
     u8 *p = (u8 *)&g_gameState + a1;
@@ -561,19 +561,19 @@ s32 func_800AE7E4(Eline *e, s32 a1) {
 }
 
 /** @brief Pop halfword from stack and store to D_800780D8[a1]. Returns 2. */
-s32 func_800AE81C(Eline *e, s32 a1) {
+s32 opHandler_POPM_W(Eline *e, s32 a1) {
     *(u16 *)&D_800780D8[a1] = (u16)POP(e);
     return 2;
 }
 
 /** @brief Pop word from stack and store to D_800780D8[a1]. Returns 2. */
-s32 func_800AE854(Eline *e, s32 a1) {
+s32 opHandler_POPM_L(Eline *e, s32 a1) {
     *(s32 *)&D_800780D8[a1] = POP(e);
     return 2;
 }
 
 /** @brief Push immediate value a1 onto stack. Returns 2. */
-s32 func_800AE88C(Eline *e, s32 a1) {
+s32 opHandler_PSHAC(Eline *e, s32 a1) {
     PUSH(e, a1);
     return 2;
 }
@@ -582,7 +582,7 @@ s32 func_800AE88C(Eline *e, s32 a1) {
  * @brief Script-VM PC manipulation: enqueue current PC at a per-script
  *        slot and look up the new PC from @c D_800852F0[slot] table.
  *
- * Used by @c func_800AEA44 / @c func_800AEB0C to context-switch the
+ * Used by @c opHandler_REQSW / @c opHandler_REQEW to context-switch the
  * eline's script context.  Calls @c func_800B663C to flush pending
  * state.
  *
@@ -622,7 +622,7 @@ s32 func_800AE8B4(Eline *e, u8 newGroup, u16 pcIdx) {
  *
  * Returns 3 if @c D_80085230[a1] is @c NULL (no call made).
  */
-s32 func_800AE978(Eline *e, s32 a1) {
+s32 opHandler_REQ(Eline *e, s32 a1) {
     s32 pcIdx = POP(e);
     s32 newGroup = POP(e);
     s32 retVal;
@@ -651,7 +651,7 @@ s32 func_800AE978(Eline *e, s32 a1) {
  * peek gets popped and @c 3 is returned; otherwise @c 1 is returned
  * leaving the stack intact.
  */
-s32 func_800AEA44(Eline *e, s32 a1) {
+s32 opHandler_REQSW(Eline *e, s32 a1) {
     s32 value;
     s32 callResult;
 
@@ -680,10 +680,10 @@ s32 func_800AEA44(Eline *e, s32 a1) {
 }
 
 /**
- * @brief Variant of @c func_800AEA44 — identical shape but the final
+ * @brief Variant of @c opHandler_REQSW — identical shape but the final
  *        scriptGroup check uses @c < instead of @c == .
  */
-s32 func_800AEB0C(Eline *e, s32 a1) {
+s32 opHandler_REQEW(Eline *e, s32 a1) {
     s32 value;
     s32 callResult;
 
@@ -719,7 +719,7 @@ s32 func_800AEB0C(Eline *e, s32 a1) {
  * @c lbu reads) rather than caching it — a cached form re-allocates
  * registers and breaks the match.
  */
-s32 func_800AEBD8(Eline *e, s32 a1) {
+s32 opHandler_PREQ(Eline *e, s32 a1) {
     s32 v1_pop = POP(e);
     s32 v2_pop = POP(e);
     if (g_seedState->memberSlot[a1] != 0xFF) {
@@ -738,7 +738,7 @@ s32 func_800AEBD8(Eline *e, s32 a1) {
  * @c D_80085224 (stride 612), indexed via @c g_seedState->memberSlot[a1].
  * If the slot is empty (0xFF), pops the 2 peeked values and returns 3.
  */
-s32 func_800AEC78(Eline *e, s32 a1) {
+s32 opHandler_PREQSW(Eline *e, s32 a1) {
     s32 value;
     s32 top;
     s32 callResult;
@@ -771,10 +771,10 @@ s32 func_800AEC78(Eline *e, s32 a1) {
 }
 
 /**
- * @brief Variant of @c func_800AEC78 — identical shape but the final
+ * @brief Variant of @c opHandler_PREQSW — identical shape but the final
  *        scriptGroup check uses @c < instead of @c == .
  */
-s32 func_800AED9C(Eline *e, s32 a1) {
+s32 opHandler_PREQEW(Eline *e, s32 a1) {
     s32 value;
     s32 top;
     s32 callResult;
@@ -812,7 +812,7 @@ s32 func_800AED9C(Eline *e, s32 a1) {
  * @param a0 Pointer to the script/object structure (unused).
  * @return 3.
  */
-s32 func_800AEEC4(Eline *e) {
+s32 opHandler_DEBUG(Eline *e) {
     return 3;
 }
 
@@ -822,7 +822,7 @@ s32 func_800AEEC4(Eline *e) {
  * @param a0 Pointer to the script/object structure (unused).
  * @return 1.
  */
-s32 func_800AEECC(Eline *e) {
+s32 opHandler_HALT(Eline *e) {
     return 1;
 }
 
@@ -832,7 +832,7 @@ s32 func_800AEECC(Eline *e) {
  *
  * @return 2 (VM continue).
  */
-s32 func_800AEED4(Eline *e, s32 a1) {
+s32 opHandler_SET(Eline *e, s32 a1) {
     e->posY = POP(e) << 12;
     e->posX = POP(e) << 12;
     e->field_0x1FA = a1;
@@ -842,11 +842,11 @@ s32 func_800AEED4(Eline *e, s32 a1) {
 
 /**
  * @brief Pop posZ, posY, posX (all << 12), set field_0x1FA, and call
- *        func_8009A8E0. 3-axis variant of @c func_800AEED4.
+ *        func_8009A8E0. 3-axis variant of @c opHandler_SET.
  *
  * @return 2 (VM continue).
  */
-s32 func_800AEF4C(Eline *e, s32 a1) {
+s32 opHandler_SET3(Eline *e, s32 a1) {
     e->posZ = POP(e) << 12;
     e->posY = POP(e) << 12;
     e->posX = POP(e) << 12;
@@ -865,7 +865,7 @@ s32 func_800AEF4C(Eline *e, s32 a1) {
  *       field offset into the @c D_800704A8 symbol — the asm uses
  *       @c lbu 0x1b8(a1) with the offset as an immediate.
  */
-s32 func_800AEFE8(Eline *e, s32 bit) {
+s32 opHandler_IDLOCK(Eline *e, s32 bit) {
     SystemState *p = &D_800704A8;
     s32 byteIdx = bit / 8;
     p->statusBits[byteIdx] |= (u8)(1 << (bit - byteIdx * 8));
@@ -874,9 +874,9 @@ s32 func_800AEFE8(Eline *e, s32 bit) {
 
 /**
  * @brief Clear bit @p bit in @c D_800704A8.statusBits. Counterpart to
- *        @c func_800AEFE8.
+ *        @c opHandler_IDLOCK.
  */
-s32 func_800AF02C(Eline *e, s32 bit) {
+s32 opHandler_IDUNLOCK(Eline *e, s32 bit) {
     SystemState *p = &D_800704A8;
     s32 byteIdx = bit / 8;
     p->statusBits[byteIdx] &= ~(1 << (bit - byteIdx * 8));
@@ -890,7 +890,7 @@ s32 func_800AF02C(Eline *e, s32 bit) {
  * @param a0 Pointer to the script/object structure.
  * @return 1 if timer still active, 3 if timer expired.
  */
-s32 func_800AF070(Eline *e) {
+s32 opHandler_WAIT(Eline *e) {
     s32 idx = (s8)e->stackPtr;
     s32 val = e->stack[idx] - 1;
     e->stack[idx] = val;
@@ -911,7 +911,7 @@ s32 func_800AF070(Eline *e) {
  *
  * @return 2 (VM continue).
  */
-s32 func_800AF0B4(void) {
+s32 opHandler_CLEAR(void) {
     s32 i;
     for (i = 0x100; i < 0x500; i++) {
         u8 *p = (u8 *)&g_gameState + i;
@@ -926,7 +926,7 @@ s32 func_800AF0B4(void) {
  * @param entity Script entity.
  * @return 2 (continue processing).
  */
-s32 func_800AF0E0(FieldEntity *entity) {
+s32 opHandler_RND(FieldEntity *entity) {
     entity->result = fieldRandom() & 0xFF;
     return 2;
 }
@@ -938,7 +938,7 @@ s32 func_800AF0E0(FieldEntity *entity) {
  * @param a1 Value to store.
  * @return 2 (continue processing).
  */
-s32 func_800AF114(Eline *e, s32 a1) {
+s32 opHandler_SETMODEL(Eline *e, s32 a1) {
     e->unk218 = a1;
     return 2;
 }
@@ -991,7 +991,7 @@ s32 func_800AF1AC(Eline *e) {
  *
  * @return 2 (VM continue).
  */
-s32 func_800AF224(Eline *e, s32 a1) {
+s32 opHandler_BASEANIME(Eline *e, s32 a1) {
     e->field_0x24F = (u8)a1;
     e->field_0x250 = (u8)POP(e);
     e->field_0x251 = (u8)POP(e);
@@ -999,12 +999,12 @@ s32 func_800AF224(Eline *e, s32 a1) {
 }
 
 /**
- * @brief Same shape as @c func_800AF224 but for fields 0x252/0x253/0x254
+ * @brief Same shape as @c opHandler_BASEANIME but for fields 0x252/0x253/0x254
  *        (immediate arg + two popped bytes).
  *
  * @return 2 (VM continue).
  */
-s32 func_800AF274(Eline *e, s32 a1) {
+s32 opHandler_LADDERANIME(Eline *e, s32 a1) {
     e->field_0x252 = (u8)a1;
     e->field_0x253 = (u8)POP(e);
     e->field_0x254 = (u8)POP(e);
@@ -1012,7 +1012,7 @@ s32 func_800AF274(Eline *e, s32 a1) {
 }
 
 /** @brief Pop mask, test against D_800705F8, store boolean at result. Returns 2. */
-s32 func_800AF2C4(Eline *e) {
+s32 opHandler_KEYSCAN(Eline *e) {
     if (D_800705F8 & POP(e)) {
         e->resultSlots[0] = 1;
     } else {
@@ -1022,7 +1022,7 @@ s32 func_800AF2C4(Eline *e) {
 }
 
 /** @brief Pop mask, test against D_80070600, store boolean at result. Returns 2. */
-s32 func_800AF314(Eline *e) {
+s32 opHandler_KEYON(Eline *e) {
     if (D_80070600 & POP(e)) {
         e->resultSlots[0] = 1;
     } else {
@@ -1058,7 +1058,7 @@ s32 func_800AF3B4(Eline *e) {
  * @param a0 Unused.
  * @return 2 (continue processing).
  */
-s32 func_800AF404(Eline *e) {
+s32 opHandler_SARALYOFF(Eline *e) {
     s32 flags;
 
     flags = g_seedState->stateFlags;
@@ -1071,7 +1071,7 @@ s32 func_800AF404(Eline *e) {
 /**
  * @brief Clear seedState bits 0x18 and force transition state to phase 1.
  *
- * Counterpart to @c func_800AF404 which sets bits 0x18 + invokes
+ * Counterpart to @c opHandler_SARALYOFF which sets bits 0x18 + invokes
  * setTransitionFlag with the inverted bit-3 value; this one clears the
  * bits and explicitly calls setTransitionFlag(1).
  *
@@ -1080,7 +1080,7 @@ s32 func_800AF404(Eline *e) {
  *       gcc would otherwise emit). The original likely had a debug
  *       statement here that was compiled out.
  */
-s32 func_800AF444() {
+s32 opHandler_SARALYON() {
     s32 dummy[2];
     g_seedState->stateFlags &= ~0x18;
     setTransitionFlag(1);
@@ -1089,13 +1089,13 @@ s32 func_800AF444() {
 }
 
 /** @brief Set bit 0x10 in @c g_seedState->stateFlags. Returns 2. */
-s32 func_800AF47C(void) {
+s32 opHandler_SARALYDISPOFF(void) {
     g_seedState->stateFlags |= 0x10;
     return 2;
 }
 
 /** @brief Clear bit 0x10 in @c g_seedState->stateFlags. Returns 2. */
-s32 func_800AF4A0(void) {
+s32 opHandler_SARALYDISPON(void) {
     g_seedState->stateFlags &= ~0x10;
     return 2;
 }
@@ -1112,7 +1112,7 @@ s32 func_800AF4A0(void) {
  * access it as a @c FieldEntity to use the parameter / walkSpeed /
  * runSpeed field names.
  */
-s32 func_800AF4C4(Eline *e) {
+s32 opHandler_SETLINE(Eline *e) {
     FieldEntity *fe = (FieldEntity *)e;
     u16 lastPop;
     fe->walkSpeed2 = POP(e);
@@ -1130,11 +1130,11 @@ s32 func_800AF4C4(Eline *e) {
 /**
  * @brief Sets the low byte of @c runSpeed to 1, returns 2.
  *
- * Counterpart of @c func_800AF5B8. The runSpeed field is u16 but only
- * the low byte is used as a script-VM flag; @c func_800AF4C4 writes
+ * Counterpart of @c opHandler_LINEOFF. The runSpeed field is u16 but only
+ * the low byte is used as a script-VM flag; @c opHandler_SETLINE writes
  * both bytes (low = 1, high = @c D_800DE4FC) at script init.
  */
-s32 func_800AF5A8(Eline *e) {
+s32 opHandler_LINEON(Eline *e) {
     *(u8 *)&((FieldEntity *)e)->runSpeed = 1;
     return 2;
 }
@@ -1142,7 +1142,7 @@ s32 func_800AF5A8(Eline *e) {
 /**
  * @brief Clears the low byte of @c runSpeed, returns 2.
  */
-s32 func_800AF5B8(Eline *e) {
+s32 opHandler_LINEOFF(Eline *e) {
     *(u8 *)&((FieldEntity *)e)->runSpeed = 0;
     return 2;
 }
@@ -1175,7 +1175,7 @@ s32 func_800AF5D4(Eline *e) {
  * @param a0 Pointer to the script/object structure.
  * @return 2 (continue processing).
  */
-s32 func_800AF5E0(Eline *e) {
+s32 opHandler_USE(Eline *e) {
     e->flags |= 0x2;
     return 2;
 }
@@ -1186,7 +1186,7 @@ s32 func_800AF5E0(Eline *e) {
  * @param a0 Pointer to the script/object structure.
  * @return 2 (continue processing).
  */
-s32 func_800AF5F8(Eline *e) {
+s32 opHandler_UNUSE(Eline *e) {
     e->flags &= ~0x2;
     return 2;
 }
@@ -1202,7 +1202,7 @@ s32 func_800AF5F8(Eline *e) {
  * via @c D_800704A8, then @c D_800704BB / @c D_800704BC) and sets
  * entity flags bit 0x4. Returns 2.
  */
-s32 func_800AF610(void) {
+s32 opHandler_UCON(void) {
     if (D_800DE4FD[0] == 0) {
         D_8007064B = 0;
     }
@@ -1236,7 +1236,7 @@ s32 func_800AF610(void) {
 }
 
 /**
- * @brief "Re-arm active party" — counterpart to @c func_800AF610.
+ * @brief "Re-arm active party" — counterpart to @c opHandler_UCON.
  *
  * Always sets @c D_800704A8.unk1A3 = 1. If the trigger @c D_80085390 is
  * already set, returns early. Otherwise sets @c D_80085390 / @c unk015
@@ -1244,14 +1244,14 @@ s32 func_800AF610(void) {
  *
  *   - Slot 0: always processed if @c memberSlot[0] is valid.
  *   - Slots 1 / 2: processed only if @c entityIndex[N] was set by
- *     @c func_800AF610 (i.e. != @c 0xFF), then the index is cleared.
+ *     @c opHandler_UCON (i.e. != @c 0xFF), then the index is cleared.
  *
  * Per-slot processing calls @c func_800AA46C, copies the entity's
  * @c field_0x24F into @c field_0x24E, zeroes @c field_0x206 / @c 0x20A,
  * loads @c field_0x20C from @c D_800D9630[slot]->unk0C, masks the
  * entity flags to bits 0x0000F800 → 0x00002000, and clears bit 0x4.
  */
-s32 func_800AF7E4(void) {
+s32 opHandler_UCOFF(void) {
     D_800704A8.unk1A3 = 1;
     if (D_80085390 != 0) {
         return 2;
@@ -1324,7 +1324,7 @@ s32 func_800AFD20(Eline *e) {
  *        also set flag bit 0x4000000; if id matches none of the active
  *        battle-party slots (@c battleParty[0..2]), clear flag bit 2.
  */
-s32 func_800AFD68(Eline *e) {
+s32 opHandler_SETPC(Eline *e) {
     s32 v1;
     e->flags |= 0x80;
     e->field_0x255 = (u8)POP(e);
@@ -1355,7 +1355,7 @@ s32 func_800AFD68(Eline *e) {
  *         findPartySlot return, matching how gcc allocates s-regs in
  *         the target.
  */
-s32 func_800AFE24(Eline *e) {
+s32 opHandler_ADDPARTY(Eline *e) {
     s32 popped = POP(e);
     s32 first;
     s32 newSlot;
@@ -1398,7 +1398,7 @@ s32 func_800AFE24(Eline *e) {
  *        call @c func_80036B90 on the active-party slot first.
  *        Recalc party stats & revive any downed actives.
  */
-s32 func_800AFF64(Eline *e) {
+s32 opHandler_SUBPARTY(Eline *e) {
     s32 charId = POP(e);
     s32 slot;
     slot = findBattlePartySlot(charId);
@@ -1478,7 +1478,7 @@ s32 func_800B002C(Eline *e) {
  *
  * Calls @c recalcPartyStats and @c func_800ADC04 at the end.
  */
-s32 func_800B0124(Eline *e) {
+s32 opHandler_SETPARTY(Eline *e) {
     s32 slot2 = POP(e);
     s32 slot1 = POP(e);
     s32 slot0 = POP(e);
@@ -1534,7 +1534,7 @@ s32 func_800B0280(Eline *e) {
  * @param a0 Pointer to the script/object structure.
  * @return 2 (continue processing).
  */
-s32 func_800B02A0(Eline *e) {
+s32 opHandler_ISPARTY(Eline *e) {
     s32 result = findBattlePartySlot(POP(e));
     e->resultSlots[0] = result;
     if (result == 0xFF) {
@@ -1554,7 +1554,7 @@ s32 func_800B02A0(Eline *e) {
  *
  * @return 2 (VM continue).
  */
-s32 func_800B0304(Eline *e) {
+s32 opHandler_GETPARTY(Eline *e) {
     s32 a1 = POP(e);
     u8 *p = (u8 *)&g_gameState + a1;
     e->resultSlots[0] = p[0xD38];
@@ -1570,9 +1570,9 @@ s32 func_800B0304(Eline *e) {
  *          - otherwise (1,2,3,5 via jtbl default, plus @c popped>=11):
  *                      @c chars[popped].exists |= 0x9
  *
- * Symmetric with @c func_800B0444.
+ * Symmetric with @c opHandler_SUBMEMBER.
  */
-s32 func_800B0344(Eline *e) {
+s32 opHandler_ADDMEMBER(Eline *e) {
     s32 popped = POP(e);
     if ((u32)popped < 0xB) {
         switch (popped) {
@@ -1609,11 +1609,11 @@ s32 func_800B0344(Eline *e) {
  *          - 8,9,10:   @c g_seedState->stateFlags &= ~(1 << (popped-8))
  *          - otherwise (0..5, 11+): @c chars[popped].exists &= 0xFFF6
  *
- * Symmetric clear-counterpart of @c func_800B0344. Unlike B0344's
+ * Symmetric clear-counterpart of @c opHandler_ADDMEMBER. Unlike B0344's
  * jump-table dispatch, B0444 compiles to an if-else chain because the
  * cases are sparse.
  */
-s32 func_800B0444(Eline *e) {
+s32 opHandler_SUBMEMBER(Eline *e) {
     s32 popped = POP(e);
     func_80036B90(findCharacterSlot(popped));
 
@@ -1717,7 +1717,7 @@ s32 func_800B06D0(Eline *e) {
  *
  * @return 2 (VM continue).
  */
-s32 func_800B0784(Eline *e, s32 a1) {
+s32 opHandler_LASTIN(Eline *e, s32 a1) {
     g_seedState->stateFlags |= 0x800;
     if (POP(e) != 0) {
         g_seedState->fieldF3 = 0xFF;
@@ -1735,7 +1735,7 @@ s32 func_800B0784(Eline *e, s32 a1) {
  * @param a0 Unused.
  * @return 2 (continue processing).
  */
-s32 func_800B0818(Eline *e) {
+s32 opHandler_LASTOUT(Eline *e) {
     /* Take the address of stateFlags so gcc materializes the read & write
      * through one register — keeps the seedState updates together
      * (before D_80082C10/D_80077E5F + recalcPartyStats() in the schedule). */
