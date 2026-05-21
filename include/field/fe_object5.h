@@ -35,7 +35,7 @@ extern s32 func_800B2158(u8 *a0);
 extern int  func_800B0924();
 extern s32  func_800B0B3C(Eline *e);
 extern s32  func_800B0BE4(Eline *e);
-extern int  func_800B0D94();
+extern s32  func_800B0D94(Eline *e);
 extern int  func_800B0EBC();
 extern s32  func_800B1034(Eline *e);
 extern int  func_800B10F8();

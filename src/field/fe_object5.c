@@ -247,7 +247,40 @@ s32 func_800B0D2C(Eline *e) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B0D94);
+/**
+ * @brief op070 PGETINFO — pop a party-slot id and snapshot the
+ *        corresponding party-member entity's position (rounded toward
+ *        zero by dividing the fixed-point @c posX/Y/Z by 4096) and a
+ *        few descriptor halfwords into the result-slot register file.
+ *
+ * Counterpart to @c func_800B0D2C — same store pattern, but the source
+ * entity is the one indexed by @c g_seedState->memberSlot[popped]
+ * rather than the current Eline.
+ *
+ * @return 2 (continue processing).
+ */
+s32 func_800B0D94(Eline *e) {
+    u8 *seed = (u8 *)g_seedState;
+    u8 idx;
+    s32 popped;
+    s32 entIdx;
+    Eline *src;
+    s32 base;
+
+    idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    popped = e->stack[(s8)idx];
+    entIdx = (seed + popped)[0xC2];
+    base = (s32)D_80085224;
+    src = (Eline *)(entIdx * sizeof(Eline) + base);
+    e->resultSlots[0] = src->posX / 4096;
+    e->resultSlots[1] = src->posY / 4096;
+    e->resultSlots[2] = src->posZ / 4096;
+    e->resultSlots[4] = src->field_0x241;
+    e->resultSlots[5] = src->field_0x1FA;
+    e->resultSlots[6] = src->savedChannel;
+    return 2;
+}
 
 /** @brief Pop a character-id and stash @c findCharacterSlot's result in @c resultSlots[0]. */
 s32 func_800B0E68(Eline *e) {
