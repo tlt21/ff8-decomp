@@ -17,6 +17,10 @@ extern u32 D_800772B8;
 extern s32 func_801E8B98(void);
 extern u32 toggleSoundBank(void);
 extern s32 sndCmd12(u32 a, s32 b);
+extern s32 sndCmd19(u8 *bank, s32 arg);
+extern s32 sndCmd14(s32 bankHandle, s32 a, s32 b);
+extern s32 sndCmd1A(s32 bankHandle, s32 ramp, s32 priority);
+extern s32 sndCmdC2(s32 handle, s32 ramp, s32 depth, s32 vol);
 extern void sndCmdF1(void);
 extern void sndCmd11();
 extern s32 sndCmdC1(s32 handle, s32 ramp, s32 vol);
@@ -480,11 +484,82 @@ s32 func_800B1B10(Eline *e) {
     return 3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B1BB8);
+/**
+ * @brief MUSICCHANGE variant taking two stack args. Pop @c b (top) and
+ *        @c a (below), and once the staged-bank flag is armed, call
+ *        @c sndCmd14 with the toggled bank handle, @c a masked to
+ *        26 bits, and @c b passed through.
+ *
+ * @return 2 if no bank swap was queued, 3 once the new track starts.
+ */
+s32 func_800B1BB8(Eline *e) {
+    s32 b = POP(e);
+    s32 a = POP(e);
+    s32 aMasked = a & 0x3FFFFFF;
+    u8 *flag = D_800DE8C8;
+    if (flag[8] == 0) {
+        return 2;
+    }
+    flag[8] = 0;
+    g_seedState->audioChannel0State = g_seedState->nextSoundBank;
+    g_seedState->soundHandle0 = sndCmd14(toggleSoundBank(), aMasked, b);
+    func_800B19D4();
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B1C7C);
+/**
+ * @brief Music-channel variant: pop @c first (top, the fade-ramp in
+ *        frames) and @c second (the priority byte), then once the
+ *        staged-bank flag is armed, call @c sndCmd1A with the toggled
+ *        bank handle, @c first shifted left by one (= ramp*2 frames),
+ *        and @c second masked to 7 bits.
+ *
+ * @return 2 if no bank swap was queued, 3 once the new track starts.
+ */
+s32 func_800B1C7C(Eline *e) {
+    s32 first = POP(e);
+    s32 firstShifted = first << 1;
+    s32 second = POP(e);
+    s32 secondMasked = second & 0x7F;
+    u8 *flag = D_800DE8C8;
+    if (flag[8] == 0) {
+        return 2;
+    }
+    flag[8] = 0;
+    g_seedState->audioChannel0State = g_seedState->nextSoundBank;
+    g_seedState->soundHandle0 = sndCmd1A(toggleSoundBank(), firstShifted, secondMasked);
+    func_800B19D4();
+    return 3;
+}
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B1D40);
+/**
+ * @brief Variant of @c MUSICCHANGE for the SFX channel: pop a tempo /
+ *        priority byte, swap the staged sound bank into @c
+ *        audioChannel1State, start the new track on bank 0/1 via
+ *        @c sndCmd19 (passing the popped value masked to 7 bits), save
+ *        the returned handle in @c soundHandle1, and re-arm via
+ *        @c func_800B19D4.
+ *
+ * @return 2 if no bank-swap was queued, 3 once the new SFX track starts.
+ */
+s32 func_800B1D40(Eline *e) {
+    s32 masked = POP(e) & 0x7F;
+    u8 *flag = D_800DE8C8;
+    u8 *bank;
+    if (flag[8] == 0) {
+        return 2;
+    }
+    flag[8] = 0;
+    g_seedState->audioChannel1State = g_seedState->nextSoundBank;
+    if (g_seedState->soundBankSelector != 0) {
+        bank = D_8005F388;
+    } else {
+        bank = D_80063388;
+    }
+    g_seedState->soundHandle1 = sndCmd19(bank, masked);
+    func_800B19D4();
+    return 3;
+}
 
 /** @brief Pop a flag value and feed it to @c sndSetEngineFlag. */
 s32 func_800B1DF4(Eline *e) {
@@ -574,7 +649,26 @@ s32 opHandler_MUSICVOLTRANS(Eline *e) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B2090);
+/**
+ * @brief 4-arg variant of @c MUSICVOLTRANS. Pop @c vol (top), @c depth,
+ *        @c ramp, and a channel selector; ramp the SPU channel's volume
+ *        toward @c vol with the extended parameters and persist the new
+ *        volume in @c g_seedState->musicVolume / @c sfxVolume (indexed
+ *        by @c channel&1, the adjacent-byte pair at offset @c 0xC5).
+ *
+ * @return 2 (continue processing).
+ */
+s32 func_800B2090(Eline *e) {
+    s32 vol = POP(e);
+    s32 depth = POP(e);
+    s32 ramp = POP(e);
+    s32 ch = POP(e) & 1;
+    u8 *p;
+    sndCmdC2((&g_seedState->soundHandle0)[ch], ramp << 1, depth, vol);
+    p = (u8 *)g_seedState + ch;
+    p[0xC5] = vol;
+    return 2;
+}
 
 /**
  * Calls sndGetMaxVolume with argument 1, returns 1 if result is nonzero, else 2.
