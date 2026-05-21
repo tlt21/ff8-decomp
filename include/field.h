@@ -100,6 +100,32 @@ typedef struct {
 } FieldEntity;              /* size >= 0x24D */
 
 /**
+ * @brief Field entity overlay used by the line-trigger family.
+ *
+ * Bytes 0x188-0x195 of an entity are reused by the @c SETLINE / @c LINEON
+ * / @c LINEOFF opcodes to describe a 3D line-segment hit volume (despite
+ * the wiki's "line" name, it's actually a 3D box bounded by the two
+ * end-points). The same storage is interpreted as movement state
+ * (@c walkSpeed / @c unk188 step counter) by the MOVE/MSPEED family —
+ * use whichever overlay corresponds to the entity's role.
+ *
+ * @c lineActive byte 0 is the "line collision enabled" flag (set by
+ * @c LINEON, cleared by @c LINEOFF) and byte 1 is the script-character
+ * marker copied from @c D_800DE4FC by @c SETLINE at init.
+ */
+typedef struct {
+    u8  pad000[0x188];      /**< 0x000 */
+    u16 lineX1;             /**< 0x188 */
+    u16 lineY1;             /**< 0x18A */
+    u16 lineZ1;             /**< 0x18C */
+    u16 lineX2;             /**< 0x18E */
+    u16 lineY2;             /**< 0x190 */
+    u16 lineZ2;             /**< 0x192 */
+    u8  lineActive;         /**< 0x194: 1 while LINEON, 0 while LINEOFF. */
+    u8  lineCharMarker;     /**< 0x195: D_800DE4FC snapshot, set by SETLINE. */
+} FieldLineTrigger;
+
+/**
  * @brief One slot of the @c SystemState mode-slot table at
  *        @c D_800704A8.slots, stride 28 bytes.
  *
@@ -169,7 +195,7 @@ typedef struct {
     /* 0x00E */ u16 anim_state;     /**< Snapshotted animation byte for the active party slot. */
     /* 0x010 */ u8 pad010[0x02];
     /* 0x012 */ u8 entityIndex[3];  /**< Per-active-slot field-entity index (mirror of g_seedState->memberSlot[]). */
-    /* 0x015 */ u8 unk015;          /**< Cleared by @c func_800AF610 along with the trigger flag. */
+    /* 0x015 */ u8 unk015;          /**< Cleared by @c opHandler_UCON along with the trigger flag. */
     /* 0x016 */ u8 pad016[0x0A];
     /* 0x020 */ SystemSubMode slots[8]; /**< 8 mode/param slots, stride 28; slot 0 corresponds to the legacy @c unk020..unk032 fields. */
     /* 0x100 */ u8 pad100[0x02];
@@ -205,13 +231,13 @@ typedef struct {
     /* 0x1A0 */ u8 unk1A0;          /**< Mode-6 active marker, set with mode = 6 by fe_object6 opcode. */
     /* 0x1A1 */ u8 pad1A1;
     /* 0x1A2 */ u8 unk1A2;          /**< Mode-7 reentry guard byte. */
-    /* 0x1A3 */ u8 unk1A3;          /**< Set to 1 by @c func_800AF7E4 on every call (re-arm guard). */
+    /* 0x1A3 */ u8 unk1A3;          /**< Set to 1 by @c opHandler_UCOFF on every call (re-arm guard). */
     /* 0x1A4 */ u8 pad1A4[0x07];
     /* 0x1AB */ u8 unk1AB;          /**< Sub-mode byte; written together with @c mode by fe_object6 opcodes. */
     /* 0x1AC */ u8 pad1AC[0x02];
     /* 0x1AE */ u8 unk1AE;          /**< Script-writable byte (set by opcode handler @c func_800B85C8, read by @c func_8009FE18). */
     /* 0x1AF */ u8 pad1AF[0x09];
-    /* 0x1B8 */ u8 statusBits[0x40]; /**< Packed bit-array (512 bits); set by @c func_800AEFE8, cleared by @c func_800AF02C, zeroed during init. */
+    /* 0x1B8 */ u8 statusBits[0x40]; /**< Packed bit-array (512 bits); set by @c opHandler_IDLOCK, cleared by @c opHandler_IDUNLOCK, zeroed during init. */
 } SystemState;
 
 extern SystemState D_800704A8;
@@ -302,13 +328,13 @@ typedef struct {
     /* 0x000 */ s32 stack[80];      /**< Bytecode stack slots (s32 each, indexed by @c stackPtr). */
     /* 0x140 */ s32 resultSlots[8]; /**< Result-slot register file (opcodes 0x08/0x09 read/write). */
     /* 0x160 */ s32 flags;
-    /* 0x164 */ u16 groupRanges[8]; /**< Per-script-group saved PC table (0xFFFF = empty); written by @c func_800AE1AC. */
+    /* 0x164 */ u16 groupRanges[8]; /**< Per-script-group saved PC table (0xFFFF = empty); written by @c opHandler_RET. */
     /* 0x174 */ u8 scriptGroup;     /**< Script group index. */
     /* 0x175 */ u8 activeMask;      /**< Entity active bitmask. */
     /* 0x176 */ u16 pc;             /**< Script-VM program counter (advanced by JMP / JPF; pushed by CAL). */
     /* 0x178 */ u16 rangeLo;        /**< Lower bound of script trigger range (tested by @c func_800BE44C). */
     /* 0x17A */ u16 rangeHi;        /**< Upper bound of script trigger range. */
-    /* 0x17C */ u8 groupStackBase[8]; /**< Per-script-group saved stackPtr base (used by context-switch in @c func_800AE1AC). */
+    /* 0x17C */ u8 groupStackBase[8]; /**< Per-script-group saved stackPtr base (used by context-switch in @c opHandler_RET). */
     /* 0x184 */ s8 stackPtr;        /**< Bytecode stack pointer (signed, grows down). */
     /* 0x185 */ u8 pad185[0x03];
     /* 0x188 */ u8 unk188;          /**< Script parameter byte. */
@@ -443,7 +469,7 @@ extern u16 g_seedSalaryTable[];
  *
  * 392-entry function-pointer table at @c 0x800C6760. Indices 0-17
  * are a 18-entry stack-arithmetic sub-table (ADD, SUB, MUL, DIV, MOD,
- * NEG, EQ, ..., AND, OR, XOR, ...) accessed by @c func_800AE048
+ * NEG, EQ, ..., AND, OR, XOR, ...) accessed by @c opHandler_CAL
  * (the "meta-dispatcher") which receives the sub-opcode in @c a1 and
  * tail-calls @c g_fieldOpcodeTable[a1].
  *
