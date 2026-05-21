@@ -45,19 +45,16 @@ s32 opHandler_SEALEDOFF(Eline *e) {
 }
 
 /**
- * Pops a value, calls findCharacterSlot, and if result is not 0xFF
- * calls func_80036B90 with the result.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop a character/party token, resolve it via @c findCharacterSlot,
+ *        and if the slot is valid hand it to @c func_80036B90.
  */
-s32 func_800B08CC(u8 *a0) {
+s32 func_800B08CC(Eline *e) {
     u8 idx;
     s32 result;
 
-    idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    result = findCharacterSlot(*(s32 *)(a0 + (s8)idx * 4));
+    idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    result = findCharacterSlot(e->stack[(s8)idx]);
     if (result != 0xFF) {
         func_80036B90(result);
     }
@@ -67,11 +64,11 @@ s32 func_800B08CC(u8 *a0) {
 INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B0924);
 
 /**
- * Clear bit 0x8 in entity flags, conditionally clear sprite visibility,
- * set 0x24C based on flag 0x10, clear 0x249 and 0x24B. Returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Disable an entity. Clears the "active" flag bit @c 0x8, hides
+ *        the render slot (unless field-debug bit @c 0x2 is set), captures
+ *        the @c 0x10 flag into @c field_0x24C, and clears the entity's
+ *        secondary @c unk249 / @c field_0x24B flags so collision /
+ *        scripting skip this entity.
  */
 s32 func_800B0A08(u8 *a0) {
 
@@ -92,11 +89,10 @@ s32 func_800B0A08(u8 *a0) {
 }
 
 /**
- * Set bit 0x8 in entity flags, conditionally set sprite visibility,
- * restore 0x10 flag from 0x24C, set 0x24C/0x249/0x24B to 1. Returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Re-enable an entity. Counterpart of @c func_800B0A08 — sets the
+ *        "active" flag bit @c 0x8, restores render-slot visibility,
+ *        re-installs the @c 0x10 flag from @c field_0x24C, then sets
+ *        @c field_0x24C / @c unk249 / @c field_0x24B back to 1.
  */
 s32 func_800B0A7C(u8 *a0) {
 
@@ -117,47 +113,27 @@ s32 func_800B0A7C(u8 *a0) {
     return 2;
 }
 
-/**
- * Clears the byte at offset 0x24B in the object.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0B04(u8 *a0) {
-    *(u8 *)(a0 + 0x24B) = 0;
+/** @brief Clear @c field_0x24B (entity "B flag"). */
+s32 func_800B0B04(Eline *e) {
+    e->field_0x24B = 0;
     return 2;
 }
 
-/**
- * Sets the byte at offset 0x24B in the object to 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0B10(u8 *a0) {
-    *(u8 *)(a0 + 0x24B) = 1;
+/** @brief Set @c field_0x24B (entity "B flag") to 1. */
+s32 func_800B0B10(Eline *e) {
+    e->field_0x24B = 1;
     return 2;
 }
 
-/**
- * Clears the byte at offset 0x249 in the object.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0B20(u8 *a0) {
-    *(u8 *)(a0 + 0x249) = 0;
+/** @brief Clear @c unk249 (entity "self-collision enable" flag). */
+s32 func_800B0B20(Eline *e) {
+    e->unk249 = 0;
     return 2;
 }
 
-/**
- * Sets the byte at offset 0x249 in the object to 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0B2C(u8 *a0) {
-    *(u8 *)(a0 + 0x249) = 1;
+/** @brief Set @c unk249 (entity "self-collision enable" flag) to 1. */
+s32 func_800B0B2C(Eline *e) {
+    e->unk249 = 1;
     return 2;
 }
 
@@ -205,86 +181,73 @@ s32 func_800B0BE4(Eline *e) {
     return 2;
 }
 
-/**
- * Sets the byte at offset 0x24C in the object to 1.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0C48(u8 *a0) {
-    *(u8 *)(a0 + 0x24C) = 1;
+/** @brief Set @c field_0x24C (entity "C flag") to 1. */
+s32 func_800B0C48(Eline *e) {
+    e->field_0x24C = 1;
+    return 2;
+}
+
+/** @brief Clear @c field_0x24C (entity "C flag"). */
+s32 func_800B0C58(Eline *e) {
+    e->field_0x24C = 0;
     return 2;
 }
 
 /**
- * Clears the byte at offset 0x24C in the object.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop an entity-id token and stash @c func_8009F74C's result for
+ *        that entity in @c resultSlots[0] (so a following @c GETN can
+ *        retrieve it).
  */
-s32 func_800B0C58(u8 *a0) {
-    *(u8 *)(a0 + 0x24C) = 0;
-    return 2;
-}
-
-/**
- * Pops a value, looks up in D_80085230 table, calls func_8009F74C
- * with entity pointer and lookup result, stores return value at 0x140.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B0C64(u8 *a0) {
+s32 func_800B0C64(Eline *e) {
     u8 idx;
     s32 val;
 
-    idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    val = *(s32 *)(a0 + (s8)idx * 4);
-    *(s32 *)(a0 + 0x140) = func_8009F74C(a0, (s32)D_80085230[val]);
+    idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    val = e->stack[(s8)idx];
+    e->resultSlots[0] = func_8009F74C(e, (s32)D_80085230[val]);
     return 2;
 }
 
-/** @brief Pop halfword from stack and store to offset 0x1F8. Returns 2. */
-s32 func_800B0CCC(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u16 *)(a0 + 0x1F8) = *(u16 *)(a0 + (s8)idx * 4);
+/** @brief Pop halfword from stack and store to @c field_0x1F8. */
+s32 func_800B0CCC(Eline *e) {
+    u8 idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    e->field_0x1F8 = *(u16 *)&e->stack[(s8)idx];
     return 2;
 }
 
-/** @brief Pop halfword from stack and store to offset 0x1F6. Returns 2. */
-s32 func_800B0CFC(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(u16 *)(a0 + 0x1F6) = *(u16 *)(a0 + (s8)idx * 4);
+/** @brief Pop halfword from stack and store to @c radius (collision radius). */
+s32 func_800B0CFC(Eline *e) {
+    u8 idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    e->radius = *(u16 *)&e->stack[(s8)idx];
     return 2;
 }
 
 /**
- * Read entity position words, divide by 4096, store to result slots.
- * Also copy animation/direction bytes. Returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Snapshot the entity's position and a few descriptor bytes into
+ *        the result-slot register file so subsequent script @c GETN
+ *        opcodes can read them. Position is rounded toward zero by
+ *        dividing the fixed-point @c posX/Y/Z by 4096.
  */
-s32 func_800B0D2C(u8 *a0) {
-    *(s32 *)(a0 + 0x140) = *(s32 *)(a0 + 0x190) / 4096;
-    *(s32 *)(a0 + 0x144) = *(s32 *)(a0 + 0x194) / 4096;
-    *(s32 *)(a0 + 0x148) = *(s32 *)(a0 + 0x198) / 4096;
-    *(s32 *)(a0 + 0x150) = *(u8 *)(a0 + 0x241);
-    *(s32 *)(a0 + 0x154) = *(u16 *)(a0 + 0x1FA);
-    *(s32 *)(a0 + 0x158) = *(s16 *)(a0 + 0x1FE);
+s32 func_800B0D2C(Eline *e) {
+    e->resultSlots[0] = e->posX / 4096;
+    e->resultSlots[1] = e->posY / 4096;
+    e->resultSlots[2] = e->posZ / 4096;
+    e->resultSlots[4] = e->field_0x241;
+    e->resultSlots[5] = e->field_0x1FA;
+    e->resultSlots[6] = e->savedChannel;
     return 2;
 }
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B0D94);
 
-/** @brief Pop value from stack, call findCharacterSlot, store result at 0x140. Returns 2. */
-s32 func_800B0E68(u8 *a0) {
-    u8 idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    *(s32 *)(a0 + 0x140) = findCharacterSlot(*(s32 *)(a0 + (s8)idx * 4));
+/** @brief Pop a character-id and stash @c findCharacterSlot's result in @c resultSlots[0]. */
+s32 func_800B0E68(Eline *e) {
+    u8 idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    e->resultSlots[0] = findCharacterSlot(e->stack[(s8)idx]);
     return 2;
 }
 
@@ -355,21 +318,20 @@ s32 func_800B1730(u8 *a0) {
 }
 
 /**
- * Pops two values, calls loadBattleCmd(D_800C5FB0, val2, val1 | 1),
- * stores result in D_800DE878.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Pop two values and stage a battle via @c loadBattleCmd. Top of
+ *        stack supplies a flag byte (OR'd with @c 1), and the value
+ *        below it supplies the encounter id. The returned handle is
+ *        stashed in @c D_800DE878 for later use.
  */
-s32 func_800B1738(u8 *a0) {
+s32 func_800B1738(Eline *e) {
     u8 idx;
     s32 val1, val2;
 
-    idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    val1 = *(s32 *)(a0 + (s8)idx * 4);
-    *(u8 *)(a0 + 0x184) = idx - 2;
-    val2 = *(s32 *)(a0 + (s8)(idx - 1) * 4);
+    idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    val1 = e->stack[(s8)idx];
+    e->stackPtr = idx - 2;
+    val2 = e->stack[(s8)(idx - 1)];
     *(s32 *)D_800DE878 = loadBattleCmd(D_800C5FB0, val2, val1 | 1);
     return 2;
 }
@@ -524,18 +486,13 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B1C7C);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B1D40);
 
-/**
- * Pops a parameter and calls sndSetEngineFlag, returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B1DF4(u8 *a0) {
+/** @brief Pop a flag value and feed it to @c sndSetEngineFlag. */
+s32 func_800B1DF4(Eline *e) {
     u8 idx;
 
-    idx = *(u8 *)(a0 + 0x184);
-    *(u8 *)(a0 + 0x184) = idx - 1;
-    sndSetEngineFlag(*(s32 *)(a0 + (s8)idx * 4));
+    idx = e->stackPtr;
+    e->stackPtr = idx - 1;
+    sndSetEngineFlag(e->stack[(s8)idx]);
     return 2;
 }
 
@@ -559,30 +516,23 @@ s32 opHandler_MUSICSTOP(Eline *e) {
     return 2;
 }
 
-/**
- * Calls sndGetStatus with the object pointer, stores result at offset 0x140, returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
- */
-s32 func_800B1ED4(u8 *a0) {
-    *(s32 *)(a0 + 0x140) = sndGetStatus(a0);
+/** @brief Stash @c sndGetStatus into @c resultSlots[0]. */
+s32 func_800B1ED4(Eline *e) {
+    e->resultSlots[0] = sndGetStatus(e);
     return 2;
 }
 
 /**
- * Calls func_80012FEC, splits result into high 16 bits (stored at 0x140)
- * and low 16 bits (stored at 0x144), returns 2.
- *
- * @param a0 Pointer to the script/object structure.
- * @return 2 (continue processing).
+ * @brief Call @c func_80012FEC and split its packed 32-bit return into
+ *        the high halfword (@c resultSlots[0]) and zero-extended low
+ *        halfword (@c resultSlots[1]).
  */
-s32 func_800B1F04(u8 *a0) {
+s32 func_800B1F04(Eline *e) {
     s32 result;
-    result = func_80012FEC(a0);
-    *(s32 *)(a0 + 0x144) = result;
-    *(s32 *)(a0 + 0x140) = result >> 16;
-    *(s32 *)(a0 + 0x144) = *(u16 *)(a0 + 0x144);
+    result = func_80012FEC(e);
+    e->resultSlots[1] = result;
+    e->resultSlots[0] = result >> 16;
+    e->resultSlots[1] = *(u16 *)&e->resultSlots[1];
     return 2;
 }
 
