@@ -100,6 +100,32 @@ typedef struct {
 } FieldEntity;              /* size >= 0x24D */
 
 /**
+ * @brief Field entity overlay used by the line-trigger family.
+ *
+ * Bytes 0x188-0x195 of an entity are reused by the @c SETLINE / @c LINEON
+ * / @c LINEOFF opcodes to describe a 3D line-segment hit volume (despite
+ * the wiki's "line" name, it's actually a 3D box bounded by the two
+ * end-points). The same storage is interpreted as movement state
+ * (@c walkSpeed / @c unk188 step counter) by the MOVE/MSPEED family —
+ * use whichever overlay corresponds to the entity's role.
+ *
+ * @c lineActive byte 0 is the "line collision enabled" flag (set by
+ * @c LINEON, cleared by @c LINEOFF) and byte 1 is the script-character
+ * marker copied from @c D_800DE4FC by @c SETLINE at init.
+ */
+typedef struct {
+    u8  pad000[0x188];      /**< 0x000 */
+    u16 lineX1;             /**< 0x188 */
+    u16 lineY1;             /**< 0x18A */
+    u16 lineZ1;             /**< 0x18C */
+    u16 lineX2;             /**< 0x18E */
+    u16 lineY2;             /**< 0x190 */
+    u16 lineZ2;             /**< 0x192 */
+    u8  lineActive;         /**< 0x194: 1 while LINEON, 0 while LINEOFF. */
+    u8  lineCharMarker;     /**< 0x195: D_800DE4FC snapshot, set by SETLINE. */
+} FieldLineTrigger;
+
+/**
  * @brief One slot of the @c SystemState mode-slot table at
  *        @c D_800704A8.slots, stride 28 bytes.
  *

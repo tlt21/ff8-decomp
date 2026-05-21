@@ -1113,17 +1113,17 @@ s32 opHandler_SARALYDISPON(void) {
  * runSpeed field names.
  */
 s32 opHandler_SETLINE(Eline *e) {
-    FieldEntity *fe = (FieldEntity *)e;
+    FieldLineTrigger *line = (FieldLineTrigger *)e;
     u16 lastPop;
-    fe->walkSpeed2 = POP(e);
-    fe->walkSpeed = POP(e);
-    fe->unk18E = POP(e);
-    fe->unk18C = POP(e);
-    fe->unk18A = POP(e);
+    line->lineZ2 = POP(e);
+    line->lineY2 = POP(e);
+    line->lineX2 = POP(e);
+    line->lineZ1 = POP(e);
+    line->lineY1 = POP(e);
     lastPop = POP(e);
-    *((u8 *)&fe->runSpeed + 0) = 1;
-    *((u8 *)&fe->runSpeed + 1) = D_800DE4FC;
-    *(u16 *)&fe->unk188 = lastPop;
+    line->lineActive = 1;
+    line->lineCharMarker = D_800DE4FC;
+    line->lineX1 = lastPop;
     return 2;
 }
 
@@ -1135,7 +1135,7 @@ s32 opHandler_SETLINE(Eline *e) {
  * both bytes (low = 1, high = @c D_800DE4FC) at script init.
  */
 s32 opHandler_LINEON(Eline *e) {
-    *(u8 *)&((FieldEntity *)e)->runSpeed = 1;
+    ((FieldLineTrigger *)e)->lineActive = 1;
     return 2;
 }
 
@@ -1143,7 +1143,7 @@ s32 opHandler_LINEON(Eline *e) {
  * @brief Clears the low byte of @c runSpeed, returns 2.
  */
 s32 opHandler_LINEOFF(Eline *e) {
-    *(u8 *)&((FieldEntity *)e)->runSpeed = 0;
+    ((FieldLineTrigger *)e)->lineActive = 0;
     return 2;
 }
 
