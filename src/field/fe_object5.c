@@ -111,21 +111,20 @@ s32 func_800B0924(Eline *e) {
  *        secondary @c unk249 / @c field_0x24B flags so collision /
  *        scripting skip this entity.
  */
-s32 func_800B0A08(u8 *a0) {
-
-    *(s32 *)(a0 + 0x160) = *(s32 *)(a0 + 0x160) & ~0x8;
+s32 func_800B0A08(Eline *e) {
+    *(volatile s32 *)&e->flags = *(volatile s32 *)&e->flags & ~0x8;
     if (!(D_800DE8CC & 0x2)) {
         EntityRenderSlot **base = D_800D9630;
-        u8 slot = *(u8 *)(a0 + 0x256);
+        u8 slot = e->field_0x256;
         *(u8 *)((s32)base[slot] + 0x60) = 0;
     }
-    if (*(s32 *)(a0 + 0x160) & 0x10) {
-        *(u8 *)(a0 + 0x24C) = 1;
+    if (*(volatile s32 *)&e->flags & 0x10) {
+        e->field_0x24C = 1;
     } else {
-        *(u8 *)(a0 + 0x24C) = 0;
+        e->field_0x24C = 0;
     }
-    *(u8 *)(a0 + 0x249) = 0;
-    *(u8 *)(a0 + 0x24B) = 0;
+    e->unk249 = 0;
+    e->field_0x24B = 0;
     return 2;
 }
 
@@ -135,22 +134,21 @@ s32 func_800B0A08(u8 *a0) {
  *        re-installs the @c 0x10 flag from @c field_0x24C, then sets
  *        @c field_0x24C / @c unk249 / @c field_0x24B back to 1.
  */
-s32 func_800B0A7C(u8 *a0) {
-
-    *(s32 *)(a0 + 0x160) = *(s32 *)(a0 + 0x160) | 0x8;
+s32 func_800B0A7C(Eline *e) {
+    *(volatile s32 *)&e->flags = *(volatile s32 *)&e->flags | 0x8;
     if (!(D_800DE8CC & 0x2)) {
         EntityRenderSlot **base = D_800D9630;
-        u8 slot = *(u8 *)(a0 + 0x256);
+        u8 slot = e->field_0x256;
         *(u8 *)((s32)base[slot] + 0x60) = 1;
     }
-    if (*(u8 *)(a0 + 0x24C) != 0) {
-        *(s32 *)(a0 + 0x160) = *(s32 *)(a0 + 0x160) | 0x10;
+    if (e->field_0x24C != 0) {
+        e->flags |= 0x10;
     } else {
-        *(s32 *)(a0 + 0x160) = *(s32 *)(a0 + 0x160) & ~0x10;
+        e->flags &= ~0x10;
     }
-    *(u8 *)(a0 + 0x24C) = 1;
-    *(u8 *)(a0 + 0x249) = 1;
-    *(u8 *)(a0 + 0x24B) = 1;
+    e->field_0x24C = 1;
+    e->unk249 = 1;
+    e->field_0x24B = 1;
     return 2;
 }
 
