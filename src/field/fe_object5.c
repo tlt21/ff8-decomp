@@ -297,7 +297,7 @@ s32 func_800B0D2C(Eline *e) {
  * @return 2 (continue processing).
  */
 s32 func_800B0D94(Eline *e) {
-    u8 *seed = (u8 *)g_seedState;
+    SeedState *seed = g_seedState;
     u8 idx;
     s32 popped;
     s32 entIdx;
@@ -305,7 +305,7 @@ s32 func_800B0D94(Eline *e) {
     idx = e->stackPtr;
     e->stackPtr = idx - 1;
     popped = e->stack[(s8)idx];
-    entIdx = (seed + popped)[0xC2];
+    entIdx = seed->memberSlot[popped];
     e->resultSlots[0] = D_80085224[entIdx].posX / 4096;
     e->resultSlots[1] = D_80085224[entIdx].posY / 4096;
     e->resultSlots[2] = D_80085224[entIdx].posZ / 4096;
@@ -425,7 +425,7 @@ s32 func_800B1034(Eline *e) {
  * @return 2 (continue processing).
  */
 s32 func_800B10F8(Eline *e) {
-    u8 *seed = (u8 *)g_seedState;
+    SeedState *seed = g_seedState;
     u8 idx;
     s32 popped;
     s32 entIdx;
@@ -433,7 +433,7 @@ s32 func_800B10F8(Eline *e) {
     idx = e->stackPtr;
     e->stackPtr = idx - 1;
     popped = e->stack[(s8)idx];
-    entIdx = (seed + popped)[0xC2];
+    entIdx = seed->memberSlot[popped];
     e->posX = D_80085224[entIdx].posX;
     e->posY = D_80085224[entIdx].posY;
     e->posZ = D_80085224[entIdx].posZ;
