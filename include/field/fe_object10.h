@@ -35,7 +35,7 @@ extern FieldEntityB *func_800BE7F4(FieldEntityB *buf);
 extern FieldEntityD *func_800BE924(FieldEntityD *buf);
 extern FieldEntityC *func_800BEA84(FieldEntityC *buf);
 extern void func_800BEBD0(void);
-extern int  func_800BF080();
+extern void func_800BF080(void);
 extern void func_800BF28C(s32 a0);
 
 #endif

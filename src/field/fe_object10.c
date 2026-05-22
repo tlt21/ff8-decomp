@@ -1031,7 +1031,75 @@ void func_800BEBD0(void) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BF080);
+/**
+ * @brief Reset each entity in all 4 pools to its NEXT script-group entry.
+ *
+ * For each entity (Block A first, then C, B, D), sets @c scriptGroup to
+ * @c 0, clears the stack (@c stackPtr = -1), points @c groupRanges[0]
+ * and @c pc at @c D_800852F0[rangeLo + 1] + 1 (= start of the next
+ * script group, one past), and (for Blocks C/B/D) resets the entity's
+ * @c activeMask to @c 0xFF.
+ */
+void func_800BF080(void) {
+    /* Block A */
+    {
+        Eline *e = D_80085224;
+        u16 val;
+        s32 k = 0;
+        for (k = 0; k < D_80085388; k++, e++) {
+            e->scriptGroup = 0;
+            val = D_800852F0[e->rangeLo + 1] + 1;
+            e->groupRanges[0] = val;
+            e->pc = val;
+            e->stackPtr = -1;
+        }
+    }
+
+    /* Block C */
+    {
+        FieldEntityC *e = D_80085384;
+        u16 val;
+        s32 k = 0;
+        for (k = 0; k < D_80085228; k++, e++) {
+            e->scriptGroup = 0;
+            val = D_800852F0[e->rangeLo + 1] + 1;
+            e->stackPtr = -1;
+            e->groupRanges[0] = val;
+            e->pc = val;
+            e->activeMask = 0xFF;
+        }
+    }
+
+    /* Block B */
+    {
+        FieldEntityB *e = D_8008538C;
+        u16 val;
+        s32 k = 0;
+        for (k = 0; k < D_800852F8; k++, e++) {
+            e->scriptGroup = 0;
+            val = D_800852F0[e->rangeLo + 1] + 1;
+            e->stackPtr = -1;
+            e->groupRanges[0] = val;
+            e->pc = val;
+            e->activeMask = 0xFF;
+        }
+    }
+
+    /* Block D */
+    {
+        FieldEntityD *e = D_800852F4;
+        u16 val;
+        s32 k = 0;
+        for (k = 0; k < D_80085391; k++, e++) {
+            e->scriptGroup = 0;
+            val = D_800852F0[e->rangeLo + 1] + 1;
+            e->stackPtr = -1;
+            e->groupRanges[0] = val;
+            e->pc = val;
+            e->activeMask = 0xFF;
+        }
+    }
+}
 
 /**
  * Re-issue motion command @c 0xD to the active spatial entity, then
