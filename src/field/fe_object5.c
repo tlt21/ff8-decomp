@@ -23,6 +23,9 @@ extern s32 sndCmd1A(s32 bankHandle, s32 ramp, s32 priority);
 extern s32 sndCmdC2(s32 handle, s32 ramp, s32 depth, s32 vol);
 extern Eline *D_8008538C;
 extern void func_8009A8E0(Eline *e);
+extern void resetCardSlots(s32 mode);
+extern void func_80036D44(s32 arg);
+extern void func_80036B90(s32 idx);
 extern void sndCmdF1(void);
 extern void sndCmd11();
 extern s32 sndCmdC1(s32 handle, s32 ramp, s32 vol);
@@ -323,7 +326,68 @@ s32 func_800B0E68(Eline *e) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B0EBC);
+/**
+ * @brief op??? JUNCTION — swap the active battle party with the bench
+ *        roster (and re-sync the per-character GFs).
+ *
+ * Pops a flag word. Bit 0 selects the direction:
+ *   - bit 0 set: SAVE — copy the current active party
+ *     (@c g_gameState.battleParty / @c party) into the bench backup
+ *     (@c g_seedState->partyOrderA / @c partyOrderB), then re-apply
+ *     character-data settings via @c func_80036B90 for every character
+ *     whose @c characterId is in range.
+ *   - bit 0 clear: RESTORE — copy the bench backup back into the
+ *     active party.
+ *
+ * Bit 1 (only meaningful with bit 0 set) chooses between:
+ *   - bit 1 set: park @c D_800704A8 into mode-5 (active-party swap
+ *     animation) with a @c 0x16-frame counter and @c unk1AB copied
+ *     from the bottom 3 bits of @c stateFlags.
+ *   - bit 1 clear: defer to @c func_80036D44 with those same 3 bits.
+ *
+ * @return 3 (advance two stack slots and continue).
+ */
+s32 func_800B0EBC(Eline *e) {
+    s32 popped;
+    s32 saveMode;
+    s32 i;
+
+    {
+        u8 idx = e->stackPtr;
+        e->stackPtr = idx - 1;
+        popped = e->stack[(s8)idx];
+    }
+    saveMode = popped & 1;
+    resetCardSlots(saveMode);
+
+    if (saveMode != 0) {
+        for (i = 0; i < 3; i++) {
+            g_seedState->partyOrderA[i] = g_gameState.battleParty[i];
+            g_seedState->partyOrderB[i] = g_gameState.mainData.party.party[i];
+        }
+
+        if (popped & 2) {
+            D_800704A8.mode = 5;
+            D_800704A8.counter = 0x16;
+            D_800704A8.unk1AB = g_seedState->stateFlags & 7;
+        } else {
+            func_80036D44(g_seedState->stateFlags & 7);
+        }
+
+        for (i = 0; i < 8; i++) {
+            if (g_gameState.chars[i].characterId < 8) {
+                func_80036B90(i);
+            }
+        }
+        return 3;
+    }
+
+    for (i = 0; i < 3; i++) {
+        g_gameState.battleParty[i] = g_seedState->partyOrderA[i];
+        g_gameState.mainData.party.party[i] = g_seedState->partyOrderB[i];
+    }
+    return 3;
+}
 
 /**
  * @brief Pop an entity id, look up the corresponding @c Eline in the
