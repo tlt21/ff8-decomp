@@ -16,11 +16,9 @@ extern SeedState *g_seedState;
  * @return 2.
  */
 s32 opHandler_DISABLEANGELO(FieldEntity *entity) {
-    u8 *a0 = (u8 *)entity;
     u8 idx = entity->stackIdx;
     entity->stackIdx = idx - 1;
-
-    if (*(s32 *)(a0 + (s8)idx * 4) != 0) {
+    if (entity->stack[(s8)idx] != 0) {
         func_800C03BC();
     } else {
         func_800C03D8();
@@ -29,31 +27,40 @@ s32 opHandler_DISABLEANGELO(FieldEntity *entity) {
 }
 
 /**
- * @brief Set camera direction parameters based on direction code.
+ * @brief Fill a 3-halfword rect/offset buffer from a direction code.
  *
- * Sets halfword at a1+4 to 0xCF and a1+2 to 0. Based on a0:
- * 0 -> a1+0 = 0, 1 -> a1+0 = 0x20, 2 -> a1+0 = -0x20.
+ * Writes the rect's third entry to @c 0xCF (the fixed sub-mode word)
+ * and zeroes the second; the first becomes @c 0, @c 0x20, or
+ * @c -0x20 depending on the direction code (0, 1, or 2). Used by
+ * the look/turn opcodes to feed @c func_800A9434.
  *
- * @param a0 Direction code (0, 1, or 2).
- * @param a1 Output parameter buffer.
+ * @param dir Direction code (0, 1, or 2).
+ * @param out Output buffer; the function writes @c out[0..2] (halfwords).
  */
-void func_800BD250(s32 a0, u8 *a1) {
-    *(u16 *)(a1 + 4) = 0xCF;
-    *(u16 *)(a1 + 2) = 0;
-    switch (a0) {
+void func_800BD250(s32 dir, s16 *out) {
+    out[2] = 0xCF;
+    out[1] = 0;
+    switch (dir) {
     case 0:
-        *(u16 *)(a1 + 0) = 0;
+        out[0] = 0;
         break;
     case 1:
-        *(u16 *)(a1 + 0) = 0x20;
+        out[0] = 0x20;
         break;
     case 2:
-        *(s16 *)(a1 + 0) = -0x20;
+        out[0] = -0x20;
         break;
     }
 }
 
-s32 func_800BD2AC(FieldEntity *entity) { u8 *a0 = (u8 *)entity; u8 idx = entity->stackIdx; s16 buf[4]; entity->stackIdx = idx - 1; func_800BD250(*(s32 *)(a0 + (s8)idx * 4), (u8 *)buf); func_800A9434(*(u8 *)(a0 + 0x256), 0x30, 1, (u8 *)buf, 0x1E); return 2; }
+s32 func_800BD2AC(FieldEntity *entity) {
+    u8 idx = entity->stackIdx;
+    s16 buf[4];
+    entity->stackIdx = idx - 1;
+    func_800BD250(entity->stack[(s8)idx], buf);
+    func_800A9434(((Eline *)entity)->field_0x256, 0x30, 1, (u8 *)buf, 0x1E);
+    return 2;
+}
 
 /**
  * @brief Variant of @c func_800BD2AC that negates the rect/offset triple.
@@ -69,7 +76,7 @@ s32 func_800BD318(FieldEntity *entity) {
     u8 idx = entity->stackIdx;
     s16 buf[4];
     entity->stackIdx = idx - 1;
-    func_800BD250(entity->stack[(s8)idx], (u8 *)buf);
+    func_800BD250(entity->stack[(s8)idx], buf);
     buf[0] = -buf[0];
     buf[1] = -buf[1];
     buf[2] = -buf[2];
@@ -358,7 +365,7 @@ s32 func_800BE44C(s32 val) {
         if (val >= e->rangeLo && val <= e->rangeHi) {
             return 1;
         }
-        e = (Eline *)((u8 *)e + 0x264);
+        e++;
     }
     return 0;
 }

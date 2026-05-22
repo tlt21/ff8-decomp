@@ -5,7 +5,7 @@
 #include "field.h"
 
 extern s32  opHandler_DISABLEANGELO(FieldEntity *entity);
-extern void func_800BD250(s32 a0, u8 *a1);
+extern void func_800BD250(s32 dir, s16 *out);
 extern s32  func_800BD2AC(FieldEntity *entity);
 extern s32  func_800BD318(FieldEntity *entity);
 extern void updateSeedLevel(void);
