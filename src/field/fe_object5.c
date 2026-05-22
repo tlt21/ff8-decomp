@@ -98,7 +98,7 @@ s32 func_800B08CC(Eline *e) {
  *
  * @return 2 (continue processing).
  */
-s32 func_800B0924(Eline *e) {
+s32 opHandler_HOLD(Eline *e) {
     u8 idx;
     s32 flag;
     s32 actorId;
@@ -311,7 +311,7 @@ s32 func_800B0D2C(Eline *e) {
  *
  * @return 2 (continue processing).
  */
-s32 func_800B0D94(Eline *e) {
+s32 opHandler_PGETINFO(Eline *e) {
     SeedState *seed = g_seedState;
     u8 idx;
     s32 popped;
@@ -359,7 +359,7 @@ s32 func_800B0E68(Eline *e) {
  *
  * @return 3 (advance two stack slots and continue).
  */
-s32 func_800B0EBC(Eline *e) {
+s32 opHandler_JUNCTION(Eline *e) {
     s32 popped;
     s32 saveMode;
     s32 i;
@@ -475,7 +475,7 @@ s32 func_800B10F8(Eline *e) {
  *
  * @return 2 (continue processing).
  */
-s32 func_800B11BC(Eline *e) {
+s32 opHandler_ACTORMODE(Eline *e) {
     s32 mode = POP(e);
     s32 a1_val;
     s32 a2_val;
@@ -523,7 +523,7 @@ s32 func_800B11BC(Eline *e) {
  *
  * @return 1 while CD read is pending, 2 once committed.
  */
-s32 func_800B12A4(Eline *e) {
+s32 opHandler_MOVIEREADY(Eline *e) {
     s32 priority;
     s32 entryIdx;
 
@@ -576,7 +576,7 @@ s32 func_800B12A4(Eline *e) {
  * @return 1 to block while the movie subsystem is busy, 2 once it
  *         takes over.
  */
-s32 func_800B13EC(Eline *e) {
+s32 opHandler_MOVIE(Eline *e) {
     s32 i;
     Eline *p;
     s32 sc, mc, fc;
@@ -609,7 +609,7 @@ s32 func_800B13EC(Eline *e) {
  *        clear the @c 0x1000 bit of the state flags, and reset two
  *        re-arm flags ( @c D_800704A8.unk1A3 — only if @c unk015 is
  *        clear — and @c D_800DE4FD[0] ). Counterpart of @c
- *        func_800B13EC's doubling step — called as part of the
+ *        opHandler_MOVIE's doubling step — called as part of the
  *        cinematic / movie postlude to restore the dialog channels
  *        after a scene.
  *
@@ -640,7 +640,7 @@ void func_800B14C8(void) {
  * @param a0 Pointer to the script/object structure.
  * @return 1 if func_801E8B84 returns nonzero, 2 otherwise.
  */
-s32 func_800B158C(u8 *a0) {
+s32 opHandler_MOVIESYNC(u8 *a0) {
     s32 result;
     result = func_801E8B84(a0);
     if (result != 0) {
@@ -667,7 +667,7 @@ s32 func_800B158C(u8 *a0) {
  *
  * @return 1 while CD read is pending, 2 once the SPU bank is loaded.
  */
-s32 func_800B15BC(Eline *e) {
+s32 opHandler_SPUREADY(Eline *e) {
     s32 entryIdx = e->stack[(s8)e->stackPtr];
 
     if ((e->activeMask >> e->scriptGroup) & 1) {
@@ -730,7 +730,7 @@ s32 func_800B1730(u8 *a0) {
  *        below it supplies the encounter id. The returned handle is
  *        stashed in @c D_800DE878 for later use.
  */
-s32 func_800B1738(Eline *e) {
+s32 opHandler_SETVIBRATE(Eline *e) {
     u8 idx;
     s32 val1, val2;
 
@@ -822,7 +822,7 @@ s32 opHandler_SETBATTLEMUSIC(Eline *e) {
  *
  * @return 1 while loading, 2 once the bank is staged.
  */
-s32 func_800B18A4(Eline *e) {
+s32 opHandler_MUSICLOAD(Eline *e) {
     SeedState *seed;
     if ((e->activeMask >> e->scriptGroup) & 1) {
         u8 sp;
@@ -1150,7 +1150,7 @@ void func_800B2188(void) {
 }
 
 /**
- * @brief Helper for @c EFFECTLOAD (op0BD, @c func_800B2248) — looks up
+ * @brief Helper for @c EFFECTLOAD (op0BD, @c opHandler_EFFECTLOAD) — looks up
  *        the SFX entry indexed by @c g_seedState->audioChannel2State
  *        in the @c D_800C2E1C @c {LBA, size} table and issues a
  *        @c cdRead targeting the @c D_8005F13C SPU staging buffer,
@@ -1184,7 +1184,7 @@ void func_800B21E0(void) {
  *
  * @return 1 while the CD read is pending, 2 once the bank is staged.
  */
-s32 func_800B2248(Eline *e) {
+s32 opHandler_EFFECTLOAD(Eline *e) {
     SeedState *seed;
     if ((e->activeMask >> e->scriptGroup) & 1) {
         u8 sp = e->stackPtr;
