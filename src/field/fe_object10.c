@@ -602,7 +602,7 @@ void func_800BE30C(u8 *header) {
     D_800DE8DA = h->field1;
     D_800DE8D8 = h->field2;
     b3 = h->field3;
-    D_800DE4E0 = header + 8;
+    D_800DE4E0 = (u16 *)(header + 8);
     D_800DE4E4 = header + h->offset4;
     D_800DE4E8 = header + h->offset6;
     D_800DE8C0 = b3;
@@ -744,8 +744,8 @@ FieldEntityB *func_800BE7F4(FieldEntityB *buf) {
             e->flags = 0x20000000;
             e->stackPtr = -1;
 
-            packed = *(u16 *)D_800DE4E0;
-            D_800DE4E0 += 2;
+            packed = *D_800DE4E0;
+            D_800DE4E0++;
             upper = packed >> 7;
             new_var = upper;
             lower = packed & 0x7F;
@@ -774,7 +774,72 @@ FieldEntityB *func_800BE7F4(FieldEntityB *buf) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BE924);
+/**
+ * @brief Initialize the @c FieldEntityD pool (Block D entities, stride 0x1B4).
+ *
+ * Memsets the supplied buffer for @c D_80085391 entities, then for each
+ * entry pulls a packed (upper:9, lower:7) value from @c D_800DE4E0,
+ * derives @c rangeLo / @c rangeHi / @c pc, and registers the entity in
+ * @c D_80085230 at indices @c [D_80085388+D_800852F8, ...). pc is masked
+ * with @c 0x7FFF. Returns the post-init free-slot pointer.
+ *
+ * @param buf Entity buffer (becomes the @c FieldEntityD pool base).
+ * @return Pointer past the last initialized @c FieldEntityD slot.
+ */
+FieldEntityD *func_800BE924(FieldEntityD *buf) {
+    FieldEntityD *e = buf;
+
+    func_800396E0(buf, D_80085391 * 0x1B4);
+    {
+        s32 k = 0;
+        u16 groupIdx;
+
+        if (D_80085391 == 0) return e;
+
+        do {
+            u16 packed;
+            u16 upper;
+            u16 lower;
+            u16 pcVal;
+
+            D_80085230[D_80085388 + D_800852F8 + k] = (Eline *)e;
+            e->flags = 0x80001000;
+            e->stackPtr = -1;
+
+            packed = *D_800DE4E0;
+            D_800DE4E0++;
+            upper = packed >> 7;
+            groupIdx = upper;
+            lower = packed & 0x7F;
+            e->rangeLo = groupIdx;
+            e->rangeHi = lower;
+            upper = e->rangeLo;
+            e->rangeHi = (groupIdx + lower) + 1;
+
+            pcVal = D_800852F0[upper];
+            e->activeMask = 0xFF;
+            e->unk18A = 0x40;
+            e->groupRanges[0] = 0xFFFF;
+            e->groupRanges[1] = 0xFFFF;
+            e->groupRanges[2] = 0xFFFF;
+            e->groupRanges[3] = 0xFFFF;
+            e->groupRanges[4] = 0xFFFF;
+            e->groupRanges[5] = 0xFFFF;
+            e->groupRanges[6] = 0xFFFF;
+            e->groupRanges[7] = 0xFFFF;
+            e->unk188 = -1;
+            e->pc = pcVal & 0x7FFF;
+            e->unk1AC = 0x80;
+            e->unk1AB = 0x80;
+            e->unk1AA = 0x80;
+
+            e++;
+            k++;
+        } while (k < D_80085391);
+
+        return e;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BEA84);
 

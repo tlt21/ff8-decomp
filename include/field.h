@@ -583,12 +583,24 @@ typedef struct {
  *        each tick ends with a call to @c func_800B2BA0.
  */
 typedef struct {
-    /* 0x000 */ u8  pad000[0x174];
+    /* 0x000 */ u8  pad000[0x160];
+    /* 0x160 */ s32 flags;
+    /* 0x164 */ u16 groupRanges[8];
     /* 0x174 */ u8  scriptGroup;
     /* 0x175 */ u8  activeMask;
     /* 0x176 */ u16 pc;
     /* 0x178 */ u16 rangeLo;
-    /* 0x17A */ u8  pad17A[0x3A];
+    /* 0x17A */ u16 rangeHi;
+    /* 0x17C */ u8  pad17C[0x08];
+    /* 0x184 */ s8  stackPtr;
+    /* 0x185 */ u8  pad185[0x03];
+    /* 0x188 */ s16 unk188;
+    /* 0x18A */ u16 unk18A;
+    /* 0x18C */ u8  pad18C[0x1E];
+    /* 0x1AA */ u8  unk1AA;
+    /* 0x1AB */ u8  unk1AB;
+    /* 0x1AC */ u8  unk1AC;
+    /* 0x1AD */ u8  pad1AD[0x07];
 } FieldEntityD; /* 0x1B4 */
 
 /** @brief Self/anchor pointer used by @c func_8009A8E0 after the
@@ -864,7 +876,7 @@ extern u8 D_800DE8D8;       /**< Mirror of @c EventHeader.field2 from the active
 extern u8 D_800DE8D9;       /**< Mirror of @c EventHeader.field0. */
 extern u8 D_800DE8DA;       /**< Mirror of @c EventHeader.field1. */
 extern u8 D_800DE8C0;       /**< Mirror of @c EventHeader.field3. */
-extern u8 *D_800DE4E0;      /**< Pointer to script bytecode start (header base + 8). */
+extern u16 *D_800DE4E0;     /**< Pointer to script bytecode start (header base + 8); read as packed u16s. */
 extern u8 *D_800DE4E4;      /**< Pointer to first sub-table (header base + offset4). */
 extern u8 *D_800DE4E8;      /**< Pointer to second sub-table (header base + offset6). */
 
