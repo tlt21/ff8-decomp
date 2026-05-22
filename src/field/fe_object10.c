@@ -7,6 +7,8 @@
 #include "field/fe_object10.h"
 
 extern SeedState *g_seedState;
+extern u8         D_8007809A;
+extern s32        D_80082C14;
 
 /**
  * @brief Pop value from script stack and branch to one of two handlers.
@@ -247,49 +249,44 @@ void func_800BD794(void) { s32 i = 0; do { s32 status = getPackedField2Bit(i) - 
  *   - @c angeloLearnStepAcc — fires the Angelo trick learn tick every
  *     @c 0x250 steps.
  *
- * @note Currently @c INCLUDE_ASM — near-match at 88.87% pending permuter
- *       to resolve gcc 2.7.2 register-allocation/scheduling quirks (mine
- *       uses @c a1 for the @c g_seedState pointer; target uses @c a0).
- *
- * @verbatim
- * void func_800BD804(s32 stepDelta) {
- *     g_seedState->hpRegenStepAcc += stepDelta;
- *     g_seedState->stepCounter += stepDelta;
- *     g_seedState->angeloLearnStepAcc += stepDelta;
- *     g_seedState->packedFlagsStepAcc = (u16)(g_seedState->packedFlagsStepAcc + stepDelta);
- *     D_80082C14 = g_seedState->stepCounter;
- *     if (g_seedState->packedFlagsStepAcc >= 0x2800u) {
- *         g_seedState->packedFlagsStepAcc = 0;
- *         func_800BD794();
- *     }
- *     if ((u32)g_seedState->hpRegenStepAcc >= 8u) {
- *         g_seedState->hpRegenStepAcc = 0;
- *         func_800BD5E0();
- *         func_800BD64C();
- *     }
- *     if (D_8007809A & 1) return;
- *     if (!(g_seedState->stateFlags & 8)) {
- *         g_seedState->seedExpStepAcc += stepDelta;
- *         if ((u32)g_seedState->seedExpStepAcc >= 0x6000u) {
- *             g_seedState->seedExpStepAcc = 0;
- *             updateSeedLevel();
- *         }
- *         if ((s16)g_seedState->seedExp < 100)         g_seedState->seedExp = 100;
- *         else if ((s16)g_seedState->seedExp >= 0xC1C) g_seedState->seedExp = 0xC1C;
- *     }
- *     if ((s16)g_seedState->levelUpDisplayTimer >= 0) {
- *         if ((s16)g_seedState->levelUpDisplayTimer == 0) setTransitionPhase7();
- *         g_seedState->levelUpDisplayTimer--;
- *     }
- *     if (D_8007809A & 0x10) return;
- *     if ((u32)g_seedState->angeloLearnStepAcc >= 0x250u) {
- *         g_seedState->angeloLearnStepAcc = 0;
- *         func_800BD6EC();
- *     }
- * }
- * @endverbatim
+ * @param stepDelta Steps to add (typically @c 1 per processed step event).
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BD804);
+void func_800BD804(s32 stepDelta) {
+    s32 minSeedExp = 100;
+    g_seedState->stepCounter += stepDelta;
+    g_seedState->hpRegenStepAcc += stepDelta;
+    g_seedState->packedFlagsStepAcc = (u16)(g_seedState->packedFlagsStepAcc + stepDelta);
+    g_seedState->angeloLearnStepAcc += stepDelta;
+    D_80082C14 = (u32)g_seedState->stepCounter;
+    if (g_seedState->packedFlagsStepAcc >= 0x2800u) {
+        g_seedState->packedFlagsStepAcc = 0;
+        func_800BD794();
+    }
+    if ((u32)g_seedState->hpRegenStepAcc >= 8u) {
+        g_seedState->hpRegenStepAcc = 0;
+        func_800BD5E0();
+        func_800BD64C();
+    }
+    if (D_8007809A & 1) return;
+    if (!(g_seedState->stateFlags & 8)) {
+        g_seedState->seedExpStepAcc += stepDelta;
+        if ((u32)g_seedState->seedExpStepAcc >= 0x6000u) {
+            g_seedState->seedExpStepAcc = 0;
+            updateSeedLevel();
+        }
+        if ((s16)g_seedState->seedExp < minSeedExp)  g_seedState->seedExp = minSeedExp;
+        else if ((s16)g_seedState->seedExp >= 0xC1C) g_seedState->seedExp = 0xC1C;
+    }
+    if ((s16)g_seedState->levelUpDisplayTimer >= 0) {
+        if ((s16)g_seedState->levelUpDisplayTimer == 0) setTransitionPhase7();
+        g_seedState->levelUpDisplayTimer--;
+    }
+    if (D_8007809A & 0x10) return;
+    if ((u32)g_seedState->angeloLearnStepAcc >= 0x250u) {
+        g_seedState->angeloLearnStepAcc = 0;
+        func_800BD6EC();
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BD9C4);
 
