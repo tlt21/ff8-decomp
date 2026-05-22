@@ -301,21 +301,17 @@ s32 func_800B0D94(Eline *e) {
     u8 idx;
     s32 popped;
     s32 entIdx;
-    Eline *src;
-    s32 base;
 
     idx = e->stackPtr;
     e->stackPtr = idx - 1;
     popped = e->stack[(s8)idx];
     entIdx = (seed + popped)[0xC2];
-    base = (s32)D_80085224;
-    src = (Eline *)(entIdx * sizeof(Eline) + base);
-    e->resultSlots[0] = src->posX / 4096;
-    e->resultSlots[1] = src->posY / 4096;
-    e->resultSlots[2] = src->posZ / 4096;
-    e->resultSlots[4] = src->field_0x241;
-    e->resultSlots[5] = src->field_0x1FA;
-    e->resultSlots[6] = src->savedChannel;
+    e->resultSlots[0] = D_80085224[entIdx].posX / 4096;
+    e->resultSlots[1] = D_80085224[entIdx].posY / 4096;
+    e->resultSlots[2] = D_80085224[entIdx].posZ / 4096;
+    e->resultSlots[4] = D_80085224[entIdx].field_0x241;
+    e->resultSlots[5] = D_80085224[entIdx].field_0x1FA;
+    e->resultSlots[6] = D_80085224[entIdx].savedChannel;
     return 2;
 }
 
@@ -433,23 +429,17 @@ s32 func_800B10F8(Eline *e) {
     u8 idx;
     s32 popped;
     s32 entIdx;
-    s32 base;
 
     idx = e->stackPtr;
     e->stackPtr = idx - 1;
     popped = e->stack[(s8)idx];
     entIdx = (seed + popped)[0xC2];
-    /* Cache the D_80085224 base for the first 4 reads, then re-load
-     * it inline for the remaining two — gcc reuses the cached value
-     * via CSE and reloads only when the symbol is re-spelled,
-     * matching the target's load / 4-read / reload / 2-read pattern. */
-    base = (s32)D_80085224;
-    e->posX = ((Eline *)(entIdx * sizeof(Eline) + base))->posX;
-    e->posY = ((Eline *)(entIdx * sizeof(Eline) + base))->posY;
-    e->posZ = ((Eline *)(entIdx * sizeof(Eline) + base))->posZ;
-    e->field_0x241 = ((Eline *)(entIdx * sizeof(Eline) + base))->field_0x241;
-    e->field_0x1FA = ((Eline *)(entIdx * sizeof(Eline) + (s32)D_80085224))->field_0x1FA;
-    e->savedChannel = ((Eline *)(entIdx * sizeof(Eline) + (s32)D_80085224))->savedChannel;
+    e->posX = D_80085224[entIdx].posX;
+    e->posY = D_80085224[entIdx].posY;
+    e->posZ = D_80085224[entIdx].posZ;
+    e->field_0x241 = D_80085224[entIdx].field_0x241;
+    e->field_0x1FA = D_80085224[entIdx].field_0x1FA;
+    e->savedChannel = D_80085224[entIdx].savedChannel;
     func_8009A8E0(D_8008538C);
     return 2;
 }
