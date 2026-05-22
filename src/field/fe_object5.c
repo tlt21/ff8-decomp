@@ -33,6 +33,7 @@ extern s32 func_800393C8(void);
 extern void func_801E8000(s32 priority);
 extern s32 func_801E8104(s32 a, s32 b, s32 c, s32 d);
 extern u32 D_800C2D14[];
+extern u32 D_800C2E14[];
 extern s32 D_800DE4EC;
 extern s32 func_801E82CC(void);
 extern void func_801E870C(void);
@@ -644,7 +645,45 @@ s32 func_800B158C(u8 *a0) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B15BC);
+/**
+ * @brief op056 SPUREADY — peek the top stack slot as a sound-bank
+ *        index and kick off an asynchronous CD read of the
+ *        corresponding sample bank into the @c 0x801E8000 staging
+ *        buffer.
+ *
+ * The first invocation (active for this script group) seeds the
+ * subsystem via @c func_800A59D0 + @c func_80038868 with
+ * @c D_800C2D14[0..1] as the LBA/size pair and marks
+ * @c D_800DE4FD as in-flight. Subsequent invocations poll
+ * @c func_800393C8 — returning @c 1 to keep the script blocked
+ * until the read completes, then committing the indexed bank entry
+ * via @c func_801E8104 (priority @c 0x10, mode @c 2 for SPU vs
+ * mode @c 1 for the movie variant in @c MOVIEREADY) before popping
+ * the stack and returning @c 2.
+ *
+ * @return 1 while CD read is pending, 2 once the SPU bank is loaded.
+ */
+s32 func_800B15BC(Eline *e) {
+    s32 entryIdx = e->stack[(s8)e->stackPtr];
+
+    if ((e->activeMask >> e->scriptGroup) & 1) {
+        func_800A59D0();
+        func_80038868(D_800C2D14[0], D_800C2D14[1], 0x801E8000, 0);
+        D_800DE4FD[0] = 1;
+    }
+    if (func_800393C8() != 0) {
+        return 1;
+    }
+    D_800DE4FD[0] |= 0x2;
+    func_801E8000(0x10);
+    func_801E8104(D_800C2E14[entryIdx * 4],
+                  D_800C2E14[entryIdx * 4 + 1],
+                  2,
+                  D_8005F13C);
+    func_801E870C();
+    e->stackPtr -= 1;
+    return 2;
+}
 
 /**
  * @brief op164 SPUSYNC — peek top-of-stack; if positive and below the
