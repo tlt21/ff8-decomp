@@ -64,7 +64,7 @@ s32 (*g_fieldOpcodeTable[392])(Eline *) = {
     /* 0x013  op001  CAL             */ (OpcodeFn)opHandler_CAL,
     /* 0x014  op002  JMP             */ (OpcodeFn)opHandler_JMP,
     /* 0x015  op003  JPF             */ (OpcodeFn)opHandler_JPF,
-    /* 0x016  op004  GJMP           */ (OpcodeFn)func_800AE0DC,
+    /* 0x016  op004  GJMP           */ (OpcodeFn)opHandler_GJMP,
     /* 0x017  op005  LBL             */ (OpcodeFn)opHandler_LBL,
     /* 0x018  op006  RET             */ (OpcodeFn)opHandler_RET,
     /* 0x019  op007  PSHN_L          */ (OpcodeFn)opHandler_PSHN_L,

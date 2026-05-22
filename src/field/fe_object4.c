@@ -300,7 +300,7 @@ s32 opHandler_JPF(Eline *e, s32 a1) {
 }
 
 /** @brief Push (halfword at 0x176)+1 onto stack, load new 0x176 from table. Returns 4. */
-s32 func_800AE0DC(Eline *e, s32 a1) {
+s32 opHandler_GJMP(Eline *e, s32 a1) {
     PUSH(e, e->pc + 1);
     e->pc = D_800852F0[a1];
     return 4;
