@@ -11,6 +11,8 @@ extern SeedState   *g_seedState;
 extern CdReadState  D_8008A3D8;
 extern u8           D_8007809A;
 extern s32          D_80082C14;
+extern u16         *D_800852F0;
+extern s32          func_80037AEC(u8 *header, u16 *table, s32 **outBase);
 
 /**
  * @brief Pop value from script stack and branch to one of two handlers.
@@ -669,7 +671,45 @@ s32 func_800BE44C(s32 val) {
     return 0;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BE4B0);
+/**
+ * @brief Script-table relinker — flattens per-group bytecode ranges
+ *        into a single contiguous slice of @c D_80085380.
+ *
+ * For each script-group entry @c k in @p table (the @c [lo,hi] pair list),
+ * if the corresponding @c D_800DE4E4 marker has bit @c 0x8000 set OR
+ * @c func_800BE44C(k) returns non-zero, copies all @c D_800DE4E8 entries
+ * @c [orig..hi) into @c D_80085380 starting at the current write cursor,
+ * and overwrites @c table[k] with the new slice index. Skipped groups
+ * keep their original @c table[k] value.
+ *
+ * @param header Forwarded to @c func_80037AEC for pool sizing.
+ * @param table  Group @c (lo,hi) array — also receives the rewritten lo values.
+ * @return Pointer to the first free slot past the compacted slice.
+ */
+s32 *func_800BE4B0(u8 *header, u16 *table) {
+    s32 count;
+    s32 dstIdx;
+    s32 k;
+
+    D_800852F0 = table;
+    count = func_80037AEC(header, table, &D_80085380);
+
+    dstIdx = 0;
+    for (k = 0; k < count - 1; k++) {
+        if (!(((u16 *)D_800DE4E4)[k] & 0x8000) && !func_800BE44C(k)) continue;
+        {
+            u16 orig = D_800852F0[k];
+            D_800852F0[k] = (u16)dstIdx;
+            do {
+                D_80085380[dstIdx] = ((s32 *)D_800DE4E8)[orig];
+                orig++;
+                dstIdx++;
+            } while (orig < D_800852F0[k + 1]);
+        }
+    }
+
+    return &D_80085380[dstIdx];
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BE5E4);
 
