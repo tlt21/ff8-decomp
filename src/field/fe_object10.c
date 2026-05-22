@@ -15,7 +15,7 @@ extern SeedState *g_seedState;
  * @param entity Script entity context.
  * @return 2.
  */
-s32 func_800BD1F4(FieldEntity *entity) {
+s32 opHandler_DISABLEANGELO(FieldEntity *entity) {
     u8 *a0 = (u8 *)entity;
     u8 idx = entity->stackIdx;
     entity->stackIdx = idx - 1;

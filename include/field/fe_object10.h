@@ -4,7 +4,7 @@
 #include "common.h"
 #include "field.h"
 
-extern s32  func_800BD1F4(FieldEntity *entity);
+extern s32  opHandler_DISABLEANGELO(FieldEntity *entity);
 extern void func_800BD250(s32 a0, u8 *a1);
 extern s32  func_800BD2AC(FieldEntity *entity);
 extern s32  func_800BD318(FieldEntity *entity);
