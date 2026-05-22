@@ -34,6 +34,9 @@ extern void func_801E8000(s32 priority);
 extern s32 func_801E8104(s32 a, s32 b, s32 c, s32 d);
 extern u32 D_800C2D14[];
 extern s32 D_800DE4EC;
+extern s32 func_801E82CC(void);
+extern void func_801E870C(void);
+extern void initBattleTransition(void);
 extern void sndCmdF1(void);
 extern void sndCmd11();
 extern s32 sndCmdC1(s32 handle, s32 ramp, s32 vol);
@@ -550,7 +553,50 @@ s32 func_800B12A4(Eline *e) {
     return 2;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B13EC);
+/**
+ * @brief op04F MOVIE — enter cinematic mode.
+ *
+ * Sets the @c 0x1000 bit in @c g_seedState->stateFlags and asks the
+ * movie subsystem (@c func_801E82CC) whether it is ready to play. If
+ * it returns @c 0 (busy), the opcode blocks by returning @c 1.
+ *
+ * Once ready, doubles the three dialog-channel halfwords
+ * (@c savedChannel / @c msgChannel / @c field_0x208) of every active
+ * entity — counterpart of @c func_800B14C8's halve step. If the
+ * stateFlags @c 0x10 bit is clear, also kicks off
+ * @c initBattleTransition (so the next scene starts clean) and
+ * resets @c g_seedState->levelUpDisplayTimer. Finally calls
+ * @c func_801E870C to commit the mode switch.
+ *
+ * @return 1 to block while the movie subsystem is busy, 2 once it
+ *         takes over.
+ */
+s32 func_800B13EC(Eline *e) {
+    s32 i;
+    Eline *p;
+    s32 sc, mc, fc;
+
+    g_seedState->stateFlags |= 0x1000;
+    if (func_801E82CC()) {
+        p = D_80085224;
+        for (i = 0; i < D_80085388; i++) {
+            sc = (s16)p->savedChannel;
+            mc = (s16)p->msgChannel;
+            fc = (s16)p->field_0x208;
+            p->savedChannel = sc << 1;
+            p->msgChannel = mc << 1;
+            p->field_0x208 = fc << 1;
+            p++;
+        }
+        if (!(g_seedState->stateFlags & 0x10)) {
+            initBattleTransition();
+            g_seedState->levelUpDisplayTimer = 0;
+        }
+        func_801E870C();
+        return 2;
+    }
+    return 1;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B14C8);
 
