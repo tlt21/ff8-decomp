@@ -606,7 +606,46 @@ void func_800BE30C(u8 *header) {
     D_800DE8C0 = b3;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BE36C);
+/**
+ * @brief Entity-array compaction after event-script rebind.
+ *
+ * Re-binds the event preamble via @c func_800BE30C(header), then sweeps
+ * the @c D_80085224 entity pool and keeps only entries whose @c flags
+ * bit @c 0x2 is set. Each kept @c Eline is copied to the next compacted
+ * slot at the head of the array, tagged with its new index in
+ * @c field_0x256, and registered in @c D_80085230 (NULL for dropped
+ * entries). @c D_80085388 is set to the new entry count.
+ *
+ * @param header Event preamble forwarded to @c func_800BE30C.
+ * @return Pointer to the first free @c Eline slot past the compacted set.
+ */
+Eline *func_800BE36C(u8 *header) {
+    func_800BE30C(header);
+    {
+        s32 srcIdx = 0;
+        s32 dstIdx = 0;
+        Eline *src = D_80085224;
+        Eline *dst = src;
+
+        if (D_80085388 != 0) {
+            do {
+                D_80085230[srcIdx] = NULL;
+                if (src->flags & 2) {
+                    D_80085230[srcIdx] = dst;
+                    *dst = *src;
+                    dst->field_0x256 = (u8)dstIdx;
+                    dst++;
+                    dstIdx++;
+                }
+                src++;
+                srcIdx++;
+            } while (srcIdx < D_80085388);
+        }
+
+        D_80085388 = (u8)dstIdx;
+        return dst;
+    }
+}
 
 /**
  * @brief Test if @c val falls within any active entity's @c [rangeLo, rangeHi].
