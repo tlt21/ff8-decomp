@@ -531,7 +531,7 @@ s32 opHandler_MOVIEREADY(Eline *e) {
                                D_800C2D14[entryIdx * 2 + 1],
                                1,
                                D_8005F13C);
-    *(s32 *)&g_seedState->pad50[0] = 0;
+    g_seedState->padInitStatus = 0;
     e->stackPtr -= 2;
     return 2;
 }

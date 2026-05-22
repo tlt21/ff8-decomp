@@ -39,9 +39,9 @@
 /* Forward declarations for the 392 opcode handlers (K&R-style
  * unprototyped — the table cast handles arg-type compatibility). */
 
-typedef s32 (*OpcodeFn)(Eline *);
+typedef s32 (*OpcodeFn)();
 
-s32 (*g_fieldOpcodeTable[392])(Eline *) = {
+s32 (*g_fieldOpcodeTable[392])() = {
     /* 0x000  arith ADD              */ (OpcodeFn)opHandler_ADD,
     /* 0x001  arith SUB              */ (OpcodeFn)opHandler_SUB,
     /* 0x002  arith MUL              */ (OpcodeFn)opHandler_MUL,

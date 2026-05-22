@@ -4,11 +4,13 @@
 #include "character.h"
 #include "battle.h"
 #include "sound.h"
+#include "cd.h"
 #include "field/fe_object10.h"
 
-extern SeedState *g_seedState;
-extern u8         D_8007809A;
-extern s32        D_80082C14;
+extern SeedState   *g_seedState;
+extern CdReadState  D_8008A3D8;
+extern u8           D_8007809A;
+extern s32          D_80082C14;
 
 /**
  * @brief Pop value from script stack and branch to one of two handlers.
@@ -288,7 +290,268 @@ void func_800BD804(s32 stepDelta) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BD9C4);
+/**
+ * @brief Field-engine per-frame tick — drives the script VM for every
+ *        field-entity array and processes per-step accumulators.
+ *
+ * Stores @p stepDelta into the field status block and toggles its busy
+ * byte. If the pad-init bit (@c D_800DE4FD[0] & 2) is armed, captures the
+ * @c func_801E8B58 status into @c g_seedState->padInitStatus. Bails out
+ * if a CD read is in flight (@c D_8008A3D8.flags bit 0).
+ *
+ * On entry, mirrors party gil/dreamGil from @c g_gameState to
+ * @c g_seedState, mirrors the audio-channel marker @c fieldD1 into
+ * @c D_800704A8.unk1AB, and fades out per-slot SFX whose ambient
+ * trigger has expired (@c sfxStartMask bit set without
+ * @c sfxEntryMask). Then calls @c getPackedField2Bit for the active
+ * dispatcher slot and stores the result into @c D_800704A8.packedFlagSlot.
+ *
+ * Runs four script-VM dispatch loops in order:
+ *   - @c D_80085224 / @c D_80085388  — full @c Eline pool (stride 0x264);
+ *     each tick processes SFX-trigger 6/7 plus up to 16 opcode steps.
+ *   - @c D_8008538C / @c D_800852F8 — @c FieldEntityB pool (stride 0x1A0);
+ *     6 SFX triggers (groups 2..7) gated by @c D_800704BD.
+ *   - @c D_80085384 / @c D_80085228 — @c FieldEntityC pool (stride 0x18C);
+ *     2 SFX triggers (groups 6/7) gated by @c D_800704A8.unk015.
+ *   - @c D_800852F4 / @c D_80085391 — @c FieldEntityD pool (stride 0x1B4);
+ *     plain script tick, finalized by @c func_800B2BA0.
+ *
+ * Each inner VM iteration reads an opcode via @c func_80037B7C, dispatches
+ * @c g_fieldOpcodeTable[opcode + 0x12], and processes the return bits:
+ *   - bit 0 (0x1) — terminate this entity's tick (zeros the iteration counter)
+ *   - bit 1 (0x2) — advance @c pc, set @c activeMask bit
+ *   - bit 2 (0x4) — keep @c activeMask bit (else clear it)
+ *
+ * @param stepDelta Step delta added by @c func_800BD804 to per-step
+ *                  accumulators (passed through @c D_800DE8C8.stepDelta).
+ */
+void func_800BD9C4(s32 stepDelta) {
+    s32 unused[16];
+    s32 sp50;
+    s32 sp54;
+    s32 s1;
+    u8 *fs;
+
+    D_800DE8C8[0] = stepDelta;
+    fs = (u8 *)D_800DE8C8;
+    fs[0xB] = !fs[0xB];
+    if (D_800DE4FD[0] & 2) {
+        g_seedState->padInitStatus = func_801E8B58();
+    }
+    if (D_8008A3D8.flags & 1) return;
+
+    func_800BD804(D_800704A8.fieldStepDelta);
+    g_seedState->gilMirror      = g_gameState.mainData.party.gil;
+    g_seedState->dreamGilMirror = g_gameState.mainData.party.dreamGil;
+    D_800704A8.unk1AB = g_seedState->fieldD1;
+
+    {
+        s32 i;
+        for (i = 0; i < getMaxBattleEntities(); i++) {
+            if ((g_seedState->sfxEntryMask >> i) & 1) continue;
+            if (!((g_seedState->sfxStartMask >> i) & 1)) continue;
+            if (D_800704A8.ambientFlags & 0xC0) {
+                if (getSfxField28(i)) {
+                    if (!((g_seedState->sfxActiveMask >> i) & 1)) {
+                        fadeOutSfxSlow(i);
+                    }
+                }
+            }
+            if (getSfxField1C(i)) continue;
+            if (!getSfxField28(i)) continue;
+            g_seedState->sfxStartMask &= ~(1 << i);
+        }
+    }
+
+    {
+        u8 packed = (u8)getPackedField2Bit(g_seedState->fieldF2);
+        SystemState *sys = &D_800704A8;
+        sys->packedFlagSlot = packed;
+    }
+
+    /* Block A: full-Eline pool (stride 0x264). */
+    {
+        Eline *e = D_80085224;
+        D_800DE4FC = 0;
+        if (D_80085388 != 0) {
+            do {
+                s1 = 0x10;
+                func_800B9288(e);
+
+                if (D_800704A8.unk015 != 0) {
+                    e->triggerSfx7 = 0;
+                    e->unk248 = 0;
+                } else {
+                    if (e->triggerSfx7 != 0) {
+                        if (e->triggerSfx7 == 2) {
+                            e->flags |= 0x20;
+                        }
+                        func_800AE8B4(e, 7, (u16)(e->rangeLo + 2));
+                        e->triggerSfx7 = 0;
+                    }
+                    if (e->unk248 != 0) {
+                        func_800AE8B4(e, 6, (u16)(e->rangeLo + 3));
+                        e->unk248 = 0;
+                    }
+                }
+
+                if (!(e->flags & 1)) {
+                    do {
+                        s32 ret;
+                        func_80037B7C(&D_80085380[e->pc], &sp50, &sp54);
+                        ret = g_fieldOpcodeTable[sp50 + 0x12](e, sp54);
+                        if (!(ret & 4)) {
+                            e->activeMask &= ~(1 << e->scriptGroup);
+                        }
+                        if (ret & 2) {
+                            e->pc++;
+                            e->activeMask |= (1 << e->scriptGroup);
+                        }
+                        if (ret & 1) s1 = 0;
+                        else s1--;
+                        if (s1 == 0) break;
+                    } while (!(e->flags & 1));
+                }
+
+                func_800B6854(e);
+                D_800DE4FC++;
+                e++;
+            } while (D_800DE4FC < D_80085388);
+        }
+    }
+
+    /* Block B: FieldEntityB pool (stride 0x1A0). */
+    {
+        FieldEntityB *eb = D_8008538C;
+        D_800DE4FC = 0;
+        if (D_800852F8 != 0) {
+            do {
+                s1 = 0x10;
+                if (eb->activeMarker != 0 && !D_800704BD) {
+                    if (eb->trigger7 != 0) {
+                        if (eb->trigger7 == 2) eb->flags |= 0x20;
+                        func_800AE8B4(eb, 7, (u16)(eb->rangeLo + 2));
+                        eb->trigger7 = 0;
+                    }
+                    if (eb->trigger6 != 0) {
+                        func_800AE8B4(eb, 6, (u16)(eb->rangeLo + 3));
+                        eb->trigger6 = 0;
+                    }
+                    if (eb->trigger5 != 0) {
+                        func_800AE8B4(eb, 5, (u16)(eb->rangeLo + 4));
+                        eb->trigger5 = 0;
+                    }
+                    if (eb->trigger4 != 0) {
+                        func_800AE8B4(eb, 4, (u16)(eb->rangeLo + 5));
+                    }
+                    if (eb->trigger3 != 0) {
+                        func_800AE8B4(eb, 3, (u16)(eb->rangeLo + 6));
+                        eb->trigger3 = 0;
+                    }
+                    if (eb->trigger2 != 0) {
+                        func_800AE8B4(eb, 2, (u16)(eb->rangeLo + 7));
+                        eb->trigger2 = 0;
+                    }
+                } else {
+                    eb->trigger7 = 0;
+                    eb->trigger6 = 0;
+                    eb->trigger5 = 0;
+                    eb->trigger3 = 0;
+                    eb->trigger2 = 0;
+                }
+
+                do {
+                    s32 ret;
+                    func_80037B7C(&D_80085380[eb->pc], &sp50, &sp54);
+                    ret = g_fieldOpcodeTable[sp50 + 0x12](eb, sp54);
+                    if (!(ret & 4)) {
+                        eb->activeMask &= ~(1 << eb->scriptGroup);
+                    }
+                    if (ret & 2) {
+                        eb->pc++;
+                        eb->activeMask |= (1 << eb->scriptGroup);
+                    }
+                    if (ret & 1) s1 = 0;
+                    else s1--;
+                } while (s1 != 0);
+
+                eb++;
+                D_800DE4FC++;
+            } while (D_800DE4FC < D_800852F8);
+        }
+    }
+
+    /* Block C: FieldEntityC pool (stride 0x18C). */
+    {
+        FieldEntityC *ec = D_80085384;
+        D_800DE4FC = 0;
+        if (D_80085228 != 0) {
+            do {
+                s1 = 0x10;
+                if (ec->activeMarker != 0 && !D_800704A8.unk015) {
+                    if (ec->trigger6 != 0) {
+                        func_800AE8B4(ec, 6, (u16)(ec->rangeLo + 2));
+                        ec->trigger6 = 0;
+                    }
+                    if (ec->trigger7 != 0) {
+                        func_800AE8B4(ec, 7, (u16)(ec->rangeLo + 3));
+                        ec->trigger7 = 0;
+                    }
+                } else {
+                    ec->trigger6 = 0;
+                    ec->trigger7 = 0;
+                }
+
+                do {
+                    s32 ret;
+                    func_80037B7C(&D_80085380[ec->pc], &sp50, &sp54);
+                    ret = g_fieldOpcodeTable[sp50 + 0x12](ec, sp54);
+                    if (!(ret & 4)) {
+                        ec->activeMask &= ~(1 << ec->scriptGroup);
+                    }
+                    if (ret & 2) {
+                        ec->pc++;
+                        ec->activeMask |= (1 << ec->scriptGroup);
+                    }
+                    if (ret & 1) s1 = 0;
+                    else s1--;
+                } while (s1 != 0);
+
+                ec++;
+                D_800DE4FC++;
+            } while (D_800DE4FC < D_80085228);
+        }
+    }
+
+    /* Block D: FieldEntityD pool (stride 0x1B4). */
+    {
+        FieldEntityD *ed = D_800852F4;
+        D_800DE4FC = 0;
+        if (D_80085391 != 0) {
+            do {
+                s1 = 0x10;
+                do {
+                    s32 ret;
+                    func_80037B7C(&D_80085380[ed->pc], &sp50, &sp54);
+                    ret = g_fieldOpcodeTable[sp50 + 0x12](ed, sp54);
+                    if (!(ret & 4)) {
+                        ed->activeMask &= ~(1 << ed->scriptGroup);
+                    }
+                    if (ret & 2) {
+                        ed->pc++;
+                        ed->activeMask |= (1 << ed->scriptGroup);
+                    }
+                    if (ret & 1) s1 = 0;
+                    else s1--;
+                } while (s1 != 0);
+
+                func_800B2BA0(ed);
+                ed++;
+                D_800DE4FC++;
+            } while (D_800DE4FC < D_80085391);
+        }
+    }
+}
 
 /**
  * Returns the value of the global byte D_800DE4FD.

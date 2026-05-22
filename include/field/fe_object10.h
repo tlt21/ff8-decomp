@@ -24,9 +24,10 @@ extern void func_800BF4A4(void);
 
 extern void func_800BD804(s32 stepDelta);
 
+extern void func_800BD9C4(s32 stepDelta);
+
 /* INCLUDE_ASM stubs — bodies still in assembly, signatures unknown.
  * Declared K&R-style; refine when these get decomped to C. */
-extern int  func_800BD9C4();
 extern int  func_800BE36C();
 extern int  func_800BE4B0();
 extern int  func_800BE5E4();
