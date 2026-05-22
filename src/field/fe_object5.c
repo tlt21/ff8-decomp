@@ -1168,7 +1168,36 @@ void func_800B21E0(void) {
            func_800B2188);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B2248);
+/**
+ * @brief op0BD EFFECTLOAD — pop an SFX entry id, stash it in
+ *        @c g_seedState->audioChannel2State, and kick off a deferred
+ *        CD load of the corresponding sample bank via the helper
+ *        @c func_800B21E0 (which looks the entry up in
+ *        @c D_800C2E1C and issues @c cdRead targeting the SPU staging
+ *        buffer).
+ *
+ * The stack-pop / store / helper-call dance is only performed on the
+ * first invocation (gated by the per-group active-mask bit).
+ * Subsequent invocations just poll @c D_800DE8D5 — returning @c 1
+ * (block) until the load-complete callback flips it back on, then
+ * @c 2 to advance.
+ *
+ * @return 1 while the CD read is pending, 2 once the bank is staged.
+ */
+s32 func_800B2248(Eline *e) {
+    SeedState *seed;
+    if ((e->activeMask >> e->scriptGroup) & 1) {
+        u8 sp = e->stackPtr;
+        seed = g_seedState;
+        e->stackPtr = sp - 1;
+        seed->audioChannel2State = (s8)e->stack[(s8)sp];
+        func_800B21E0();
+    }
+    if (D_800DE8D5 != 0) {
+        return 2;
+    }
+    return 1;
+}
 
 /**
  * @brief op0BC EFFECTPLAY — pop 4 SFX parameters and start playback.
