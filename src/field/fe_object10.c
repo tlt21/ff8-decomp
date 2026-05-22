@@ -1113,7 +1113,67 @@ void func_800BF230(FieldEntity *entity) {
     D_800D9630[eline->field_0x256]->unk52 = eline->field_0x206;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object10", func_800BF28C);
+/**
+ * @brief Per-entity dispatch refresh for the Eline pool (Block A).
+ *
+ * For each entity in @c D_80085224, picks the appropriate initial draw
+ * path: if @p a0 != 0 AND the entity's @c flags bit @c 0x4 is clear,
+ * runs @c func_800BF230 (which copies geometry state into the render
+ * slot); otherwise calls @c func_800B912C with the entity's
+ * @c field_0x24F and ORs in @c flags bit @c 0x2000. Then fires
+ * @c func_800A97E4 dispatches based on bit flags:
+ *   - 0x100000  → cmd 0x2E with the per-entity counter slot
+ *   - 0x200000  → cmd 0x2F with the entity's @c field_0x256
+ *   - 0x80000   → cmd 0x27 with arg3 = @c field_0x263
+ * Always copies @c flags-bit-8 into the render slot's @c unk60, plus
+ * @c field_0x220 into @c unk62 and @c field_0x257 into @c unk61, and
+ * issues @c func_800A97E4(field_0x256, 0x10, &entity->unk18A, 0).
+ * Two more conditional dispatches follow:
+ *   - 0x1000000 → cmd 0x21
+ *   - 0x2000000 → cmd 0xF with arg2 = 1
+ *
+ * @param a0 Dispatch flag — non-zero enables the @c func_800BF230 path
+ *           for entities without flags-bit-4 set.
+ */
+void func_800BF28C(s32 a0) {
+    Eline *e = D_80085224;
+    D_800DE4FC = 0;
+    if (D_80085388 != 0) {
+        do {
+            s32 flags;
+            if (a0 != 0 && !(e->flags & 4)) {
+                func_800BF230(e);
+            } else {
+                func_800B912C(e, e->field_0x24F);
+                e->flags |= 0x2000;
+            }
+            flags = e->flags;
+            if (flags & 0x100000) {
+                func_800A97E4(D_800DE4FC, 0x2E, 0, 0);
+            } else if (flags & 0x200000) {
+                func_800A97E4(e->field_0x256, 0x2F, 0, 0);
+            } else if (flags & 0x80000) {
+                func_800A97E4(e->field_0x256, 0x27, 0, e->field_0x263);
+            }
+            if (e->flags & 8) {
+                D_800D9630[D_800DE4FC]->unk60 = 1;
+            } else {
+                D_800D9630[D_800DE4FC]->unk60 = 0;
+            }
+            D_800D9630[D_800DE4FC]->unk62 = e->field_0x220;
+            D_800D9630[D_800DE4FC]->unk61 = e->field_0x257;
+            func_800A97E4(e->field_0x256, 0x10, (s32)&e->unk18A, 0);
+            if (e->flags & 0x1000000) {
+                func_800A97E4(e->field_0x256, 0x21, 0, 0);
+            }
+            if (e->flags & 0x2000000) {
+                func_800A97E4(e->field_0x256, 0xF, 1, 0);
+            }
+            D_800DE4FC++;
+            e++;
+        } while (D_800DE4FC < D_80085388);
+    }
+}
 
 extern s32 getMaxBattleEntities(void);
 
