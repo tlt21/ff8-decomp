@@ -54,9 +54,13 @@ extern s32 cdReadAsyncSync(s32 lba, u32 size, u8 *dest, void (*callback)(void));
 extern s32 cdRead(s32 lba, u32 size, u8 *dest, void (*callback)(void));
 
 /** @brief Lower-level async CD read used by @ref cdRead. */
-extern s32 func_80038868(s32 lba, u32 size, u32 dest, void (*cb)(void));
+extern s32 func_80038868(s32 lba, u32 size, u8 *dest, void (*callback)(void));
 
-/** @brief Poll the async CD read pipeline; returns @c 0 once the read has completed. */
+/** @brief Poll the async CD read pipeline; returns @c 0 once the read has completed.
+ *         Returns the CD state byte zero-extended to @c s32 — callers compare
+ *         against @c 0 and @c -1, so the s32 view matches the codegen the
+ *         original 1998 source assumed even though the body's stored field
+ *         is byte-typed (@c D_8008A3D8.status). */
 extern s32 func_800393C8(void);
 
 #endif /* CD_H */

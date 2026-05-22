@@ -14,7 +14,6 @@ extern u16 *D_800852F0;
 extern u8 D_80077E5F;
 extern u8 D_800780D8[];
 extern u8 D_800704BD;
-extern s32 D_8008538C;
 
 /**
  * @brief Drain the @c D_800DE7B0 CD-load command queue.
