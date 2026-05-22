@@ -34,6 +34,8 @@ extern void func_801E8000(s32 priority);
 extern s32 func_801E8104(s32 a, s32 b, s32 c, s32 d);
 extern u32 D_800C2D14[];
 extern u32 D_800C2E14[];
+extern u32 D_800C2E1C[];
+extern s32 cdRead(s32 lba, u32 size, u8 *dest, void (*callback)(void));
 extern u8 D_800DE8D0;
 extern s32 func_80037FB0(s32 a, s8 bank, s32 fileLba);
 extern s32 D_800DE4EC;
@@ -1147,7 +1149,24 @@ void func_800B2188(void) {
     D_800DE8D5 = 1;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B21E0);
+/**
+ * @brief Helper for @c EFFECTLOAD (op0BD, @c func_800B2248) — looks up
+ *        the SFX entry indexed by @c g_seedState->audioChannel2State
+ *        in the @c D_800C2E1C @c {LBA, size} table and issues a
+ *        @c cdRead targeting the @c D_8005F13C SPU staging buffer,
+ *        with @c func_800B2188 as the load-complete callback. Also
+ *        clears the @c D_800DE8D5 ready-flag so the caller's poll
+ *        loop waits for the callback to flip it back on.
+ */
+void func_800B21E0(void) {
+    s32 entryIdx = g_seedState->audioChannel2State;
+    D_800DE8D5 = 0;
+    func_800A59D0();
+    cdRead(D_800C2E1C[entryIdx * 2],
+           D_800C2E1C[entryIdx * 2 + 1],
+           (u8 *)D_8005F13C,
+           func_800B2188);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object5", func_800B2248);
 

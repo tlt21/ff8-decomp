@@ -59,7 +59,7 @@ extern s32  opHandler_MUSICVOL(Eline *e);
 extern s32  opHandler_MUSICVOLTRANS(Eline *e);
 extern s32  func_800B2090(Eline *e);
 extern void func_800B2188(void);
-extern int  func_800B21E0();
+extern void func_800B21E0(void);
 extern int  func_800B2248();
 extern s32  opHandler_EFFECTPLAY(Eline *e);
 
