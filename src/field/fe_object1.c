@@ -792,6 +792,23 @@ s32 func_800A0F34(SVECTOR *v, s32 *sxy) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
 
+/**
+ * @brief Advance the sub-mode of each of @c D_800704A8.slots[8] from
+ *        @c submode == 0 to either @c 1 or @c 2 based on the slot's
+ *        @c mode.
+ *
+ * For each slot whose @c submode is @c 0 (still in init): zeros
+ * @c unk06, snapshots @c q1 / @c q2 into @c savedQ1 / @c savedQ2, and
+ * if @c mode is in @c 0..5 dispatches a small jump table:
+ *   - @c mode 0,1,2,4,5 → @c submode = 1
+ *   - @c mode 3        → @c submode = 2 plus copy @c p1 / @c p2 over @c q1 / @c q2
+ *
+ * @note Decomp at 64.03% match — @c D_800704A8.slots[i] in C makes gcc
+ *       2.7.2 fold the @c +0x20 (slots offset) into the base pointer
+ *       and use small per-slot offsets; target keeps the base at
+ *       @c &D_800704A8 and uses @c 0x22 / @c 0x28 / etc. as the access
+ *       immediates. See @c permuter/func_800A10F4/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A10F4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A11E0);
