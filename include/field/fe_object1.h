@@ -150,7 +150,7 @@ extern int  func_8009FE18();
 extern int  func_800A0640();
 extern int  func_800A06F0();
 extern int  func_800A0D6C();
-extern int  func_800A0E54();
+extern s32  func_800A0E54(s32 start, s32 end, s32 total, s32 progress);
 extern int  func_800A0EB8();
 extern int  func_800A0F34();
 extern int  func_800A0FB8();

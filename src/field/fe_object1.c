@@ -553,7 +553,32 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A06F0);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0D6C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0E54);
+/**
+ * @brief Overflow-safe s32 linear interpolation.
+ *
+ * Computes @c start + ((end - start) * progress) / total without
+ * intermediate overflow. The difference @c end - start is checked
+ * against signed 20-bit range (@c [-0x7FFFF, 0x7FFFF]):
+ *   - When the difference fits, multiplies first then divides — the
+ *     precise path that keeps fractional information through the
+ *     multiplication.
+ *   - When the difference is too large to safely multiply by @p progress
+ *     in 32-bit, divides first then multiplies — loses some precision
+ *     but avoids overflow.
+ *
+ * The fit check uses @c (u32)(diff + 0x7FFFF) <= 0xFFFFE — adding the
+ * positive bias maps the signed range @c [-0x7FFFF, 0x7FFFF] to the
+ * unsigned range @c [0, 0xFFFFE] so a single unsigned compare suffices.
+ */
+s32 func_800A0E54(s32 start, s32 end, s32 total, s32 progress) {
+    s32 diff = end - start;
+    if ((u32)(diff + 0x7FFFF) <= 0xFFFFE) {
+        start += (diff * progress) / total;
+    } else {
+        start += (diff / total) * progress;
+    }
+    return start;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0EB8);
 
