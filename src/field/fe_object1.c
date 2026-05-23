@@ -68,6 +68,25 @@ void func_80098314(void) {
     PutDrawEnv(&D_80067388[0]);
 }
 
+/**
+ * @brief Load/refresh the active field map's asset bundle from CD.
+ *
+ * Either issues a fresh CD read (when @c D_8005F14A is 0 or the current area
+ * @c D_8005F14E differs from the cached @c D_8005F100) or restores from the
+ * cached pointer @c D_8005F104. Then loads the secondary asset, snapshots
+ * pointer-table headers into globals (@c D_800C7208, @c D_800D5EA4 family,
+ * etc.), copies script data to the @c 0x801B0000 staging region, and
+ * dispatches the field-VM pool setup via @c func_800BFBBC and friends.
+ *
+ * @return Pointer past the last initialized eline pool entry.
+ *
+ * @note Decomp at 97.03% match — last 51 instructions of diff are gcc 2.7.2
+ *       reg-alloc and instruction-scheduling choices that natural C cannot
+ *       force (e.g. target emits a redundant @c addu to recompute the asset
+ *       base address into @c a1, while our compile keeps a single base in
+ *       @c v0). See @c permuter/func_800983F0/base.c for the source and
+ *       https://decomp.me/scratch/SXH2a for the in-browser scratch.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800983F0);
 
 /**
