@@ -32,6 +32,8 @@ extern u8 D_8005F150;            /**< Outer PRNG counter — D_800C3520 lookup o
 extern u8 D_8005F151;            /**< Inner PRNG counter — D_800C3520 lookup index, advanced 1/call by func_800A5C9C */
 
 extern s32 func_8004D564(s32 a, s32 b);
+
+extern u16 **D_800D5E9C;         /**< Pointer-to-pointer of u16 count for func_800A29C0's iteration */
 extern s32 D_800C71E4;
 extern u8 D_800D5F50[];
 extern u8 D_800D61A8[];
@@ -654,7 +656,47 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2128);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A222C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A29C0);
+/**
+ * @brief Shape @c func_800A29C0 sees: array of 20-byte items with five
+ *        leading bytes that get initialized per item.
+ *
+ * @note Named after the function/arg. Same memory family as the buffer
+ *       @c func_800A2A30 also walks (next in the chain through
+ *       @c func_800983F0).
+ */
+typedef struct {
+    /* 0x00 */ u8 pad00[0x3];
+    /* 0x03 */ u8 b3;     /**< Set to @c 4 each iter. */
+    /* 0x04 */ u8 b4;     /**< Cleared. */
+    /* 0x05 */ u8 b5;     /**< Cleared. */
+    /* 0x06 */ u8 b6;     /**< Cleared. */
+    /* 0x07 */ u8 b7;     /**< Set to @c 0x22. */
+    /* 0x08 */ u8 pad08[0xC];
+} func_800A29C0_arg0;  /* 0x14 = 20 bytes */
+
+/**
+ * @brief Initialize a run of items at @p p; return the pointer past the
+ *        last item.
+ *
+ * Iterates @c **D_800D5E9C items, each iteration writing the fixed
+ * trio (@c b3 = 4, @c b7 = 0x22, @c b4/b5/b6 = 0). The buffer count
+ * @c **D_800D5E9C is reloaded each iteration (gcc can't prove the
+ * stores don't alias the indirect chain). Returns the input pointer
+ * advanced past the items written, used by @c func_800983F0 to chain
+ * multiple init regions into one growing buffer.
+ */
+void *func_800A29C0(func_800A29C0_arg0 *p) {
+    s32 i;
+    for (i = 0; i < **D_800D5E9C; i++) {
+        p->b3 = 4;
+        p->b7 = 0x22;
+        p->b4 = 0;
+        p->b5 = 0;
+        p->b6 = 0;
+        p++;
+    }
+    return p;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2A30);
 

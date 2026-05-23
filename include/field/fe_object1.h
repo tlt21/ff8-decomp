@@ -164,7 +164,7 @@ extern int  func_800A1BB8();
 extern int  func_800A1CFC();
 extern int  func_800A2128();
 extern int  func_800A222C();
-extern int  func_800A29C0();
+extern void *func_800A29C0();  /* arg/return are a file-private buffer view in fe_object1.c */
 extern int  func_800A2A30();
 extern int  func_800A2AF8();
 extern int  func_800A2D2C();
