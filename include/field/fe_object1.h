@@ -64,6 +64,32 @@ typedef struct {
     /* 0x172 */ u8 pad172[0x02];
 } Emitter; /* 0x174 = 372 bytes */
 
+/**
+ * @brief Particle "view" — overlay struct positioned at @c &sys->slots[slot].
+ *
+ * The view's fields are at the absolute byte offsets (0x2720..0x273B) where
+ * each particle's data actually lives. Indexing @c sys->slots[slot] gives a
+ * 32-byte slot stride; casting that address to @c Particle* lets field
+ * accesses (e.g. @c p->posX) compile to @c sw v0,0x2720(s0) — the original
+ * "keep @c sys+slot*32 in a register, full immediate offsets" pattern.
+ */
+typedef struct {
+    /* 0x0000 */ u8 pad0000[0x2720];
+    /* 0x2720 */ s32 posX;
+    /* 0x2724 */ s32 posY;
+    /* 0x2728 */ s32 posZ;
+    /* 0x272C */ s16 velX;
+    /* 0x272E */ s16 velY;
+    /* 0x2730 */ s16 velZ;
+    /* 0x2732 */ s16 unk12;
+    /* 0x2734 */ u8 pad2734[0x02];
+    /* 0x2736 */ s16 unk16;
+    /* 0x2738 */ u8 emitterIdx;
+    /* 0x2739 */ u8 unk19;
+    /* 0x273A */ u8 unk1A;
+    /* 0x273B */ u8 active;
+} Particle;
+
 extern void func_80098934(void);
 extern void func_80099124(void);
 extern void func_8009912C(void);
@@ -143,7 +169,7 @@ extern int  func_800A2A30();
 extern int  func_800A2AF8();
 extern int  func_800A2D2C();
 extern s16  func_800A2EA4(s16 range);
-extern int  func_800A2F48();
+extern void func_800A2F48();  /* arg is a file-private buffer view in fe_object1.c */
 extern int  func_800A2F70();
 extern s16  func_800A2FE0(ParticleSystem *sys);
 extern void func_800A327C(Eline *actor, SVECTOR *out);

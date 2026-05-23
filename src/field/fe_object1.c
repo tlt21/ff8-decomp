@@ -602,7 +602,43 @@ void func_800A2F28(s32 a0, u8 *a1) {
     } while (i >= 0);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2F48);
+/**
+ * @brief Shape of the buffer @c func_800A2F48 sees: an array of 128
+ * 32-byte items beginning at offset 0x2739, each item's first 3 bytes
+ * being what gets zeroed.
+ *
+ * @note Named after the function/arg it describes rather than after a
+ *       semantic role — we don't know what the original developer
+ *       called this view. The same memory is also reached by
+ *       @c func_800A303C through the @c Particle overlay (where these
+ *       3 bytes are the per-particle @c unk19, @c unk1A, and @c active
+ *       fields), but it's not certain that the original C used the same
+ *       struct in both functions.
+ */
+typedef struct {
+    /* 0x0000 */ u8 pad0000[0x2739];
+    /* 0x2739 */ struct {
+        u8 b0;
+        u8 b1;
+        u8 b2;
+        u8 pad[0x1D];
+    } items[128];
+} func_800A2F48_arg0;
+
+/**
+ * @brief Zero the 3 leading bytes of each of the 128 items in the table.
+ *
+ * Called from @c func_800A2EE0 during the particle-system init chain on
+ * the disc-loaded field-map buffer.
+ */
+void func_800A2F48(func_800A2F48_arg0 *t) {
+    s32 i;
+    for (i = 0; i < 128; i++) {
+        t->items[i].b0 = 0;
+        t->items[i].b1 = 0;
+        t->items[i].b2 = 0;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2F70);
 
@@ -622,32 +658,6 @@ void func_800A3018(Emitter *em) {
         em[i].curCount = 0;
     }
 }
-
-/**
- * @brief Particle "view" — overlay struct positioned at @c &sys->slots[slot].
- *
- * The view's fields are at the absolute byte offsets (0x2720..0x273B) where
- * each particle's data actually lives. Indexing @c sys->slots[slot] gives a
- * 32-byte slot stride; casting that address to @c Particle* lets field
- * accesses (e.g. @c p->posX) compile to @c sw v0,0x2720(s0) — the original
- * "keep @c sys+slot*32 in a register, full immediate offsets" pattern.
- */
-typedef struct {
-    /* 0x0000 */ u8 pad0000[0x2720];
-    /* 0x2720 */ s32 posX;
-    /* 0x2724 */ s32 posY;
-    /* 0x2728 */ s32 posZ;
-    /* 0x272C */ s16 velX;
-    /* 0x272E */ s16 velY;
-    /* 0x2730 */ s16 velZ;
-    /* 0x2732 */ s16 unk12;
-    /* 0x2734 */ u8 pad2734[0x02];
-    /* 0x2736 */ s16 unk16;
-    /* 0x2738 */ u8 emitterIdx;
-    /* 0x2739 */ u8 unk19;
-    /* 0x273A */ u8 unk1A;
-    /* 0x273B */ u8 active;
-} Particle;
 
 /**
  * @brief Spawn up to @p count particles for emitter @p emIdx around @p pos.
