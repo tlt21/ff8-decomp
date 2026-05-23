@@ -963,7 +963,23 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5698);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5700);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5748);
+/**
+ * @brief Linear interpolation between two s16 endpoints.
+ *
+ * Returns @c start + ((end - start) * progress) / total — the standard
+ * `start * (1 - progress/total) + end * (progress/total)` lerp evaluated
+ * in integer arithmetic, with the difference narrowed to s16 before the
+ * multiplication so the product fits in s32 even for large @p progress.
+ *
+ * @param start    Value at @c progress == 0.
+ * @param end      Value at @c progress == total.
+ * @param progress Current step (typically @c [0, total]).
+ * @param total    Step count denominator.
+ */
+s16 func_800A5748(s16 start, s16 end, s16 progress, s16 total) {
+    s16 diff = end - start;
+    return start + (diff * progress) / total;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5788);
 
