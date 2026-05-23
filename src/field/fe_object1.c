@@ -31,6 +31,20 @@ extern s32 D_800C71E4;
 extern u8 D_800D5F50[];
 extern u8 D_800D61A8[];
 extern u8 D_8005F168[];
+
+/**
+ * @brief 24-byte draw-point slot holding a 16-bit (x, y, z) position.
+ *
+ * The fields-only @c x/y/z prefix is what @c func_800A4500 writes;
+ * @c pad06 covers the rest of the slot until other helpers populate it.
+ */
+typedef struct {
+    /* 0x00 */ s16 x;
+    /* 0x02 */ s16 y;
+    /* 0x04 */ s16 z;
+    /* 0x06 */ u8  pad06[0x12];
+} DrawPoint;  /* 0x18 = 24 bytes */
+extern DrawPoint D_800706A0[];
 extern s16 D_8005F122;
 extern s16 D_8005F14A;
 extern s16 D_8005F100;
@@ -918,7 +932,27 @@ void func_800A44D8(void) {
     } while (i >= 0);
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A4500);
+/**
+ * @brief Install the same draw-point at all 8 slots and mark them active.
+ *
+ * Iterates the 8-slot @c D_800706A0 draw-point table and writes the
+ * 12.4 fixed-point position (@p x, @p y, @p z) into each slot's
+ * @c x/y/z fields (after shifting down by 12 to drop the fractional
+ * bits), and sets the matching @c D_8005F168[i] flag to 1 to mark the
+ * slot as occupied.
+ *
+ * Called from the @c SETDRAWPOINT script opcode with the source
+ * eline's position.
+ */
+void func_800A4500(s32 x, s32 y, s32 z) {
+    s32 i;
+    for (i = 0; i < 8; i++) {
+        D_8005F168[i] = 1;
+        D_800706A0[i].x = x >> 12;
+        D_800706A0[i].y = y >> 12;
+        D_800706A0[i].z = z >> 12;
+    }
+}
 
 /**
  * Stores a halfword value to the global D_8005F122.

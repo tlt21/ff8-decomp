@@ -180,7 +180,7 @@ extern int  func_800A38B4();
 extern int  func_800A39D8();
 extern int  func_800A3FE0();
 extern int  func_800A42EC();
-extern int  func_800A4500();
+extern void func_800A4500(s32 x, s32 y, s32 z);
 extern int  func_800A455C();
 extern int  func_800A4758();
 extern s32  func_800A48CC(void);
