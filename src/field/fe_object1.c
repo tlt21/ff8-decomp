@@ -381,7 +381,7 @@ void func_8009BB18(void) {
  * @param b9  Byte stored at offset 9 of each waypoint.
  * @param b8  Byte stored at offset 8 of each waypoint.
  */
-void func_8009BD50(Eline *e, s16 mode, u8 b9, u8 b8) {
+void func_8009BD50(Eline *e, s16 mode, s8 b9, u8 b8) {
     PathEntry *base1 = D_80070760;
     PathEntry *p1 = base1 + D_8005F144;
     PathEntry *base0 = D_80070A60;
@@ -604,7 +604,30 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009ECA4);
  */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F74C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F7F4);
+/**
+ * @brief Compute a move/turn vector and record it as a waypoint.
+ *
+ * Dispatches @c func_8009B4A8 with one of three calling conventions
+ * driven by the signed @p sign byte:
+ *   - @c sign == 0 → @c (idx, b, 0,  0)  (no move)
+ *   - @c sign  > 0 → @c (idx, b, 1,  1)  (forward step)
+ *   - @c sign  < 0 → @c (idx, b, 1, -1)  (reverse step)
+ *
+ * After that, calls @c func_8009BD50 (path recorder) on the Eline
+ * @c D_80085224[idx] with the requested @c mode and @c sign, then
+ * @c func_8009BB18 to publish the resulting waypoint.
+ */
+void func_8009F7F4(s16 idx, s8 sign, u8 b, s16 mode) {
+    if (sign == 0) {
+        func_8009B4A8(idx, b, 0, 0);
+    } else if (sign > 0) {
+        func_8009B4A8(idx, b, 1, 1);
+    } else {
+        func_8009B4A8(idx, b, 1, -1);
+    }
+    func_8009BD50(&D_80085224[idx], mode, sign, 0);
+    func_8009BB18();
+}
 
 /**
  * @brief Interpolate an Eline's X/Y/Z position via the safe-lerp helper.
