@@ -26,6 +26,7 @@ extern u8 D_80085388;
 extern u8 D_800C32A0[];
 extern u8 D_800C3320[];
 extern u8 D_800C3520[];
+extern u8 D_800C6D90;            /**< PRNG counter advanced 13/step by func_800A2EA4 */
 extern s32 D_800C71E4;
 extern u8 D_800D5F50[];
 extern u8 D_800D61A8[];
@@ -571,7 +572,25 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2AF8);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2D2C);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2EA4);
+/**
+ * @brief Cheap pseudo-random helper: returns @c (table[counter] * range) >> 8.
+ *
+ * Advances a one-byte counter @c D_800C6D90 by 13 (a prime stride that
+ * walks all 256 positions of the lookup table before repeating), reads
+ * a byte from the @c D_800C3520 lookup table, multiplies by @p range,
+ * and returns the high 24 bits of the product as a signed s16.
+ *
+ * Used by @c func_800A303C to seed each new particle's position,
+ * velocity, and unk fields with a value in roughly @c [-range/2, range/2].
+ *
+ * @param range Half-range scaler — the table entry (0..255) is multiplied
+ *              by @p range and shifted right 8.
+ * @return A signed pseudo-random value derived from the lookup table.
+ */
+s16 func_800A2EA4(s16 range) {
+    D_800C6D90 += 13;
+    return ((s32)D_800C3520[D_800C6D90] * range) >> 8;
+}
 
 /**
  * Initializes an object by calling a sequence of setup functions.
