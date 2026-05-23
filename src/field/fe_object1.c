@@ -614,23 +614,28 @@ s32 func_800A0EB8(s32 start, s32 end, s32 total, s32 angle) {
 
 /**
  * @brief Project a 3D point through the current world transform and
- *        return the GTE flag word.
+ *        return the @c func_80040DE4 projection result.
  *
  * Pushes the GTE matrix stack, installs the current world transform
  * (rotation and translation) from @c D_800C71F8, resets the geometric
  * offset to @c (0, 0), then projects @p v to screen space, writing the
  * resulting on-screen XY into @c *sxy and discarding the @c p and flag
- * outputs into stack locals. Returns the GTE flag word from @c PopMatrix
- * so the caller can detect clipping / off-screen.
- *
- * @note Decomp at 94.03% match — remaining diff is gcc 2.7.2
- *       reg-alloc: the original allocates @c s0 to the @c D_800C71F8
- *       hi-part and @c s1 to @c v, ours swaps them. As a side effect
- *       the original emits an extra @c addu round-trip of the return
- *       value through @c s0; ours doesn't. See
- *       @c permuter/func_800A0F34/base.c for the current C.
+ * outputs into stack locals. Pops the matrix stack via
+ * @c func_8003FF88 (return discarded) and returns @c func_80040DE4 's
+ * result — the saved value survives @c func_8003FF88 by being copied
+ * out of @c v0 in the @c jal delay slot.
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0F34);
+s32 func_800A0F34(SVECTOR *v, s32 *sxy) {
+    s32 result;
+    s32 unk_p, unk_flag;
+    func_8003FEE4();
+    func_800406A4((u8 *)D_800C71F8);
+    func_80040734((u8 *)D_800C71F8);
+    func_800408C4(0, 0);
+    result = func_80040DE4(v, sxy, &unk_p, &unk_flag);
+    func_8003FF88();
+    return result;
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
 
