@@ -8,24 +8,6 @@
 #include "field/fe_object1.h"
 #include "field/fe_object5.h"
 
-/* File-private externs — symbols whose owner header doesn't exist
- * yet. The @c func_801E* cluster lives in the movie-streaming overlay
- * (loaded at @c 0x801E0000) which hasn't been split or modeled in a
- * header; the @c D_800C2D14 / @c D_800C2E14 / @c D_800C2E1C tables
- * are file-tool-generated CD-entry maps used only by this file; and
- * @c D_800C5FB0 / @c D_80077E5F are battle-encounter / save-region
- * scratch that other TUs already declare locally. */
-extern u8 D_800C5FB0[];
-extern u8 D_80077E5F;
-extern u32 D_800C2D14[];
-extern u32 D_800C2E14[];
-extern u32 D_800C2E1C[];
-extern s32 func_801E8B98(void);
-extern void func_801E8000(s32 priority);
-extern s32 func_801E8104(s32 a, s32 b, s32 c, s32 d);
-extern s32 func_801E82CC(void);
-extern void func_801E870C(void);
-
 /**
  * @brief op159 SEALEDOFF — pop a flag mask and unseal the matching
  *        Ultimecia's-Castle features.

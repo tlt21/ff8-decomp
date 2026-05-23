@@ -968,4 +968,27 @@ extern void func_8002D784(s32 sfxIdx, u8 *data, s32 paramY, s32 paramZ, s32 para
 /** @brief Read the per-slot SFX status word at the table offset 0x?. */
 extern s32 func_8002CE84(s32 idx);
 
+/* ======================================================================== */
+/* fe_object5 movie-load tables and movie-overlay (0x801E0000) entry points */
+/* ======================================================================== */
+
+/** @brief Battle-encounter scratch buffer; fe_object5 hands the pointer to
+ *         @c loadBattleCmd as the asset-payload base. */
+extern u8 D_800C5FB0[];
+
+/** @brief CD-entry @c {LBA,size} pairs for movie load opcodes (op04F MOVIE). */
+extern u32 D_800C2D14[];
+/** @brief CD-entry @c {LBA,size,_,_} quadruples for the alt movie loader. */
+extern u32 D_800C2E14[];
+/** @brief CD-entry @c {LBA,size} pairs for the SPU-stream loader (op056). */
+extern u32 D_800C2E1C[];
+
+/** @brief Movie overlay (loaded at @c 0x801E0000) entry points called by
+ *         the field-VM movie / SPU-stream opcodes. */
+extern void func_801E8000(s32 priority);
+extern s32  func_801E8104(s32 a, s32 b, s32 c, s32 d);
+extern s32  func_801E82CC(void);
+extern void func_801E870C(void);
+extern s32  func_801E8B98(void);
+
 #endif /* FIELD_H */
