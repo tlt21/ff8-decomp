@@ -612,6 +612,24 @@ s32 func_800A0EB8(s32 start, s32 end, s32 total, s32 angle) {
     return start + ((sin_val + 0x1000) * diff) / 0x2000;
 }
 
+/**
+ * @brief Project a 3D point through the current world transform and
+ *        return the GTE flag word.
+ *
+ * Pushes the GTE matrix stack, installs the current world transform
+ * (rotation and translation) from @c D_800C71F8, resets the geometric
+ * offset to @c (0, 0), then projects @p v to screen space, writing the
+ * resulting on-screen XY into @c *sxy and discarding the @c p and flag
+ * outputs into stack locals. Returns the GTE flag word from @c PopMatrix
+ * so the caller can detect clipping / off-screen.
+ *
+ * @note Decomp at 94.03% match — remaining diff is gcc 2.7.2
+ *       reg-alloc: the original allocates @c s0 to the @c D_800C71F8
+ *       hi-part and @c s1 to @c v, ours swaps them. As a side effect
+ *       the original emits an extra @c addu round-trip of the return
+ *       value through @c s0; ours doesn't. See
+ *       @c permuter/func_800A0F34/base.c for the current C.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0F34);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
