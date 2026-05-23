@@ -30,6 +30,8 @@ extern u8 D_800C3520[];
 extern u8 D_800C6D90;            /**< PRNG counter advanced 13/step by func_800A2EA4 */
 extern u8 D_8005F150;            /**< Outer PRNG counter — D_800C3520 lookup offset, advanced 13/step per 256 calls of func_800A5C9C */
 extern u8 D_8005F151;            /**< Inner PRNG counter — D_800C3520 lookup index, advanced 1/call by func_800A5C9C */
+
+extern s32 func_8004D564(s32 a, s32 b);
 extern s32 D_800C71E4;
 extern u8 D_800D5F50[];
 extern u8 D_800D61A8[];
@@ -747,7 +749,44 @@ void func_800A2F48(func_800A2F48_arg0 *t) {
     }
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2F70);
+/**
+ * @brief Shape @c func_800A2F70 sees: array of 128 40-byte items, three
+ *        fields per item — @c b3 / @c b7 (constant tags) and @c hE (a
+ *        @c func_8004D564 -seeded halfword).
+ *
+ * @note Named after the function/arg. Called from @c func_800A2EE0 twice
+ *       (at base + 0x3720 and base + 0x4B20) on two different sub-regions
+ *       of the disc-loaded field-map buffer, so the shape describes
+ *       "whichever sub-region was passed" rather than any single
+ *       canonical struct.
+ */
+typedef struct {
+    /* 0x00 */ u8  pad00[0x3];
+    /* 0x03 */ u8  b3;
+    /* 0x04 */ u8  pad04[0x3];
+    /* 0x07 */ u8  b7;
+    /* 0x08 */ u8  pad08[0x6];
+    /* 0x0E */ s16 hE;
+    /* 0x10 */ u8  pad10[0x18];
+} func_800A2F70_arg0;  /* 0x28 = 40 bytes */
+
+/**
+ * @brief Seed 128 items with the constant tags 9 / 0x2C and a
+ *        per-item @c func_8004D564(0, 0xE8) sample at the @c hE field.
+ *
+ * Called twice from @c func_800A2EE0 on two distinct sub-regions of the
+ * disc-loaded field-map buffer; both regions are arrays of 40-byte
+ * items, 128 entries each.
+ */
+void func_800A2F70(func_800A2F70_arg0 *e) {
+    s32 i;
+    for (i = 0; i < 128; i++) {
+        e->b3 = 9;
+        e->b7 = 0x2C;
+        e->hE = func_8004D564(0, 0xE8);
+        e++;
+    }
+}
 
 /**
  * @brief Shape of the buffer @c func_800A2FE0 sees: an array of 128

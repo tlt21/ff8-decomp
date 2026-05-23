@@ -170,7 +170,7 @@ extern int  func_800A2AF8();
 extern int  func_800A2D2C();
 extern s16  func_800A2EA4(s16 range);
 extern void func_800A2F48();  /* arg is a file-private buffer view in fe_object1.c */
-extern int  func_800A2F70();
+extern void func_800A2F70();  /* arg is a file-private buffer view in fe_object1.c */
 extern s16  func_800A2FE0();  /* arg is a file-private buffer view in fe_object1.c */
 extern void func_800A327C(Eline *actor, SVECTOR *out);
 extern void func_800A3488(Eline *actor, SVECTOR *out);
