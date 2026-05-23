@@ -642,7 +642,40 @@ void func_800A2F48(func_800A2F48_arg0 *t) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2F70);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2FE0);
+/**
+ * @brief Shape of the buffer @c func_800A2FE0 sees: an array of 128
+ * 32-byte items beginning at offset 0x2739, each item's third byte
+ * being the @c active flag scanned for free slots.
+ *
+ * @note Named after the function/arg. Same memory layout as
+ *       @c func_800A2F48_arg0 (which clears all three leading bytes of
+ *       each item); the views weren't unified because we don't know
+ *       whether the original C source shared a single typedef.
+ */
+typedef struct {
+    /* 0x0000 */ u8 pad0000[0x2739];
+    /* 0x2739 */ struct {
+        u8 b0;       /* unk19 in particle terms */
+        u8 b1;       /* unk1A */
+        u8 active;   /* the alive flag */
+        u8 pad[0x1D];
+    } items[128];
+} func_800A2FE0_arg0;
+
+/**
+ * @brief Find the first inactive particle slot (0..127), or @c -1 if none.
+ *
+ * Scans up to 128 items in @p t for the first one whose @c active flag
+ * is zero, returning its index. Called by @c func_800A303C to pick a
+ * free slot for a new particle.
+ */
+s16 func_800A2FE0(func_800A2FE0_arg0 *t) {
+    s32 i;
+    for (i = 0; i < 128; i++) {
+        if (t->items[i].active == 0) return (s16)i;
+    }
+    return -1;
+}
 
 /**
  * @brief Zero @c curCount and @c unk15E across the first 16 emitter slots.
