@@ -103,6 +103,53 @@ void func_80098934(void) {
     } while (i >= 0);
 }
 
+/**
+ * @brief Field engine reset / map-transition orchestrator (the big state machine).
+ *
+ * Runs the per-frame outer init/reset loop for the field engine. The whole
+ * function dispatches on @c D_8005F14C (the field load mode — 0=fresh,
+ * 1=normal, 2=new-area, 3=movie, 6=transition, 0xA=skip-transition) and on
+ * @c D_800704A8.mode (the engine-level state byte that picks one of several
+ * exit paths at the end of each iteration: 4=quit, 5/6=copyFramebuffer +
+ * flag-reset, 7=sndCmd21 + snapshot, 1=loop back, 3/8/etc.=plain exit).
+ *
+ * Major phases each pass:
+ *   - @c memcpy 8 bytes of the overlay header at @c D_80098000 onto the
+ *     stack and call @c InitClearTiles.
+ *   - For load modes 0/1/2: reset the @c SystemState entity flags
+ *     (@c unk1A6/1A7/1A9/1AE/1B0/1B1) and clear @c fieldStepDelta /
+ *     @c unk104 / @c unk106, then call @c func_800A17A4 on the two
+ *     16-byte script-VM scratch arrays at @c sys+0x122 and @c sys+0x130
+ *     followed by @c func_800A44D8 + @c func_80098934.
+ *   - For mode 0: re-init the two @c DRAWENVs and clear them via
+ *     @c func_80048DD4.
+ *   - For modes 1/2 (with @c sys->unk1A5 == 0 for mode 1): kick a
+ *     framebuffer copy and set the post-copy state flags.
+ *   - For all modes except 6: snapshot 12 consecutive pointer-table fields
+ *     from the freshly-loaded overlay at @c 0x800E1000 into the
+ *     @c D_800C7208 / @c D_800C71E8 / @c D_800D5E* globals, then call
+ *     @c func_800983F0 to install the eline pool.
+ *   - Compute centered screen rectangles into @c D_800C7210 / @c D_800C7214
+ *     from @c D_8005F0F8 's bounding-box fields, then derive
+ *     @c D_800C71F0 (entry-table start = @c *D_800C7204 + 4) and
+ *     @c D_800D5E98 (entry-table end = @c D_800C71F0 + count * 24).
+ *   - Dispatch @c func_800BF718 with a mode argument that maps
+ *     @c D_8005F14C ∈ {6→2, 0xA→3, 3→0, default→1}.
+ *
+ * @note Decomp at 97.28% match — last 79 instructions of diff are gcc 2.7.2
+ *       reg-alloc and instruction-scheduling cascades (one missing
+ *       redundant @c addu in the prologue, state==7 @c lbu/sb reorder,
+ *       state==1 jal-delay-slot fill choice). See
+ *       @c permuter/func_8009895C/base.c for the source and
+ *       https://decomp.me/scratch/rFzLA for the in-browser scratch.
+ *
+ *       Several semantic bugs were caught during decomp and fixed in the
+ *       baseline: the @c D_800704A8.mode = 0 dispatch had inverted
+ *       condition; @c func_800BF718 's mode arg mapping had 0xA→2 (wrong,
+ *       should be 3) and 3→3 (wrong, should be 0); state==7 was missing
+ *       the @c sys->unk120 = @c D_8005F14E save; @c D_800D5E98 was missing
+ *       the @c +4 offset for the entry-table-end pointer.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009895C);
 
 void func_80099124(void) {
