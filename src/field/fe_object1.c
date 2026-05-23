@@ -582,6 +582,22 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009E660);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009ECA4);
 
+/**
+ * @brief Asymmetric overlap test between two Eline entities.
+ *
+ * Checks whether entity @p b is within entity @p a 's talk-trigger area:
+ *   - Z-axis separation must satisfy @c -126 <= (b->posZ - a->posZ)/4096 <= 127.
+ *   - XY-distance squared must be less than @c (a->talkRadius + b->radius) squared.
+ *
+ * Asymmetric: @p a contributes the @c talkRadius (0x1F8) while @p b
+ * contributes the @c radius (0x1F6). The 2-iter outer loop appears to
+ * be a quirk of the original source — both iterations are identical.
+ *
+ * @note Decomp at 85.36% match — gcc 2.7.2 picks @c bnez (success-exit)
+ *       over target's @c beqz (failure-exit) for the dist comparison,
+ *       and chooses different temp registers for the mflo results.
+ *       See @c permuter/func_8009F74C/base.c for the current C.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F74C);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F7F4);
