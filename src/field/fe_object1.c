@@ -973,6 +973,24 @@ void func_800A1CC0(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A1CFC);
 
+/**
+ * @brief Reset 128 entries in @c items1[] and emit 16 GPU draw-mode
+ *        prims into @c items2[] using @c func_8004D524 for the color.
+ *
+ * Loop 1: for each of 128 28-byte items at @c t+0x4000, call
+ *         @c func_8004D684(item) (which clears/inits it), then clear
+ *         @c bC/bD/bE and @c b14/b15/b16 and set bit 1 of @c b7.
+ *
+ * Loop 2: for each of 16 8-byte items at @c t+0x4E00, write
+ *         @c tag = 1 (offset 3) and @c cmd = @c 0xE1000200 | (color & 0x9FF)
+ *         (offset 4), where @c color comes from @c func_8004D524(0, 2, 0, 0).
+ *
+ * @note Decomp at 99.85% match with the @c i[t->items1] trick on loop 1
+ *       to swap the @c addu operand order (per @c pattern_i_arr_to_swap_addu).
+ *       Loop 2 has a matching @c addu operand-swap diff that the same
+ *       trick can't fix without introducing an extra @c addiu rebase.
+ *       See @c permuter/func_800A2128/base.c for the current C.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2128);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A222C);
