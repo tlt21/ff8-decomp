@@ -1659,7 +1659,43 @@ s16 func_800A5748(s16 start, s16 end, s16 progress, s16 total) {
     return start + (diff * progress) / total;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5788);
+/**
+ * @brief Companion of @c func_800A5700 — advances the dialog-pos animation
+ *        and dispatches the per-frame visual update.
+ *
+ * Increments @c dialogTimer; once it catches up to @c dialogCount, snapshots
+ * the destination triple (@c field_0x11A/11C/11E) into the current triple
+ * (@c field_0x114/116/118) and resets @c dialogTimer to @c dialogCount (the
+ * snapshot is what subsequent ticks lerp back from). Each tick then runs the
+ * three-axis safe-lerp via @c func_800A5748 and stores the result back to
+ * @c field_0x10E/110/112, finally calling @c func_800A553C with the new
+ * (x, y, z) tuple.
+ *
+ * @param a0 Opaque pointer forwarded as @c func_800A553C's first arg.
+ */
+void func_800A5788(s32 a0) {
+    SystemState *sys = &D_800704A8;
+
+    sys->unk1A1 = 0;
+    sys->dialogTimer++;
+    if ((s16)*(volatile u16 *)&sys->dialogTimer >= (s16)*(volatile u16 *)&sys->dialogCount) {
+        sys->field_0x114 = sys->field_0x11A;
+        sys->field_0x116 = sys->field_0x11C;
+        sys->field_0x118 = sys->field_0x11E;
+        sys->dialogTimer = *(volatile u16 *)&sys->dialogCount;
+    }
+    sys->field_0x10E = func_800A5748((s16)sys->field_0x114, (s16)sys->field_0x11A,
+                                     (s16)*(volatile u16 *)&sys->dialogTimer,
+                                     (s16)*(volatile u16 *)&sys->dialogCount);
+    sys->field_0x110 = func_800A5748((s16)sys->field_0x116, (s16)sys->field_0x11C,
+                                     (s16)*(volatile u16 *)&sys->dialogTimer,
+                                     (s16)*(volatile u16 *)&sys->dialogCount);
+    func_800A553C(a0, (s16)sys->field_0x10E, (s16)sys->field_0x110,
+                  (s16)(sys->field_0x112 = func_800A5748((s16)sys->field_0x118,
+                                                         (s16)sys->field_0x11E,
+                                                         (s16)*(volatile u16 *)&sys->dialogTimer,
+                                                         (s16)*(volatile u16 *)&sys->dialogCount)));
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5898);
 
