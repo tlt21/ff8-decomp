@@ -877,6 +877,26 @@ s32 func_800A0F34(SVECTOR *v, s32 *sxy) {
     return result;
 }
 
+/**
+ * @brief 2D position clamp — clamp @c out->(x,y) to a rect defined by
+ *        @c D_8005F0F8->rect_a[a], shrunk by half the extents of
+ *        @c D_8005F0F8->rect_b[b].
+ *
+ * Computes four "half" values from rect_b's (f0,f2) and (f4,f6) field
+ * pairs (signed average with round-toward-zero via @c (x + (x>>31)) >> 1),
+ * then clamps @c out->x and @c out->y to the rect_a bounds @c (f4,f6) and
+ * @c (f2,f0) minus/plus the appropriate half.
+ *
+ * @param out  Output position (s16 x, s16 y).
+ * @param a    @c rect_a[] index (one of 2 in caller).
+ * @param b    @c rect_b[] index (always 0 in caller).
+ *
+ * @note Decomp at 99.30% match — semantics and structure match;
+ *       remaining diff is gcc 2.7.2 prologue scheduling reordering the
+ *       @c sll/sra sign-extensions of @c a1 vs @c a2, plus one
+ *       register reuse in block 4 (target reuses @c a1, ours uses @c a3).
+ *       See @c permuter/func_800A0FB8/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
 
 /**
