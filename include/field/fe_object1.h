@@ -162,7 +162,7 @@ extern int  func_800A17B8();
 extern int  func_800A19B8();
 extern void func_800A1BB8(void);
 extern int  func_800A1CFC();
-extern int  func_800A2128();
+extern void func_800A2128();  /* arg is a file-private buffer view in fe_object1.c */
 extern int  func_800A222C();
 /**
  * @brief Shape @c func_800A29C0 sees: array of 20-byte items with five

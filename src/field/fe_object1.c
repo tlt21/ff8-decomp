@@ -37,6 +37,7 @@ extern void func_80048F5C(RECT *r, u16 *src);
 extern void func_80048EFC(RECT *r, u8 *src);
 extern void func_80042634(s32 a);
 extern s32 func_8004D524(s32, s32, s32, s32);
+extern void func_8004D684(void *p);
 
 extern u16 **D_800D5E9C;         /**< Pointer-to-pointer of u16 count for func_800A29C0's iteration */
 extern u16 *D_800C71E4;
@@ -974,24 +975,72 @@ void func_800A1CC0(void) {
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A1CFC);
 
 /**
- * @brief Reset 128 entries in @c items1[] and emit 16 GPU draw-mode
- *        prims into @c items2[] using @c func_8004D524 for the color.
- *
- * Loop 1: for each of 128 28-byte items at @c t+0x4000, call
- *         @c func_8004D684(item) (which clears/inits it), then clear
- *         @c bC/bD/bE and @c b14/b15/b16 and set bit 1 of @c b7.
- *
- * Loop 2: for each of 16 8-byte items at @c t+0x4E00, write
- *         @c tag = 1 (offset 3) and @c cmd = @c 0xE1000200 | (color & 0x9FF)
- *         (offset 4), where @c color comes from @c func_8004D524(0, 2, 0, 0).
- *
- * @note Decomp at 99.85% match with the @c i[t->items1] trick on loop 1
- *       to swap the @c addu operand order (per @c pattern_i_arr_to_swap_addu).
- *       Loop 2 has a matching @c addu operand-swap diff that the same
- *       trick can't fix without introducing an extra @c addiu rebase.
- *       See @c permuter/func_800A2128/base.c for the current C.
+ * @brief Shape @c func_800A2128 sees: a buffer with a 128-entry
+ *        28-byte item table at offset 0x4000 and a 16-entry 8-byte
+ *        prim table immediately after.
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2128);
+typedef struct {
+    /* 0x00 */ u8 pad00[0x7];
+    /* 0x07 */ u8 b7;
+    /* 0x08 */ u8 pad08[0x4];
+    /* 0x0C */ u8 bC;
+    /* 0x0D */ u8 bD;
+    /* 0x0E */ u8 bE;
+    /* 0x0F */ u8 pad0F[0x5];
+    /* 0x14 */ u8 b14;
+    /* 0x15 */ u8 b15;
+    /* 0x16 */ u8 b16;
+    /* 0x17 */ u8 pad17[0x5];
+} func_800A2128_item1;  /* 0x1C = 28 bytes */
+
+typedef struct {
+    /* 0x00 */ u8  pad03[0x3];
+    /* 0x03 */ u8  tag;     /**< Always written as @c 1. */
+    /* 0x04 */ s32 cmd;     /**< @c 0xE1000200 | (color & 0x9FF). */
+} func_800A2128_item2;  /* 8 bytes */
+
+typedef struct {
+    /* 0x0000 */ u8 pad0000[0x4000];
+    /* 0x4000 */ func_800A2128_item1 items1[128];
+    /* 0x4E00 */ func_800A2128_item2 items2[16];
+} func_800A2128_arg0;
+
+/**
+ * @brief Reset 128 entries in @c items1[] and emit 16 GPU draw-mode
+ *        prims into @c items2[].
+ *
+ * Loop 1: for each of 128 28-byte items, call @c func_8004D684(item)
+ *         (which clears/inits it), then clear @c bC/bD/bE and
+ *         @c b14/b15/b16 and set bit 1 of @c b7.
+ *
+ * Loop 2: for each of 16 8-byte items, write @c tag = 1 and
+ *         @c cmd = @c 0xE1000200 | (color & 0x9FF), where @c color
+ *         comes from @c func_8004D524(0, 2, 0, 0).
+ *
+ * @note The two @c i[t->items1] / @c i[t->items2] uses (instead of
+ *       @c t->items1[i] / @c t->items2[i]) are the trick that swaps
+ *       the @c addu operand order to match the target — see
+ *       @c pattern_i_arr_to_swap_addu in project memory.
+ */
+void func_800A2128(func_800A2128_arg0 *t) {
+    s16 i;
+    for (i = 0; i < 128; i++) {
+        func_8004D684(&i[t->items1]);
+        i[t->items1].bC = 0;
+        i[t->items1].bD = 0;
+        i[t->items1].bE = 0;
+        i[t->items1].b14 = 0;
+        i[t->items1].b15 = 0;
+        i[t->items1].b16 = 0;
+        i[t->items1].b7 |= 2;
+    }
+    for (i = 0; i < 16; i++) {
+        s32 color;
+        i[t->items2].tag = 1;
+        color = func_8004D524(0, 2, 0, 0);
+        t->items2[i].cmd = (color & 0x9FF) | 0xE1000200;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A222C);
 
