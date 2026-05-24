@@ -220,15 +220,34 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A4C0);
  *   - bit 6 set in @c unk150 and clear in @c unk154 → @c trigger7 = @c unk19D (= 1)
  *   - bit 7 set in @c unk150 and clear in @c unk154 → @c trigger7 = 2
  *
- * @note Decomp at 97.42% match. Walking @c pool via @c pool++ (instead
- *       of @c pool[i] indexing) lets gcc rebase the walker to
- *       @c +0x199 (the @c trigger7 field) and use small relative
- *       offsets for the other fields, matching target's pattern.
- *       Remaining diff is one scheduling slot: target uses a @c nop
- *       to fill the count-reload @c lbu 's load delay; gcc 2.7.2
- *       fills it with the @c i++ instead.
+ * The for-loop's @c i++, pool++ in the increment clause (comma
+ * operator) keeps gcc 2.7.2 from reordering the increments into the
+ * count-reload @c lbu 's load-delay slot — target leaves that slot
+ * as a @c nop.
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A7E8);
+void func_8009A7E8(Eline *e, FieldEntityB *pool) {
+    s32 i;
+    for (i = 0; i < D_800852F8; i++, pool++) {
+        if (pool->activeMarker == 1) {
+            if (e->msgActive == 0) {
+                if (pool->unk19D == pool->activeMarker) {
+                    if ((s32)(((s32)pool->unk19C - (s32)e->unk23F + 0x20) & 0xFF) < 0x40) {
+                        if (D_800704A8.unk150 & 0x40) {
+                            if (!(D_800704A8.unk154 & 0x40)) {
+                                pool->trigger7 = pool->unk19D;
+                            }
+                        }
+                        if (D_800704A8.unk150 & 0x80) {
+                            if (!(D_800704A8.unk154 & 0x80)) {
+                                pool->trigger7 = 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * @brief Clear @c trigger4 and @c unk19D across every @c FieldEntityB in the pool.

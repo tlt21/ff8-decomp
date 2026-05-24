@@ -125,7 +125,7 @@ extern int  func_80099348();
 extern int  func_8009A0E8();
 extern int  func_8009A2BC();
 extern int  func_8009A4C0();
-extern int  func_8009A7E8();
+extern void func_8009A7E8(Eline *e, FieldEntityB *pool);
 extern void func_8009A8E0(FieldEntityB *e);
 extern int  func_8009A920();
 extern void func_8009AA64(EventEntry *e);
