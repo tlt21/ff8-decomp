@@ -1905,6 +1905,24 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8058);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A81AC);
 
+/**
+ * @brief Claim a render-slot pool entry and initialize its state.
+ *
+ * Acquires @c D_800D9630[idx] if currently @c NULL by installing @p slot
+ * and writing @p firstWord to the slot's leading @c s32. The slot's state
+ * fields (@c unk10/12/14/18/1A/1C/50/52) are zeroed except @c unk12 which
+ * gets the default @c 0x190; the three @c field20/24/28 scale factors are
+ * set to @c 0x1000 (unit scale); @c unk60 (active flag) is cleared.
+ *
+ * @return @p slot @c + @c 0x98 on successful claim, or @c NULL if the
+ *         render-slot was already occupied.
+ *
+ * @note Compiled as PsyQ 4.3 (the two-@c jr-ra exit layout is gcc 2.8.0's
+ *       no-tail-merge style). Current C decomp hits 95.77% — gcc 2.7.2
+ *       tail-merges the two returns into one shared @c jr-ra. Stays as
+ *       INCLUDE_ASM until the file is split.
+ *       See @c permuter/func_800A8CDC/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8CDC);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8DAC);

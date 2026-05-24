@@ -533,12 +533,21 @@ extern s32 fieldRandom(void);
 typedef struct {
     u8 pad00[0x0C];
     u16 unk0C;
-    u8 pad0E[0x12];
-    s32 field20;     /**< Mode-0 stores arg2[0]; mode-1 adds arg2[0]. */
-    s32 field24;     /**< Mode-0 stores arg2[1]; mode-1 adds arg2[1]. */
-    s32 field28;     /**< Mode-0 stores arg2[2]; mode-1 adds arg2[2]. */
+    u8 pad0E[0x02];
+    u16 unk10;       /**< Cleared on init by @c func_800A8CDC. */
+    u16 unk12;       /**< Init to @c 0x190 by @c func_800A8CDC. */
+    u16 unk14;       /**< Cleared on init. */
+    u8 pad16[0x02];
+    u16 unk18;       /**< Cleared on init. */
+    u16 unk1A;       /**< Cleared on init. */
+    u16 unk1C;       /**< Cleared on init. */
+    u8 pad1E[0x02];
+    s32 field20;     /**< Mode-0 stores arg2[0]; mode-1 adds arg2[0]. Init to @c 0x1000. */
+    s32 field24;     /**< Mode-0 stores arg2[1]; mode-1 adds arg2[1]. Init to @c 0x1000. */
+    s32 field28;     /**< Mode-0 stores arg2[2]; mode-1 adds arg2[2]. Init to @c 0x1000. */
     s32 field2C;     /**< Mode-0 stores arg2[3] (mode-1 does not write). */
-    u8 pad30[0x22];
+    u8 pad30[0x20];
+    u16 unk50;       /**< Cleared on init. */
     u16 unk52;       /**< Current motion halfword (mirror of Eline @c field_0x206). */
     u8 pad54[0x0C];
     u8 unk60;
