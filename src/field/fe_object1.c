@@ -596,13 +596,17 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009ECA4);
  *   - XY-distance squared must be less than @c (a->talkRadius + b->radius) squared.
  *
  * Asymmetric: @p a contributes the @c talkRadius (0x1F8) while @p b
- * contributes the @c radius (0x1F6). The 2-iter outer loop appears to
- * be a quirk of the original source — both iterations are identical.
+ * contributes the @c radius (0x1F6).
  *
- * @note Decomp at 85.36% match — gcc 2.7.2 picks @c bnez (success-exit)
- *       over target's @c beqz (failure-exit) for the dist comparison,
- *       and chooses different temp registers for the mflo results.
- *       See @c permuter/func_8009F74C/base.c for the current C.
+ * The 2-iteration outer loop is a quirk of the original source: nothing
+ * inside the body depends on @c i, and @c dz is computed once before
+ * the loop, so the body either succeeds on both iterations or fails on
+ * both. Faithful to the original asm — the loop is preserved here.
+ *
+ * @note Decomp at 98.21% match — remaining diff is gcc 2.7.2 picking
+ *       @c t0/t1 for the long-lived @c i / @c z_ok pair instead of
+ *       target's @c a3/t0, which cascades into different @c mflo
+ *       register choices later. See @c permuter/func_8009F74C/base.c.
  */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F74C);
 
