@@ -1880,6 +1880,23 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A7224);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A736C);
 
+/**
+ * @brief Per-mode write/accumulate of three or four @c s32 values into
+ *        an @ref EntityRenderSlot.
+ *
+ * @param idx   Render-slot index into @ref D_800D9630.
+ * @param vals  Pointer to four @c s32 values (only first three used in mode 1).
+ * @param mode  @c 0 → overwrite @c field20..field2C; @c 1 → add to
+ *              @c field20..field28 (skipping @c field2C); other → no-op.
+ *
+ * @note Compiled as PsyQ 4.3 (the @c jr-ra-delay-slot @c sw in case 1
+ *       is the gcc 2.8.0 schedule), but fe_object1.c is PsyQ 4.1.
+ *       Current C decomp hits 87.27% with the load-all-then-store-all
+ *       hoist; remaining diff is reg-alloc choice (t0..t3 vs v1/a0/a1/a2)
+ *       and the case-1 delay-slot @c sw. Stays as INCLUDE_ASM until the
+ *       file is split or a per-function toolchain override is wired in.
+ *       See @c permuter/func_800A74B4/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A74B4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A7564);
