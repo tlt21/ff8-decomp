@@ -1477,15 +1477,15 @@ void func_800A355C(FieldActor *actor, s32 slot, s32 a2) {
  * Inactive slots have all three state halfwords (@c h0 / @c h1 / @c h2)
  * cleared.
  *
- * @note Decomp at 81.24% match — structure matches (gating + nested
- *       h1-vs-table[h2] + reset). The remaining diff is gcc 2.7.2
- *       reg-alloc: target keeps @c 0x1740 as a hoisted constant in
- *       an @c s-reg and walks @c buf without rebasing; ours folds
- *       @c &buf->subscene into an @c addiu and rebases the slot
- *       walker to @c slot+0x1834. The structure uses the m2c-style
- *       @c actor re-assignment in the nested if to mirror target's
- *       two-delay-slot @c addu @c a0, @c s3, @c s2 pattern. See
- *       @c permuter/func_800A37A8/base.c.
+ * @note Decomp at 89.78% match — structure and semantics match
+ *       (slot walks by @c 0xfe, @c &slot->subscene gives walking
+ *       actor at @c slot+0x1740). The remaining diff is gcc 2.7.2
+ *       reg-alloc: target uses a single non-rebased slot walker
+ *       (5 s-regs); ours rebases to @c slot+0x1834 and keeps a
+ *       parallel walker (6 effective regs). The struct has
+ *       @c subscene at offset @c 0x1740 within the slot, @c table
+ *       at @c 0x1810, and @c h0/h1/h2 at @c 0x1830/0x1832/0x1834.
+ *       See @c permuter/func_800A37A8/base.c.
  */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A37A8);
 
