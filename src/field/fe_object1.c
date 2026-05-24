@@ -280,6 +280,26 @@ void func_8009A8E0(FieldEntityB *e) {
     }
 }
 
+/**
+ * @brief Per-frame proximity check — for each @c FieldEntityB in
+ *        @c D_800852F8 entries, run @c func_8009A2BC against the eline's
+ *        position and set per-entity trigger bytes based on the hit
+ *        distance vs the eline's collision radius.
+ *
+ * Writes the eline's @c (posX, posY, posZ) @c >> @c 12 to the PSX
+ * scratchpad at @c getScratchAddr(2..4), then iterates each
+ * @c FieldEntityB and (when active and the eline isn't in a message)
+ * calls @c func_8009A2BC. The returned distance is compared against
+ * @c radius*radius:
+ *  - hit (in range): @c trigger4=1; also @c trigger2=1 when
+ *    @c D_8005F14C @c == @c 3
+ *  - miss (out of range or @c -1): @c trigger3=1, @c trigger4=0
+ *
+ * @note Decomp at 90.14% match — semantics and structure match;
+ *       remaining diff is gcc 2.7.2 prologue scheduling around the
+ *       scratchpad-base and posY pre-load. See
+ *       @c permuter/func_8009A920/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A920);
 
 /**

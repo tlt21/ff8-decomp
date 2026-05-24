@@ -587,7 +587,9 @@ typedef struct {
     /* 0x17A */ u16 rangeHi;
     /* 0x17C */ u8  pad17C[0x08];
     /* 0x184 */ s8  stackPtr;
-    /* 0x185 */ u8  pad185[0x0F];
+    /* 0x185 */ u8  pad185[0x03];
+    /* 0x188 */ u8  field_0x188;        /**< Region/box data starting here; passed to @c func_8009A2BC as arg 0. */
+    /* 0x189 */ u8  pad189[0x0B];
     /* 0x194 */ u8  activeMarker;       /**< Block-active gate; non-zero enables trigger processing. */
     /* 0x195 */ u8  pad195;
     /* 0x196 */ u8  trigger4;       /**< Cleared together with @c unk19D by @c func_8009A8E0. */
