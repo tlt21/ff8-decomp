@@ -1848,6 +1848,77 @@ void func_800A5788(s32 a0) {
                                                          (s16)*(volatile u16 *)&sys->dialogCount)));
 }
 
+/**
+ * @brief Dialog-state dispatcher — runs the per-state handler for the
+ *        current @c D_800704A8.dialogState (@c 0..8).
+ *
+ * Behavior per state:
+ *  - @c 0: clear @c unk1A1, @c field_0x114/116/118 (reset)
+ *  - @c 1: no-op
+ *  - @c 2/3: rate-2 timer tick + setup/teardown, then dispatch via
+ *            @c func_800A5360 with the @c field_0x10E/110/112 triplet
+ *  - @c 4: latch the global @c D_80070649 sentinel to @c 1
+ *  - @c 5/6: rate-1/2 timer tick, then @c func_800A5788 (per-frame anim)
+ *  - @c 7/8: clear @c unk1A1, rate-1/2 timer tick, dispatch via
+ *            @c func_800A553C with the @c field_0x10E/110/112 triplet
+ *
+ * @note Stays INCLUDE_ASM because gcc-2.7.2-cdk always emits `.align 3`
+ *       (8-byte) before switch jtbls, but jtbl_8009806C is at the
+ *       4-byte aligned offset 0x6C in the original binary — a `switch`
+ *       decomp would introduce a 4-byte padding gap that cascades
+ *       through the rest of field.bin. A computed-goto rewrite matches
+ *       byte-perfect but reads as transliterated assembly; keeping the
+ *       INCLUDE_ASM until either maspsx grows `.align` translation or
+ *       a cleaner C structure is found. Source preserved below for
+ *       reference.
+ *
+ * @verbatim
+ * void func_800A5898(s32 a0) {
+ *     SystemState *sys = &D_800704A8;
+ *     switch ((s16)*(volatile u16 *)&sys->dialogState) {
+ *         case 0:
+ *             D_800704A8.unk1A1 = 0;
+ *             D_800704A8.field_0x114 = 0;
+ *             D_800704A8.field_0x116 = 0;
+ *             D_800704A8.field_0x118 = 0;
+ *             break;
+ *         case 1:
+ *             break;
+ *         case 2:
+ *             func_800127F8(2);
+ *             func_800A5698();
+ *             func_800A5360(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 3:
+ *             func_800127F8(2);
+ *             func_800A5700();
+ *             func_800A5360(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 4:
+ *             D_80070649 = 1;
+ *             break;
+ *         case 7:
+ *             D_800704A8.unk1A1 = 0;
+ *             func_800127F8(1);
+ *             func_800A553C(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 8:
+ *             D_800704A8.unk1A1 = 0;
+ *             func_800127F8(2);
+ *             func_800A553C(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 5:
+ *             func_800127F8(1);
+ *             func_800A5788(a0);
+ *             break;
+ *         case 6:
+ *             func_800127F8(2);
+ *             func_800A5788(a0);
+ *             break;
+ *     }
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5898);
 
 /**
@@ -1914,6 +1985,68 @@ u8 func_800A5CF8(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5D28);
 
+/**
+ * @brief Per-selector dispatcher — sets or clears a @ref FieldEntityC
+ *        trigger byte indexed by @c entry->status, gated by a per-selector
+ *        flag in @c D_80070628[0..5].
+ *
+ * @param entry  Per-frame entry (16-byte stride; @c status field at 0xC).
+ * @param sel    Selector @c 0..5 (any other value is a no-op returning 0).
+ * @return @c 1 when the gate passes (state-change occurred); @c 0 otherwise.
+ *
+ * Behavior per selector:
+ *  - Even (@c 0/2/4): if the target's @c activeMarker is set AND the
+ *    flag is currently @c 0, latch the flag to @c 1 and (when
+ *    @c status < D_80085228) set the target's @c trigger6.
+ *  - Odd (@c 1/3/5): if the target's @c activeMarker is set AND the
+ *    flag is currently @c 1, clear the flag and (when
+ *    @c status < D_80085228) clear the target's @c trigger7.
+ *
+ * @note Stays INCLUDE_ASM because of a register-allocation difference:
+ *       the original masks @c sel into @c v1 (`andi v1, a1, 0xFF`) and
+ *       keeps the masked value in @c v1 through the case bodies, while
+ *       gcc with this C body allocates the mask in @c a1 in-place
+ *       (`andi a1, a1, 0xFF`), which cascades through 10 bytes of
+ *       register-field bits in the function. Source preserved below
+ *       for reference; the alignment is not the issue here (jtbl_80098090
+ *       at 0x90 is naturally 8-byte aligned), only the reg-alloc.
+ *
+ * @verbatim
+ * s32 func_800A5FA4(func_800A62EC_entry *entry, s32 sel) {
+ *     u8 *flag_arr = D_80070628;
+ *     s32 result = 0;
+ *     u32 s = sel & 0xFF;
+ *
+ *     if (s < 6) {
+ *         switch (s) {
+ *             case 0:
+ *             case 2:
+ *             case 4:
+ *                 if (D_80085384[entry->status].activeMarker == 1 && flag_arr[s] == 0) {
+ *                     flag_arr[s] = 1;
+ *                     result = 1;
+ *                     if (entry->status < D_80085228) {
+ *                         D_80085384[entry->status].trigger6 = 1;
+ *                     }
+ *                 }
+ *                 break;
+ *             case 1:
+ *             case 3:
+ *             case 5:
+ *                 if (D_80085384[entry->status].activeMarker == 1 && flag_arr[s] == 1) {
+ *                     flag_arr[s] = 0;
+ *                     result = 1;
+ *                     if (entry->status < D_80085228) {
+ *                         D_80085384[entry->status].trigger7 = 0;
+ *                     }
+ *                 }
+ *                 break;
+ *         }
+ *     }
+ *     return result;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5FA4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A6100);
