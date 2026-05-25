@@ -60,7 +60,7 @@ segments:
       - [0x1336C, c, we_object5]
       - [0x14C68, c, we_object6]
       - [0x1B10C, c, we_object7]
-      - [0x20CE0, c, we_object8]
+      - [0x20C70, c, we_object8]
       - [0x22870, c, we_object9]
       - [0x256EC, c, we_object10]
       - [0x275D4, c, we_object11]
