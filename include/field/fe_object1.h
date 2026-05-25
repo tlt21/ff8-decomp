@@ -12,6 +12,13 @@ typedef struct {
     s32 z;
 } Vec3i;
 
+/** @brief 6-byte signed 16-bit 3D position (x, y, z). */
+typedef struct {
+    s16 x;
+    s16 y;
+    s16 z;
+} Vec3s;
+
 /** @brief Animation parameter entry. */
 typedef struct {
     /* 0x00 */ u8 pad00[0x09];
@@ -125,7 +132,7 @@ extern int  func_80099348();
 extern int  func_8009A0E8();
 extern int  func_8009A2BC();
 extern int  func_8009A4C0();
-extern int  func_8009A7E8();
+extern void func_8009A7E8(Eline *e, FieldEntityB *pool);
 extern void func_8009A8E0(FieldEntityB *e);
 extern int  func_8009A920();
 extern void func_8009AA64(EventEntry *e);
@@ -138,13 +145,13 @@ extern int  func_8009D274();
 extern s32  func_8009D500();  /* arg2 is a file-private scratchpad view in fe_object1.c */
 extern int  func_8009D598();
 extern s32  func_8009DF18();  /* handwritten, return value used by func_8009D500 */
-extern int  func_8009E338();
+extern s32 func_8009E338(Vec3i *a0, Vec3i *a1, Vec3i *a2, Vec3s *a3);  /* plane-cross intersection */
 extern int  func_8009E660();
 extern int  func_8009ECA4();
-extern int  func_8009F74C();
+extern s32  func_8009F74C(Eline *a, Eline *b);
 extern void func_8009F7F4(s16 idx, s8 sign, u8 b, s16 mode);
 extern void func_8009B4A8(s16 a, u8 b, s32 c, s32 d);
-extern int  func_8009F8D0();
+extern void func_8009F8D0(s16 idx);
 extern int  func_8009F990();
 extern int  func_8009FE18();
 extern int  func_800A0640();
@@ -155,14 +162,14 @@ extern s32  func_800A0EB8(s32 start, s32 end, s32 total, s32 angle);
 extern s32  func_800A0F34(SVECTOR *v, s32 *sxy);
 extern int  func_800A0FB8();
 extern int  func_800A10F4();
-extern int  func_800A11E0();
+extern void func_800A11E0(s32 *sxy);
 extern int  func_800A1318();
 extern int  func_800A15C0();
 extern int  func_800A17B8();
 extern int  func_800A19B8();
 extern void func_800A1BB8(void);
 extern int  func_800A1CFC();
-extern int  func_800A2128();
+extern void func_800A2128();  /* arg is a file-private buffer view in fe_object1.c */
 extern int  func_800A222C();
 /**
  * @brief Shape @c func_800A29C0 sees: array of 20-byte items with five
@@ -200,7 +207,49 @@ extern void func_800A327C(Eline *actor, SVECTOR *out);
 extern void func_800A3488();  /* arg0 is a file-private Eline-stack view in fe_object1.c */
 extern void func_800A3534();  /* arg is a file-private buffer view in fe_object1.c */
 extern int  func_800A37A8();
-extern int  func_800A38B4();
+/**
+ * @brief Input "movement command" view that @c func_800A38B4 lerps from.
+ *
+ * @c x/y/z/angle (s16) are the start endpoints; @c stepTotal (u8) is the
+ * lerp denominator. Used for both @c func_800A38B4's @c in (start) and
+ * @c target (end) — the same shape is reused via @c stepTotal field
+ * being irrelevant in the target view.
+ */
+typedef struct {
+    /* 0x00 */ s16 x;
+    /* 0x02 */ s16 y;
+    /* 0x04 */ s16 z;
+    /* 0x06 */ s16 angle;
+    /* 0x08 */ u8  pad08[0x06];
+    /* 0x0E */ u8  stepTotal;
+    /* 0x0F */ u8  pad0F;
+} func_800A38B4_in;  /* 0x10 = 16 bytes */
+
+/**
+ * @brief Output "movement accumulator" view that @c func_800A38B4 writes.
+ *
+ * Holds three @c s32 position accumulators at @c 0x00/04/08, three @c s16
+ * position-start snapshots at @c 0x0C/0E/10, a @c u16 angle accumulator
+ * at @c 0x12, a @c s16 angle-start snapshot at @c 0x16, and the @c u8
+ * progress counter at @c 0x1A. Each tick of @c func_800A38B4 advances
+ * the accumulators toward the lerp target.
+ */
+typedef struct {
+    /* 0x00 */ s32 posX;
+    /* 0x04 */ s32 posY;
+    /* 0x08 */ s32 posZ;
+    /* 0x0C */ s16 xStart;
+    /* 0x0E */ s16 yStart;
+    /* 0x10 */ s16 zStart;
+    /* 0x12 */ u16 angle;
+    /* 0x14 */ u8  pad14[0x02];
+    /* 0x16 */ s16 angleStart;
+    /* 0x18 */ u8  pad18[0x02];
+    /* 0x1A */ u8  stepProgress;
+    /* 0x1B */ u8  pad1B;
+} func_800A38B4_out;  /* 0x1C = 28 bytes */
+
+extern void func_800A38B4(func_800A38B4_out *out, func_800A38B4_in *in, func_800A38B4_in *target);
 extern int  func_800A39D8();
 extern int  func_800A3FE0();
 extern int  func_800A42EC();
@@ -216,14 +265,14 @@ extern int  func_800A553C();
 extern void func_800A5698(void);
 extern void func_800A5700(void);
 extern s16  func_800A5748(s16 start, s16 end, s16 progress, s16 total);
-extern int  func_800A5788();
+extern void func_800A5788(s32 a0);
 extern int  func_800A5898();
 extern int  func_800A5A20();
 extern u8   func_800A5C9C(void);
 extern int  func_800A5D28();
-extern int  func_800A5FA4();
+extern void func_800A5FA4();  /* arg 0 = entry pointer (16-byte stride); arg 1 = flag */
 extern int  func_800A6100();
-extern int  func_800A62EC();
+extern void func_800A62EC();  /* arg 0 = array of 12 16-byte entries */
 extern int  func_800A63AC();
 extern int  func_800A6A80();
 extern int  func_800A7194();

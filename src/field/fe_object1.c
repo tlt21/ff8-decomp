@@ -37,9 +37,11 @@ extern void func_80048F5C(RECT *r, u16 *src);
 extern void func_80048EFC(RECT *r, u8 *src);
 extern void func_80042634(s32 a);
 extern s32 func_8004D524(s32, s32, s32, s32);
+extern void func_8004D684(void *p);
 
 extern u16 **D_800D5E9C;         /**< Pointer-to-pointer of u16 count for func_800A29C0's iteration */
 extern u16 *D_800C71E4;
+extern s32 D_800C71FC;           /**< Latched result of @c func_800A0F34 from @c func_800A11E0. */
 extern u16 D_800D3E88[];
 extern u8 D_800D5F50[];
 extern u8 D_800D61A8[];
@@ -205,7 +207,49 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A2BC);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A4C0);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A7E8);
+/**
+ * @brief Sync per-entity @c trigger7 across the FieldEntityB pool from
+ *        the global @c unk150 / @c unk154 SFX flag pair.
+ *
+ * Iterates the @c D_800852F8 entities at @c pool. For each entity that
+ * passes the gating tests
+ *   - @c activeMarker == 1
+ *   - @c eline->msgActive == 0
+ *   - @c unk19D == @c activeMarker (so @c unk19D == 1)
+ *   - @c entity->unk19C falls within a @c +/-32 window of @c eline->unk23F
+ *
+ * writes @c trigger7 from the @c D_800704A8.unk150 / @c unk154 pair:
+ *   - bit 6 set in @c unk150 and clear in @c unk154 → @c trigger7 = @c unk19D (= 1)
+ *   - bit 7 set in @c unk150 and clear in @c unk154 → @c trigger7 = 2
+ *
+ * The for-loop's @c i++, pool++ in the increment clause (comma
+ * operator) keeps gcc 2.7.2 from reordering the increments into the
+ * count-reload @c lbu 's load-delay slot — target leaves that slot
+ * as a @c nop.
+ */
+void func_8009A7E8(Eline *e, FieldEntityB *pool) {
+    s32 i;
+    for (i = 0; i < D_800852F8; i++, pool++) {
+        if (pool->activeMarker == 1) {
+            if (e->msgActive == 0) {
+                if (pool->unk19D == pool->activeMarker) {
+                    if ((s32)(((s32)pool->unk19C - (s32)e->unk23F + 0x20) & 0xFF) < 0x40) {
+                        if (D_800704A8.unk150 & 0x40) {
+                            if (!(D_800704A8.unk154 & 0x40)) {
+                                pool->trigger7 = pool->unk19D;
+                            }
+                        }
+                        if (D_800704A8.unk150 & 0x80) {
+                            if (!(D_800704A8.unk154 & 0x80)) {
+                                pool->trigger7 = 2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * @brief Clear @c trigger4 and @c unk19D across every @c FieldEntityB in the pool.
@@ -233,6 +277,26 @@ void func_8009A8E0(FieldEntityB *e) {
     }
 }
 
+/**
+ * @brief Per-frame proximity check — for each @c FieldEntityB in
+ *        @c D_800852F8 entries, run @c func_8009A2BC against the eline's
+ *        position and set per-entity trigger bytes based on the hit
+ *        distance vs the eline's collision radius.
+ *
+ * Writes the eline's @c (posX, posY, posZ) @c >> @c 12 to the PSX
+ * scratchpad at @c getScratchAddr(2..4), then iterates each
+ * @c FieldEntityB and (when active and the eline isn't in a message)
+ * calls @c func_8009A2BC. The returned distance is compared against
+ * @c radius*radius:
+ *  - hit (in range): @c trigger4=1; also @c trigger2=1 when
+ *    @c D_8005F14C @c == @c 3
+ *  - miss (out of range or @c -1): @c trigger3=1, @c trigger4=0
+ *
+ * @note Decomp at 90.14% match — semantics and structure match;
+ *       remaining diff is gcc 2.7.2 prologue scheduling around the
+ *       scratchpad-base and posY pre-load. See
+ *       @c permuter/func_8009A920/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009A920);
 
 /**
@@ -514,7 +578,46 @@ void func_8009DED8(u8 *a0, u8 *a1, u8 *a2) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009DF18);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009E338);
+/**
+ * @brief Plane-cross intersection — compute @c (cross_xyz @c · (a3 @c -
+ *        @c a2_partial)) @c / @c cross_z, where @c cross @c = @c a1 @c
+ *        × @c a0.
+ *
+ * Builds the cross product @c a1 @c × @c a0 (stored to a stack array
+ * @c sp[3]), then overwrites @c a0 with @c a3's sign-extended values.
+ * The return value is the scalar projection of @c (a3 - a2_partial)
+ * along the cross-product axis divided by @c cross_z. Note: @c a2's
+ * @c z component is intentionally not subtracted.
+ *
+ * @param a0 Direction vector A (s32 x,y,z) — overwritten with @c a3.
+ * @param a1 Direction vector B (s32 x,y,z).
+ * @param a2 Reference point (s32 x,y,z) — only @c .x and @c .y used.
+ * @param a3 Target point (s16 x,y,z).
+ * @return The intersection parameter @c (s32).
+ *
+ * The trailing block caches @c sp[0..2] into local @c s32 vars (t0,
+ * t1, t2) so gcc 2.7.2 loads each only once — without the cache, gcc
+ * reloads them from the stack for each of the 5 uses.
+ */
+s32 func_8009E338(Vec3i *a0, Vec3i *a1, Vec3i *a2, Vec3s *a3) {
+    s32 sp[3];
+
+    sp[0] = -a0->y * a1->z + a1->y * a0->z;
+    sp[1] = -a0->z * a1->x + a0->x * a1->z;
+    sp[2] = -a0->x * a1->y + a1->x * a0->y;
+
+    a0->x = a3->x;
+    a0->y = a3->y;
+    a0->z = a3->z;
+
+    {
+        s32 t0 = sp[0];
+        s32 t1 = sp[1];
+        s32 t2 = sp[2];
+        return (t0 * a0->x + t1 * a0->y + t2 * a0->z
+                - t0 * a2->x - t1 * a2->y) / t2;
+    }
+}
 
 /**
  * @brief Test if @p selfIdx overlaps with any other active entity at world @p pos.
@@ -599,16 +702,41 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009ECA4);
  * contributes the @c radius (0x1F6).
  *
  * The 2-iteration outer loop is a quirk of the original source: nothing
- * inside the body depends on @c i, and @c dz is computed once before
- * the loop, so the body either succeeds on both iterations or fails on
- * both. Faithful to the original asm — the loop is preserved here.
+ * inside the body depends on @c i, and the Z check is loop-invariant,
+ * so the body either succeeds on both iterations or fails on both.
+ * Preserved here for byte-match with the original binary.
  *
- * @note Decomp at 98.21% match — remaining diff is gcc 2.7.2 picking
- *       @c t0/t1 for the long-lived @c i / @c z_ok pair instead of
- *       target's @c a3/t0, which cascades into different @c mflo
- *       register choices later. See @c permuter/func_8009F74C/base.c.
+ * @note The variable-reuse pattern (@c r used as a scratch for the
+ *       @c dz pre-shift, then reassigned inside the loop; the chained
+ *       @c r = (dy = r * r) inside the comparison) is what coaxes
+ *       gcc 2.7.2 into the exact register allocation the original
+ *       used. Not "natural" C — it's a deliberate trick that survived
+ *       to match.
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F74C);
+s32 func_8009F74C(Eline *a, Eline *b) {
+    s32 dz;
+    s16 i;
+    s32 dx;
+    s32 dy;
+    s32 r;
+    r = (b->posZ - a->posZ) >> 12;
+    dz = r;
+    r = a->talkRadius + r;
+    for (i = 0; i < 2; i++) {
+        if ((dz < (-126)) || (dz > 127)) {
+            continue;
+        }
+        dx = (b->posX - a->posX) >> 12;
+        dy = (b->posY - a->posY) >> 12;
+        r = b->radius;
+        r = a->talkRadius + r;
+        if (((dx * dx) + (dy * dy)) >= (r = (dy = r * r))) {
+            continue;
+        }
+        return 1;
+    }
+    return 0;
+}
 
 /**
  * @brief Compute a move/turn vector and record it as a waypoint.
@@ -642,12 +770,23 @@ void func_8009F7F4(s16 idx, s8 sign, u8 b, s16 mode) {
  * compute @c posX / @c posY / @c posZ from the unk1A8/AC/B0 endpoints
  * and field_0x1C0/C4/C8 targets, using field_0x1D8/DA as the total/step.
  *
- * @note Decomp at 58.56% match — gcc 2.7.2 caches the @c Eline pointer
- *       across the 3 calls (loads @c D_80085224 once); target reloads
- *       it after each call. Volatile-pointer cast at site made it
- *       worse. See @c permuter/func_8009F8D0/base.c for the current C.
+ * @note Uses unsubscripted @c D_80085224 to defeat gcc 2.7.2's CSE
+ *       of the global pointer load (target reloads after each call).
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F8D0);
+void func_8009F8D0(s16 idx) {
+    D_80085224[idx].posX = func_800A0E54(D_80085224[idx].unk1A8,
+                                         D_80085224[idx].field_0x1C0,
+                                         (s16)D_80085224[idx].field_0x1D8,
+                                         (s16)D_80085224[idx].field_0x1DA);
+    D_80085224[idx].posY = func_800A0E54(D_80085224[idx].unk1AC,
+                                         D_80085224[idx].field_0x1C4,
+                                         (s16)D_80085224[idx].field_0x1D8,
+                                         (s16)D_80085224[idx].field_0x1DA);
+    D_80085224[idx].posZ = func_800A0E54(D_80085224[idx].unk1B0,
+                                         D_80085224[idx].field_0x1C8,
+                                         (s16)D_80085224[idx].field_0x1D8,
+                                         (s16)D_80085224[idx].field_0x1DA);
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_8009F990);
 
@@ -794,6 +933,26 @@ s32 func_800A0F34(SVECTOR *v, s32 *sxy) {
     return result;
 }
 
+/**
+ * @brief 2D position clamp — clamp @c out->(x,y) to a rect defined by
+ *        @c D_8005F0F8->rect_a[a], shrunk by half the extents of
+ *        @c D_8005F0F8->rect_b[b].
+ *
+ * Computes four "half" values from rect_b's (f0,f2) and (f4,f6) field
+ * pairs (signed average with round-toward-zero via @c (x + (x>>31)) >> 1),
+ * then clamps @c out->x and @c out->y to the rect_a bounds @c (f4,f6) and
+ * @c (f2,f0) minus/plus the appropriate half.
+ *
+ * @param out  Output position (s16 x, s16 y).
+ * @param a    @c rect_a[] index (one of 2 in caller).
+ * @param b    @c rect_b[] index (always 0 in caller).
+ *
+ * @note Decomp at 99.30% match — semantics and structure match;
+ *       remaining diff is gcc 2.7.2 prologue scheduling reordering the
+ *       @c sll/sra sign-extensions of @c a1 vs @c a2, plus one
+ *       register reuse in block 4 (target reuses @c a1, ours uses @c a3).
+ *       See @c permuter/func_800A0FB8/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
 
 /**
@@ -807,14 +966,29 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A0FB8);
  *   - @c mode 0,1,2,4,5 → @c submode = 1
  *   - @c mode 3        → @c submode = 2 plus copy @c p1 / @c p2 over @c q1 / @c q2
  *
- * @note Decomp at 64.03% match — @c D_800704A8.slots[i] in C makes gcc
- *       2.7.2 fold the @c +0x20 (slots offset) into the base pointer
- *       and use small per-slot offsets; target keeps the base at
- *       @c &D_800704A8 and uses @c 0x22 / @c 0x28 / etc. as the access
- *       immediates. See @c permuter/func_800A10F4/base.c.
+ * @note Decomp at 91.27% match — semantics and structure match; remaining
+ *       diff is gcc 2.7.2 hoisting the constant @c 1 (submode init) to a
+ *       prologue temp and operand-order on the @c addu of base+stride.
+ *       See @c permuter/func_800A10F4/base.c.
  */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A10F4);
 
+/**
+ * @brief Build an @c SVECTOR from the active slot's entity position and
+ *        project it through @c func_800A0F34, then call @c func_800A0FB8
+ *        with a flag selected by the active-slot index.
+ *
+ * Reads @c D_800704A8.slots[unk1A6].param to pick a @ref FieldEntity,
+ * fills @c svec.{vx,vy,vz} from its @c posX/posY/posZ shifted right by
+ * @c 12, biased by @c D_8005F0F8->baseZ on @c vz. The projection result
+ * is latched to @c D_800C71FC. The trailing @c func_800A0FB8 call gets
+ * flag @c 0 when @c unk1A6 @c == @c 0 and flag @c 1 otherwise.
+ *
+ * @note Decomp at 95.45% match — semantics and structure match; remaining
+ *       diff is gcc 2.7.2 reg-alloc choice (which temp holds the
+ *       @c &D_80085224 pointer-base vs the @c &svec arg pointer).
+ *       See @c permuter/func_800A11E0/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A11E0);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A1318);
@@ -906,7 +1080,73 @@ void func_800A1CC0(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A1CFC);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A2128);
+/**
+ * @brief Shape @c func_800A2128 sees: a buffer with a 128-entry
+ *        28-byte item table at offset 0x4000 and a 16-entry 8-byte
+ *        prim table immediately after.
+ */
+typedef struct {
+    /* 0x00 */ u8 pad00[0x7];
+    /* 0x07 */ u8 b7;
+    /* 0x08 */ u8 pad08[0x4];
+    /* 0x0C */ u8 bC;
+    /* 0x0D */ u8 bD;
+    /* 0x0E */ u8 bE;
+    /* 0x0F */ u8 pad0F[0x5];
+    /* 0x14 */ u8 b14;
+    /* 0x15 */ u8 b15;
+    /* 0x16 */ u8 b16;
+    /* 0x17 */ u8 pad17[0x5];
+} func_800A2128_item1;  /* 0x1C = 28 bytes */
+
+typedef struct {
+    /* 0x00 */ u8  pad03[0x3];
+    /* 0x03 */ u8  tag;     /**< Always written as @c 1. */
+    /* 0x04 */ s32 cmd;     /**< @c 0xE1000200 | (color & 0x9FF). */
+} func_800A2128_item2;  /* 8 bytes */
+
+typedef struct {
+    /* 0x0000 */ u8 pad0000[0x4000];
+    /* 0x4000 */ func_800A2128_item1 items1[128];
+    /* 0x4E00 */ func_800A2128_item2 items2[16];
+} func_800A2128_arg0;
+
+/**
+ * @brief Reset 128 entries in @c items1[] and emit 16 GPU draw-mode
+ *        prims into @c items2[].
+ *
+ * Loop 1: for each of 128 28-byte items, call @c func_8004D684(item)
+ *         (which clears/inits it), then clear @c bC/bD/bE and
+ *         @c b14/b15/b16 and set bit 1 of @c b7.
+ *
+ * Loop 2: for each of 16 8-byte items, write @c tag = 1 and
+ *         @c cmd = @c 0xE1000200 | (color & 0x9FF), where @c color
+ *         comes from @c func_8004D524(0, 2, 0, 0).
+ *
+ * @note The two @c i[t->items1] / @c i[t->items2] uses (instead of
+ *       @c t->items1[i] / @c t->items2[i]) are the trick that swaps
+ *       the @c addu operand order to match the target — see
+ *       @c pattern_i_arr_to_swap_addu in project memory.
+ */
+void func_800A2128(func_800A2128_arg0 *t) {
+    s16 i;
+    for (i = 0; i < 128; i++) {
+        func_8004D684(&i[t->items1]);
+        i[t->items1].bC = 0;
+        i[t->items1].bD = 0;
+        i[t->items1].bE = 0;
+        i[t->items1].b14 = 0;
+        i[t->items1].b15 = 0;
+        i[t->items1].b16 = 0;
+        i[t->items1].b7 |= 2;
+    }
+    for (i = 0; i < 16; i++) {
+        s32 color;
+        i[t->items2].tag = 1;
+        color = func_8004D524(0, 2, 0, 0);
+        t->items2[i].cmd = (color & 0x9FF) | 0xE1000200;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A222C);
 
@@ -1329,9 +1569,60 @@ void func_800A355C(FieldActor *actor, s32 slot, s32 a2) {
     }
 }
 
+/**
+ * @brief Per-frame anim-row tick for all 16 active slots in the
+ *        @c D_800C7200 buffer.
+ *
+ * Iterates 16 anim-row slots (stride @c 0xFE in @p buf). For each
+ * slot where @c D_800704A8.slotActive[i] is set: walks a per-slot
+ * anim table at @c slot+0x1810, advancing @c h2 (the table index)
+ * whenever @c h1 (the per-frame counter) reaches @c table[h2].
+ * Each tick calls @c func_800A355C to dispatch the visual update for
+ * the current row.
+ *
+ * Inactive slots have all three state halfwords (@c h0 / @c h1 / @c h2)
+ * cleared.
+ *
+ * @note Decomp at 95.45% match — caching @c D_800704A8.slotActive into
+ *       a local @c u8* (init separately from for-loop init) drops the
+ *       per-iter @c lui+addiu of the @c slotActive pointer and saves
+ *       one s-reg. The do-while loop form (with @c i=0 before the
+ *       loop) gives gcc the same loop shape as target. Remaining diff
+ *       is gcc 2.7.2 reg-alloc: target keeps the slot walker at base
+ *       (5 s-regs); ours rebases to @c slot+0x1834 for h0/h1/h2 access
+ *       and keeps a parallel walker (6 effective regs). The struct has
+ *       @c subscene at offset @c 0x1740 within the slot, @c table at
+ *       @c 0x1810, and @c h0/h1/h2 at @c 0x1830/0x1832/0x1834.
+ *       See @c permuter/func_800A37A8/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A37A8);
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A38B4);
+/**
+ * @brief Advance a 3-axis position+angle lerp accumulator by one tick.
+ *
+ * Updates @p out 's @c posX/posY/posZ (@c s32) and @c angle (@c u16)
+ * accumulators by adding (per-axis) @c (startSnapshot @c + @c origin @c +
+ * @c (target @c - @c origin) @c * @c stepProgress @c / @c stepTotal),
+ * where the angle term is then @c <<4. Bails early when
+ * @p in->stepTotal @c == @c 0 to avoid a divide-by-zero.
+ *
+ * Caching @c in->angle into an @c s32 local prevents gcc from doing
+ * lhu+sll/sra for that field; caching @c out->angleStart into an
+ * @c s32 local makes gcc pick @c lh over @c lhu for it. Together
+ * these match the target's exact instruction selection.
+ */
+void func_800A38B4(func_800A38B4_out *out, func_800A38B4_in *in, func_800A38B4_in *target) {
+    s32 a;
+    s32 s;
+    if (in->stepTotal != 0) {
+        a = in->angle;
+        s = out->angleStart;
+        out->angle += (s + a + (target->angle - a) * out->stepProgress / in->stepTotal) << 4;
+        out->posX  += out->xStart + in->x + (target->x - in->x) * out->stepProgress / in->stepTotal;
+        out->posY  += out->yStart + in->y + (target->y - in->y) * out->stepProgress / in->stepTotal;
+        out->posZ  += out->zStart + in->z + (target->z - in->z) * out->stepProgress / in->stepTotal;
+    }
+}
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A39D8);
 
@@ -1428,6 +1719,24 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A4934);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A4C14);
 
+/**
+ * @brief 8-iteration script-dispatch loop with per-slot flag-driven
+ *        callbacks and a tick counter that auto-clears.
+ *
+ * Calls @c func_8003FEE4 once at start and @c func_8003FF88 at end
+ * (frame guards), then iterates @c i in @c [0,8) over four parallel
+ * arrays (stride 0x88 / 0x18 / 0x20 / 0xB4). When the per-slot flag
+ * @c D_8005F168[i] is non-zero, runs @c func_800A4934 on it, then
+ * conditionally @c func_800A4C14 (when flag is @c 2, or @c 1 and
+ * @c D_8005F122 @c == @c 1), then bumps the slot's tick counter and
+ * clears the flag when the counter passes its threshold.
+ *
+ * @note Decomp at 89.75% match — gcc 2.7.2 rebases the
+ *       @c D_800C6DA0 walker to @c base+0x80 (for the 0x80/0x82
+ *       cluster of slot-counter accesses), which costs an extra
+ *       s-reg and shifts the prologue layout. See
+ *       @c permuter/func_800A5224/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5224);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5360);
@@ -1501,8 +1810,115 @@ s16 func_800A5748(s16 start, s16 end, s16 progress, s16 total) {
     return start + (diff * progress) / total;
 }
 
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5788);
+/**
+ * @brief Companion of @c func_800A5700 — advances the dialog-pos animation
+ *        and dispatches the per-frame visual update.
+ *
+ * Increments @c dialogTimer; once it catches up to @c dialogCount, snapshots
+ * the destination triple (@c field_0x11A/11C/11E) into the current triple
+ * (@c field_0x114/116/118) and resets @c dialogTimer to @c dialogCount (the
+ * snapshot is what subsequent ticks lerp back from). Each tick then runs the
+ * three-axis safe-lerp via @c func_800A5748 and stores the result back to
+ * @c field_0x10E/110/112, finally calling @c func_800A553C with the new
+ * (x, y, z) tuple.
+ *
+ * @param a0 Opaque pointer forwarded as @c func_800A553C's first arg.
+ */
+void func_800A5788(s32 a0) {
+    SystemState *sys = &D_800704A8;
 
+    sys->unk1A1 = 0;
+    sys->dialogTimer++;
+    if ((s16)*(volatile u16 *)&sys->dialogTimer >= (s16)*(volatile u16 *)&sys->dialogCount) {
+        sys->field_0x114 = sys->field_0x11A;
+        sys->field_0x116 = sys->field_0x11C;
+        sys->field_0x118 = sys->field_0x11E;
+        sys->dialogTimer = *(volatile u16 *)&sys->dialogCount;
+    }
+    sys->field_0x10E = func_800A5748((s16)sys->field_0x114, (s16)sys->field_0x11A,
+                                     (s16)*(volatile u16 *)&sys->dialogTimer,
+                                     (s16)*(volatile u16 *)&sys->dialogCount);
+    sys->field_0x110 = func_800A5748((s16)sys->field_0x116, (s16)sys->field_0x11C,
+                                     (s16)*(volatile u16 *)&sys->dialogTimer,
+                                     (s16)*(volatile u16 *)&sys->dialogCount);
+    func_800A553C(a0, (s16)sys->field_0x10E, (s16)sys->field_0x110,
+                  (s16)(sys->field_0x112 = func_800A5748((s16)sys->field_0x118,
+                                                         (s16)sys->field_0x11E,
+                                                         (s16)*(volatile u16 *)&sys->dialogTimer,
+                                                         (s16)*(volatile u16 *)&sys->dialogCount)));
+}
+
+/**
+ * @brief Dialog-state dispatcher — runs the per-state handler for the
+ *        current @c D_800704A8.dialogState (@c 0..8).
+ *
+ * Behavior per state:
+ *  - @c 0: clear @c unk1A1, @c field_0x114/116/118 (reset)
+ *  - @c 1: no-op
+ *  - @c 2/3: rate-2 timer tick + setup/teardown, then dispatch via
+ *            @c func_800A5360 with the @c field_0x10E/110/112 triplet
+ *  - @c 4: latch the global @c D_80070649 sentinel to @c 1
+ *  - @c 5/6: rate-1/2 timer tick, then @c func_800A5788 (per-frame anim)
+ *  - @c 7/8: clear @c unk1A1, rate-1/2 timer tick, dispatch via
+ *            @c func_800A553C with the @c field_0x10E/110/112 triplet
+ *
+ * @note Stays INCLUDE_ASM because gcc-2.7.2-cdk always emits `.align 3`
+ *       (8-byte) before switch jtbls, but jtbl_8009806C is at the
+ *       4-byte aligned offset 0x6C in the original binary — a `switch`
+ *       decomp would introduce a 4-byte padding gap that cascades
+ *       through the rest of field.bin. A computed-goto rewrite matches
+ *       byte-perfect but reads as transliterated assembly; keeping the
+ *       INCLUDE_ASM until either maspsx grows `.align` translation or
+ *       a cleaner C structure is found. Source preserved below for
+ *       reference.
+ *
+ * @verbatim
+ * void func_800A5898(s32 a0) {
+ *     SystemState *sys = &D_800704A8;
+ *     switch ((s16)*(volatile u16 *)&sys->dialogState) {
+ *         case 0:
+ *             D_800704A8.unk1A1 = 0;
+ *             D_800704A8.field_0x114 = 0;
+ *             D_800704A8.field_0x116 = 0;
+ *             D_800704A8.field_0x118 = 0;
+ *             break;
+ *         case 1:
+ *             break;
+ *         case 2:
+ *             func_800127F8(2);
+ *             func_800A5698();
+ *             func_800A5360(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 3:
+ *             func_800127F8(2);
+ *             func_800A5700();
+ *             func_800A5360(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 4:
+ *             D_80070649 = 1;
+ *             break;
+ *         case 7:
+ *             D_800704A8.unk1A1 = 0;
+ *             func_800127F8(1);
+ *             func_800A553C(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 8:
+ *             D_800704A8.unk1A1 = 0;
+ *             func_800127F8(2);
+ *             func_800A553C(a0, D_800704A8.field_0x10E, D_800704A8.field_0x110, D_800704A8.field_0x112);
+ *             break;
+ *         case 5:
+ *             func_800127F8(1);
+ *             func_800A5788(a0);
+ *             break;
+ *         case 6:
+ *             func_800127F8(2);
+ *             func_800A5788(a0);
+ *             break;
+ *     }
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5898);
 
 /**
@@ -1569,6 +1985,68 @@ u8 func_800A5CF8(void) {
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5D28);
 
+/**
+ * @brief Per-selector dispatcher — sets or clears a @ref FieldEntityC
+ *        trigger byte indexed by @c entry->status, gated by a per-selector
+ *        flag in @c D_80070628[0..5].
+ *
+ * @param entry  Per-frame entry (16-byte stride; @c status field at 0xC).
+ * @param sel    Selector @c 0..5 (any other value is a no-op returning 0).
+ * @return @c 1 when the gate passes (state-change occurred); @c 0 otherwise.
+ *
+ * Behavior per selector:
+ *  - Even (@c 0/2/4): if the target's @c activeMarker is set AND the
+ *    flag is currently @c 0, latch the flag to @c 1 and (when
+ *    @c status < D_80085228) set the target's @c trigger6.
+ *  - Odd (@c 1/3/5): if the target's @c activeMarker is set AND the
+ *    flag is currently @c 1, clear the flag and (when
+ *    @c status < D_80085228) clear the target's @c trigger7.
+ *
+ * @note Stays INCLUDE_ASM because of a register-allocation difference:
+ *       the original masks @c sel into @c v1 (`andi v1, a1, 0xFF`) and
+ *       keeps the masked value in @c v1 through the case bodies, while
+ *       gcc with this C body allocates the mask in @c a1 in-place
+ *       (`andi a1, a1, 0xFF`), which cascades through 10 bytes of
+ *       register-field bits in the function. Source preserved below
+ *       for reference; the alignment is not the issue here (jtbl_80098090
+ *       at 0x90 is naturally 8-byte aligned), only the reg-alloc.
+ *
+ * @verbatim
+ * s32 func_800A5FA4(func_800A62EC_entry *entry, s32 sel) {
+ *     u8 *flag_arr = D_80070628;
+ *     s32 result = 0;
+ *     u32 s = sel & 0xFF;
+ *
+ *     if (s < 6) {
+ *         switch (s) {
+ *             case 0:
+ *             case 2:
+ *             case 4:
+ *                 if (D_80085384[entry->status].activeMarker == 1 && flag_arr[s] == 0) {
+ *                     flag_arr[s] = 1;
+ *                     result = 1;
+ *                     if (entry->status < D_80085228) {
+ *                         D_80085384[entry->status].trigger6 = 1;
+ *                     }
+ *                 }
+ *                 break;
+ *             case 1:
+ *             case 3:
+ *             case 5:
+ *                 if (D_80085384[entry->status].activeMarker == 1 && flag_arr[s] == 1) {
+ *                     flag_arr[s] = 0;
+ *                     result = 1;
+ *                     if (entry->status < D_80085228) {
+ *                         D_80085384[entry->status].trigger7 = 0;
+ *                     }
+ *                 }
+ *                 break;
+ *         }
+ *     }
+ *     return result;
+ * }
+ * @endverbatim
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A5FA4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A6100);
@@ -1581,12 +2059,39 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A6100);
  * switches on @c mode (0..5) and calls @c func_800A5FA4(entry, flag)
  * where @c flag = 1 for even modes (0/2/4) and 0 for odd modes (1/3/5).
  *
- * @note Decomp at 71.83% match — gcc 2.7.2 strength-reduces @c items[i]
- *       to an end-pointer comparison while target keeps an explicit
- *       counter; also different s-reg allocation. See
- *       @c permuter/func_800A62EC/base.c for the current C.
  */
-INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A62EC);
+typedef struct {
+    /* 0x00 */ u8 pad00[0x0C];
+    /* 0x0C */ u8 status;       /**< @c 0xFF means slot is unused (skip). */
+    /* 0x0D */ u8 padD;
+    /* 0x0E */ u8 mode;         /**< Even (0/2/4) → flag=1, odd (1/3/5) → flag=0. */
+    /* 0x0F */ u8 padF;
+} func_800A62EC_entry;  /* 0x10 = 16 bytes */
+
+void func_800A62EC(func_800A62EC_entry *entries) {
+    s32 i;
+    func_800A62EC_entry *p;
+    p = entries;
+    i = 0;
+    do {
+        if (p->status != 0xFF) {
+            switch (p->mode) {
+                case 0:
+                case 2:
+                case 4:
+                    func_800A5FA4(p, 1);
+                    break;
+                case 1:
+                case 3:
+                case 5:
+                    func_800A5FA4(p, 0);
+                    break;
+            }
+        }
+        p++;
+        i++;
+    } while (i < 12);
+}
 
 /* ============================================================================
  * PsyQ 4.3 boundary — every non-leaf function from here to the end of the
@@ -1632,6 +2137,23 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A7224);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A736C);
 
+/**
+ * @brief Per-mode write/accumulate of three or four @c s32 values into
+ *        an @ref EntityRenderSlot.
+ *
+ * @param idx   Render-slot index into @ref D_800D9630.
+ * @param vals  Pointer to four @c s32 values (only first three used in mode 1).
+ * @param mode  @c 0 → overwrite @c field20..field2C; @c 1 → add to
+ *              @c field20..field28 (skipping @c field2C); other → no-op.
+ *
+ * @note Compiled as PsyQ 4.3 (the @c jr-ra-delay-slot @c sw in case 1
+ *       is the gcc 2.8.0 schedule), but fe_object1.c is PsyQ 4.1.
+ *       Current C decomp hits 87.27% with the load-all-then-store-all
+ *       hoist; remaining diff is reg-alloc choice (t0..t3 vs v1/a0/a1/a2)
+ *       and the case-1 delay-slot @c sw. Stays as INCLUDE_ASM until the
+ *       file is split or a per-function toolchain override is wired in.
+ *       See @c permuter/func_800A74B4/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A74B4);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A7564);
@@ -1640,6 +2162,24 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8058);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A81AC);
 
+/**
+ * @brief Claim a render-slot pool entry and initialize its state.
+ *
+ * Acquires @c D_800D9630[idx] if currently @c NULL by installing @p slot
+ * and writing @p firstWord to the slot's leading @c s32. The slot's state
+ * fields (@c unk10/12/14/18/1A/1C/50/52) are zeroed except @c unk12 which
+ * gets the default @c 0x190; the three @c field20/24/28 scale factors are
+ * set to @c 0x1000 (unit scale); @c unk60 (active flag) is cleared.
+ *
+ * @return @p slot @c + @c 0x98 on successful claim, or @c NULL if the
+ *         render-slot was already occupied.
+ *
+ * @note Compiled as PsyQ 4.3 (the two-@c jr-ra exit layout is gcc 2.8.0's
+ *       no-tail-merge style). Current C decomp hits 95.77% — gcc 2.7.2
+ *       tail-merges the two returns into one shared @c jr-ra. Stays as
+ *       INCLUDE_ASM until the file is split.
+ *       See @c permuter/func_800A8CDC/base.c.
+ */
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8CDC);
 
 INCLUDE_ASM("asm/field/nonmatchings/fe_object1", func_800A8DAC);

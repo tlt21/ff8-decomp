@@ -185,7 +185,9 @@ typedef struct {
 typedef struct {
     /* 0x00 */ u8 pad00[0x0E];
     /* 0x0E */ u8 unk0E;            /**< When @c == 1, @c func_800A1BB8 issues a StoreImage to VRAM. */
-    /* 0x0F */ u8 pad0F[0x51];
+    /* 0x0F */ u8 pad0F[0x03];
+    /* 0x12 */ u16 baseZ;           /**< Base Z offset added to the per-entity Z when building SVECTOR (func_800A11E0). */
+    /* 0x14 */ u8 pad14[0x4C];
     /* 0x60 */ EventEntry entries[16];
 } EventQueue;
 
@@ -236,7 +238,9 @@ typedef struct {
     /* 0x134 */ u16 unk134;
     /* 0x136 */ u8 pad136[0x04];
     /* 0x13A */ u16 unk13A;
-    /* 0x13C */ u8 pad13C[0x1C];
+    /* 0x13C */ u8 pad13C[0x14];
+    /* 0x150 */ s32 unk150;         /**< Bit-6/7 source for @c func_8009A7E8 's per-entity trigger7 write. */
+    /* 0x154 */ s32 unk154;         /**< Bit-6/7 mask gating @c func_8009A7E8 's write (inverse of @c unk150). */
     /* 0x158 */ s32 ambientFlags;   /**< Ambient SFX/state flags; bits 6-7 gate the fade-out path in @c func_800BD9C4. */
     /* 0x15C */ u8 pad15C[0x24];
     /* 0x180 */ u8 unkActive180[16]; /**< 16-byte active-marker region, cleared on @c func_800BF718 mode 1 init. */
@@ -399,7 +403,7 @@ typedef struct {
     /* 0x1F2 */ u16 field_0x1F2;
     /* 0x1F4 */ u16 field_0x1F4;
     /* 0x1F6 */ u16 radius;         /**< Collision radius (used by @c func_8009E468 overlap test). */
-    /* 0x1F8 */ u16 field_0x1F8;    /**< Stored by @c opHandler_TALKRADIUS from popped stack slot. */
+    /* 0x1F8 */ u16 talkRadius;     /**< Set by @c opHandler_TALKRADIUS; read alongside @c radius by @c func_8009F74C 's asymmetric overlap test. */
     /* 0x1FA */ u16 field_0x1FA;    /**< Set from path-table entry's @c unk6 by @c func_8009BB18. */
     /* 0x1FC */ u16 field_0x1FC;
     /* 0x1FE */ s16 savedChannel;   /**< Previous message channel. */
@@ -436,7 +440,8 @@ typedef struct {
     /* 0x23A */ u8 field_0x23A;
     /* 0x23B */ u8 field_0x23B;
     /* 0x23C */ u8 msgActive;       /**< Message active flag. */
-    /* 0x23D */ u8 pad23D[0x03];
+    /* 0x23D */ u8 pad23D[0x02];
+    /* 0x23F */ u8 unk23F;          /**< Anim-sync byte; @c func_8009A7E8 's diff-window check uses @c entity->unk19C - @c eline->unk23F. */
     /* 0x240 */ u8 field_0x240;
     /* 0x241 */ u8 field_0x241;
     /* 0x242 */ u8 field_0x242;
@@ -528,7 +533,21 @@ extern s32 fieldRandom(void);
 typedef struct {
     u8 pad00[0x0C];
     u16 unk0C;
-    u8 pad0E[0x44];
+    u8 pad0E[0x02];
+    u16 unk10;       /**< Cleared on init by @c func_800A8CDC. */
+    u16 unk12;       /**< Init to @c 0x190 by @c func_800A8CDC. */
+    u16 unk14;       /**< Cleared on init. */
+    u8 pad16[0x02];
+    u16 unk18;       /**< Cleared on init. */
+    u16 unk1A;       /**< Cleared on init. */
+    u16 unk1C;       /**< Cleared on init. */
+    u8 pad1E[0x02];
+    s32 field20;     /**< Mode-0 stores arg2[0]; mode-1 adds arg2[0]. Init to @c 0x1000. */
+    s32 field24;     /**< Mode-0 stores arg2[1]; mode-1 adds arg2[1]. Init to @c 0x1000. */
+    s32 field28;     /**< Mode-0 stores arg2[2]; mode-1 adds arg2[2]. Init to @c 0x1000. */
+    s32 field2C;     /**< Mode-0 stores arg2[3] (mode-1 does not write). */
+    u8 pad30[0x20];
+    u16 unk50;       /**< Cleared on init. */
     u16 unk52;       /**< Current motion halfword (mirror of Eline @c field_0x206). */
     u8 pad54[0x0C];
     u8 unk60;
@@ -568,16 +587,18 @@ typedef struct {
     /* 0x17A */ u16 rangeHi;
     /* 0x17C */ u8  pad17C[0x08];
     /* 0x184 */ s8  stackPtr;
-    /* 0x185 */ u8  pad185[0x0F];
+    /* 0x185 */ u8  pad185[0x03];
+    /* 0x188 */ u8  field_0x188;        /**< Region/box data starting here; passed to @c func_8009A2BC as arg 0. */
+    /* 0x189 */ u8  pad189[0x0B];
     /* 0x194 */ u8  activeMarker;       /**< Block-active gate; non-zero enables trigger processing. */
     /* 0x195 */ u8  pad195;
     /* 0x196 */ u8  trigger4;       /**< Cleared together with @c unk19D by @c func_8009A8E0. */
     /* 0x197 */ u8  trigger5;
     /* 0x198 */ u8  trigger6;
-    /* 0x199 */ u8  trigger7;
+    /* 0x199 */ u8  trigger7;       /**< Set to 1/2 by @c func_8009A7E8 when the active-marker test + diff window pass. */
     /* 0x19A */ u8  trigger2;
     /* 0x19B */ u8  trigger3;
-    /* 0x19C */ u8  pad19C;
+    /* 0x19C */ u8  unk19C;         /**< Anim-sync byte compared (with diff bias) against @c eline->unk23F by @c func_8009A7E8. */
     /* 0x19D */ u8  unk19D;         /**< Per-entity flag cleared by @c func_8009A8E0 alongside @c trigger4. */
     /* 0x19E */ u8  pad19E[0x02];
 } FieldEntityB; /* 0x1A0 */
