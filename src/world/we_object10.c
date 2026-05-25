@@ -177,7 +177,38 @@ s32 func_800BD998(u32 mapId) {
     if (mapId == 0x31) return 0x78;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDA08);
+extern CmdDesc *D_800C4D74;
+extern s32 D_800C5DAC;
+
+/**
+ * @brief Tick @c D_800C5DAC down by @c 0x10, clamped to @c [0, @c 0x40],
+ *        resetting it to @c 0x40 first if the active command's @c type
+ *        byte changed.
+ *
+ * If the current command (@c D_800C4D64) and the previous command
+ * (@c D_800C4D74) have different @c type bytes, the counter is
+ * reloaded to @c 0x40 (full). Then the counter is decremented by
+ * @c 0x10 and clamped to @c [0, @c 0x40] — the unclamped intermediate
+ * is stored briefly so the surrounding code matches the original's
+ * "store then clamp then store" sequence.
+ *
+ * @return The new value of @c D_800C5DAC.
+ */
+s32 func_800BDA08(void) {
+    s32 v;
+    s32 *p;
+
+    if (D_800C4D64->type != D_800C4D74->type) {
+        D_800C5DAC = 0x40;
+    }
+
+    p = &D_800C5DAC;
+    v = *p - 0x10;
+    *p = v;
+    v = CLAMP(v, 0, 0x40);
+    *p = v;
+    return D_800C5DAC;
+}
 
 /**
  * @brief Edge-trigger each of two threshold flags at @p flags[0..1] from
