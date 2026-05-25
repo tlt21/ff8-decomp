@@ -142,11 +142,115 @@ void func_800BD918(u8 *dst) {
     dst[0x6F] = src[0x101];
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BD998);
+/**
+ * @brief Per-map constant lookup with implicit fall-through return.
+ *
+ * Dispatches on @p mapId:
+ *  - @p mapId @c < @c 0xA or @c == @c 0x80:                   @c 0x10.
+ *  - @p mapId @c == @c 0x32:                                  @c 0x78.
+ *  - @p mapId in @c [0x20, @c 0x29) or @c == @c 0x84:         @c 0x20.
+ *  - @p mapId in @c [0x40, @c 0x43):                          @c 0x78.
+ *  - @p mapId @c == @c 0x30:                                  @c 0x20.
+ *  - @p mapId @c == @c 0x31:                                  @c 0x78.
+ *  - otherwise:                                               @c 0x31.
+ *
+ * The @c 0x31 "default" is intentionally implicit — there is no
+ * trailing @c return statement, and the compiler leaves @c 0x31 in
+ * @c v0 from the final @c (mapId @c == @c 0x31) comparison's
+ * @c bne-delay-slot @c addiu. Adding @c return @c 0x31; explicitly
+ * generates a separate @c addiu and breaks the match.
+ *
+ * @param mapId Unsigned to make the @c mapId @c - @c 0x20 @c < @c 9 and
+ *              @c mapId @c - @c 0x40 @c < @c 3 range tests compile as
+ *              @c sltiu (one instruction) rather than a signed two-step
+ *              subtract+compare.
+ * @return Per-map constant — @c 0x10, @c 0x20, @c 0x78, or @c 0x31.
+ */
+s32 func_800BD998(u32 mapId) {
+    if (mapId < 0xA) return 0x10;
+    if (mapId == 0x80) return 0x10;
+    if (mapId == 0x32) return 0x78;
+    if (mapId - 0x20 < 9) return 0x20;
+    if (mapId == 0x84) return 0x20;
+    if (mapId - 0x40 < 3) return 0x78;
+    if (mapId == 0x30) return 0x20;
+    if (mapId == 0x31) return 0x78;
+}
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDA08);
+extern CmdDesc *D_800C4D74;
+extern s32 D_800C5DAC;
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDA78);
+/**
+ * @brief Tick @c D_800C5DAC down by @c 0x10, clamped to @c [0, @c 0x40],
+ *        resetting it to @c 0x40 first if the active command's @c type
+ *        byte changed.
+ *
+ * If the current command (@c D_800C4D64) and the previous command
+ * (@c D_800C4D74) have different @c type bytes, the counter is
+ * reloaded to @c 0x40 (full). Then the counter is decremented by
+ * @c 0x10 and clamped to @c [0, @c 0x40] — the unclamped intermediate
+ * is stored briefly so the surrounding code matches the original's
+ * "store then clamp then store" sequence.
+ *
+ * @return The new value of @c D_800C5DAC.
+ */
+s32 func_800BDA08(void) {
+    s32 v;
+    s32 *p;
+
+    if (D_800C4D64->type != D_800C4D74->type) {
+        D_800C5DAC = 0x40;
+    }
+
+    p = &D_800C5DAC;
+    v = *p - 0x10;
+    *p = v;
+    v = CLAMP(v, 0, 0x40);
+    *p = v;
+    return D_800C5DAC;
+}
+
+/**
+ * @brief Edge-trigger each of two threshold flags at @p flags[0..1] from
+ *        the position @p pos, returning the index that crossed.
+ *
+ *  - Slot @c 0 (threshold @c 0x110): when @p pos is below the threshold,
+ *    the flag is reset to @c 0; otherwise, if the flag was @c 0, the
+ *    crossing is registered (@c result = @c 0, flag becomes @c 1).
+ *  - Slot @c 1 (threshold @c 0x70): the inverse — when @p pos is below
+ *    the threshold the flag is reset and no crossing is reported;
+ *    otherwise the same edge-trigger as slot 0.
+ *
+ * If both slots crossed in the same call the return value is the
+ * higher-index one (slot 1 overwrites slot 0).
+ *
+ * @param pos   Position to test against the two thresholds.
+ * @param flags Two-byte array; @c flags[0] is slot 0, @c flags[1] is slot 1.
+ * @return The index of the (last) slot that crossed this call, or @c -1.
+ */
+s32 func_800BDA78(s32 pos, u8 *flags) {
+    s32 result = -1;
+    s32 i;
+
+    for (i = 0; i < 2; i++, flags++) {
+        if (i == 0) {
+            if (pos < 0x110) {
+                *flags = 0;
+                continue;
+            }
+        } else if (pos < 0x70) {
+            goto clear;
+        }
+        if (*flags == 0) {
+            result = i;
+            *flags = 1;
+        }
+        continue;
+    clear:
+        *flags = 0;
+    }
+    return result;
+}
 
 /**
  * @brief Classify @p pos against two band centres (@c 0x90 and @c 0x130)
@@ -171,7 +275,50 @@ s32 func_800BDAE4(s32 pos, s32 radius) {
     return result;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDB5C);
+extern void func_800AC0A0(s32 marker, u8 *input, u8 *buf, s32 zero);
+
+/**
+ * @brief Snapshot an 8-byte payload from @p input, nudge its halfword
+ *        at @c +2 by @c ±0x80, then dispatch to @c func_800AC0A0 with
+ *        a mode-derived marker.
+ *
+ * Steps:
+ *  1. Pick a marker from @p mode — @c 0x10 / @c 0x11 / @c 0x12 for
+ *     @c mode @c == @c 0 / @c 1 / anything else.
+ *  2. @c memcpy 8 bytes from @c input+0x14 to a local @c buf
+ *     (byte-granular, matches the target's @c lwl/lwr semantics).
+ *  3. Add @c +0x80 (when @p flag is non-zero) or @c -0x80 to the s16
+ *     at @c buf+2, then store back.
+ *  4. Forward @c (marker, @p input, @c &buf, @c 0) to @c func_800AC0A0.
+ *
+ * The @c do{}while(0) wrapper around steps 2–3 and the ternary chain
+ * for the marker are both load-bearing for matching gcc 2.8.0's
+ * scheduling — the do-while(0) keeps the payload work in one basic
+ * block so @c v1 stays live as the input-pointer save across the
+ * dispatch, and the ternary collapses to the right two-branch jump
+ * pattern (target's @c bne / @c j / @c addiu sequence) instead of the
+ * extra basic blocks an @c if-else if chain would emit.
+ */
+void func_800BDB5C(u8 *input, s32 flag, s32 mode) {
+    s32 marker;
+    u8 buf[8];
+    s32 val;
+
+    marker = (mode == 0) ? 0x10 : (mode == 1) ? 0x11 : 0x12;
+
+    do {
+        memcpy(buf, input + 0x14, 8);
+        val = *(s16 *)(buf + 2);
+        if (flag != 0) {
+            val += 0x80;
+        } else {
+            val -= 0x80;
+        }
+        *(s16 *)(buf + 2) = val;
+    } while (0);
+
+    func_800AC0A0(marker, input, buf, 0);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDBE0);
 
@@ -716,4 +863,3 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BF2E8);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BF3D8);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BF5A8);
