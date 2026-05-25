@@ -339,6 +339,5 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object7", func_800B881C);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object7", func_800B893C);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object7", func_800B8C08);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object7", func_800B8C70);
