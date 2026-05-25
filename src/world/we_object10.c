@@ -275,7 +275,50 @@ s32 func_800BDAE4(s32 pos, s32 radius) {
     return result;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDB5C);
+extern void func_800AC0A0(s32 marker, u8 *input, u8 *buf, s32 zero);
+
+/**
+ * @brief Snapshot an 8-byte payload from @p input, nudge its halfword
+ *        at @c +2 by @c ±0x80, then dispatch to @c func_800AC0A0 with
+ *        a mode-derived marker.
+ *
+ * Steps:
+ *  1. Pick a marker from @p mode — @c 0x10 / @c 0x11 / @c 0x12 for
+ *     @c mode @c == @c 0 / @c 1 / anything else.
+ *  2. @c memcpy 8 bytes from @c input+0x14 to a local @c buf
+ *     (byte-granular, matches the target's @c lwl/lwr semantics).
+ *  3. Add @c +0x80 (when @p flag is non-zero) or @c -0x80 to the s16
+ *     at @c buf+2, then store back.
+ *  4. Forward @c (marker, @p input, @c &buf, @c 0) to @c func_800AC0A0.
+ *
+ * The @c do{}while(0) wrapper around steps 2–3 and the ternary chain
+ * for the marker are both load-bearing for matching gcc 2.8.0's
+ * scheduling — the do-while(0) keeps the payload work in one basic
+ * block so @c v1 stays live as the input-pointer save across the
+ * dispatch, and the ternary collapses to the right two-branch jump
+ * pattern (target's @c bne / @c j / @c addiu sequence) instead of the
+ * extra basic blocks an @c if-else if chain would emit.
+ */
+void func_800BDB5C(u8 *input, s32 flag, s32 mode) {
+    s32 marker;
+    u8 buf[8];
+    s32 val;
+
+    marker = (mode == 0) ? 0x10 : (mode == 1) ? 0x11 : 0x12;
+
+    do {
+        memcpy(buf, input + 0x14, 8);
+        val = *(s16 *)(buf + 2);
+        if (flag != 0) {
+            val += 0x80;
+        } else {
+            val -= 0x80;
+        }
+        *(s16 *)(buf + 2) = val;
+    } while (0);
+
+    func_800AC0A0(marker, input, buf, 0);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDBE0);
 
