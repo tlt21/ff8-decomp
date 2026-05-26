@@ -30,12 +30,110 @@
  * @param mode    Zero → only emit kind 1 (skips kind 0); non-zero → emit
  *                both kinds (kind 0 first, then kind 1).
  *
- * @see https://decomp.me/scratch/222e9 — plateau at 99.55%, 1 instruction
- *      gap (target's dead @c addiu @c v0,@c 0x2C in the @c beqz delay slot
- *      after the first @c setcode, which gcc-2.8.0 in our pipeline fills
- *      with the next useful @c li @c v0,@c 0x2E instead).
  */
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object5", func_800AB540);
+extern EntityModel *D_800D244C;
+extern POLY_FT4     D_800D8810[2];
+extern POLY_FT4     D_800D8860[2];
+extern s16          D_800C977A;
+extern s16          D_800D239A;
+extern s32          D_800D23D0;
+
+void func_800AB540(s32 screenX, s32 screenY, s32 mode) {
+    MATRIX    m;
+    SVECTOR   rot;
+    struct { s16 x, y; s16 pad[2]; } corners[4];
+    SVECTOR   corner_in;
+    VECTOR    corner_out;
+    POLY_FT4 *slot;
+    s32       i, c;
+    s32       dim;
+
+    slot = (D_800D244C == (void *)&D_800CA040) ? D_800D8860 : D_800D8810;
+
+    m.t[2] = 0;
+    m.t[1] = 0;
+    m.t[0] = 0;
+
+    for (i = (mode == 0); i < 2; i++) {
+
+        rot.vx = 0;
+        rot.vy = 0;
+        if (i == 0) {
+            rot.vz = D_800C977A;
+        } else {
+            rot.vz = D_800D239A;
+        }
+        {
+            s32 v = rot.vz;
+            if (i == 0) v += 0x400;
+            else        v -= 0x600;
+            rot.vz = (s16)v;
+        }
+
+        RotMatrix(&rot, &m);
+        gte_SetRotMatrix(&m);
+        gte_SetTransMatrix(&m);
+
+        for (c = 0; c < 4; c++) {
+            if (i == 0) {
+                corner_in.vx = (c & 1) ? 2    : -0xD;
+                corner_in.vy = (c < 2)  ? -8   : 7;
+            } else {
+                corner_in.vx = (c & 1) ? 0xE  : -1;
+                corner_in.vy = (c < 2)  ? -1   : 0xE;
+            }
+            corner_in.vz = 0;
+            gte_ldv0(&corner_in);
+            gte_mvmva(1, 0, 0, 0, 0);
+            gte_stlvnl(&corner_out);
+            corners[c].x = (s16)(corner_out.vx + screenX);
+            corners[c].y = (s16)(corner_out.vy + screenY);
+        }
+
+        setPolyFT4(slot);
+        setSemiTrans(slot, i);
+
+        setRGB0(slot, 0x80, 0x80, 0x80);
+
+        if (i == 0) {
+            /* Yaw-0 (primary) icon: brightness modulated by D_800D23D0 phase. */
+            s32 phase = (D_800D23D0 << 3) & 0xFF;
+            dim = phase - 0x80;
+            if (dim > 0) {
+                dim >>= 1;
+            } else {
+                dim = (0x80 - phase) >> 1;
+            }
+            dim += 0x40;
+            setRGB0(slot, dim, dim, dim);
+        }
+
+        if (i == 0) {
+            slot->u2 = 0xC0; slot->u0 = 0xC0;
+            slot->u3 = 0xCF; slot->u1 = 0xCF;
+            slot->v1 = 0x90; slot->v0 = 0x90;
+            slot->v3 = 0x9F; slot->v2 = 0x9F;
+            slot->tpage = 0x0D;
+            slot->clut  = 0x383C;
+        } else {
+            /* Yaw-1 (alternate) icon: fixed bright frame. */
+            slot->u2 = 0xF0; slot->u0 = 0xF0;
+            slot->u3 = 0xFF; slot->u1 = 0xFF;
+            slot->v1 = 0x70; slot->v0 = 0x70;
+            slot->v3 = 0x7F; slot->v2 = 0x7F;
+            slot->tpage = 0x2D;
+            slot->clut  = 0x383B;
+        }
+
+        *(s32 *)&slot->x0 = *(s32 *)&corners[0];
+        *(s32 *)&slot->x1 = *(s32 *)&corners[1];
+        *(s32 *)&slot->x2 = *(s32 *)&corners[2];
+        *(s32 *)&slot->x3 = *(s32 *)&corners[3];
+
+        addPrim((P_TAG *)((u8 *)D_800D244C + 0x7C), slot);
+        slot++;
+    }
+}
 
 /**
  * @brief Spawn one of the 64 in-world icon slots (kind 0x10 / 0x11).
