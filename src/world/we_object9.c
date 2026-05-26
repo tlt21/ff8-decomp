@@ -324,7 +324,7 @@ void func_800BC09C(ParticleSource *src) {
  *
  *     extern u16    D_800C5C44[];   // per-kind 8-byte entries
  *     extern MATRIX D_800C9838;     // secondary world-to-screen matrix
- *     extern void   RotMatrix(SVECTOR *angles, MATRIX *out);  // = func_80040FE4
+ *     extern void   RotMatrix(SVECTOR *angles, MATRIX *out);  // = RotMatrix
  *     extern s32    ratan2(s32 y, s32 x);                     // = func_80041E84
  *     extern void  *memset(void *dst, s32 val, s32 n);        // = func_80047CE4
  *     extern s32    project(VECTOR *src, VECTOR *out);        // = func_800A40F8

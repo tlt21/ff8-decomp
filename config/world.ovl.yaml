@@ -57,7 +57,7 @@ segments:
       - [0x4CE8, c, we_object2]
       - [0x81DC, c, we_object3]
       - [0xE4DC, c, we_object4]
-      - [0x1336C, c, we_object5]
+      - [0x13540, c, we_object5]
       - [0x14C68, c, we_object6]
       - [0x1B10C, c, we_object7]
       - [0x20C70, c, we_object8]

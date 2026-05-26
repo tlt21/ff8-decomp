@@ -192,8 +192,8 @@ s32 opHandler_CLOCKWISETURN2(Eline *eline) {
 void func_800B27C4(s32 entityIdx, s32 *sxy, s32 *out) {
     SVECTOR v;
     s32 p, flag;
-    func_800406A4(func_800A8DAC(entityIdx, 0x1F, 0, 0));
-    func_80040734(func_800A8DAC(entityIdx, 0x1F, 0, 0));
+    SetRotMatrix(func_800A8DAC(entityIdx, 0x1F, 0, 0));
+    SetTransMatrix(func_800A8DAC(entityIdx, 0x1F, 0, 0));
     v.vx = 0;
     v.vy = 0;
     v.vz = 0;

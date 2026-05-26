@@ -5,6 +5,9 @@
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libgte.h"
 
+/** @brief World-map tile size in world units (one tile = 2048 units). */
+#define WORLD_TILE_SIZE 2048
+
 /**
  * @brief World-space 3-vector used for translation/position state.
  *
@@ -189,6 +192,19 @@ typedef struct {
     /* 0x66 */ u8 flags;              /**< Bit flags (bits 0x20, 0x40 used). */
     /* 0x67 */ u8 pad67;
 } WorldFlags;
+
+/**
+ * @brief Two-stage @c LoadImage descriptor — pair of @c RECT / @c data
+ *        slots gated by the low nibble of @c flag. Shared between
+ *        @c func_8009C478 and @c func_8009C5FC.
+ */
+typedef struct {
+    RECT     rect1;
+    u32 *    data1;
+    RECT     rect2;
+    u32 *    data2;
+    u8       flag;
+} ImageDesc;
 
 /**
  * @brief Two-halfword script opcode entry (4 bytes).

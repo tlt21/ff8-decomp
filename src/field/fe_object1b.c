@@ -60,18 +60,18 @@ INCLUDE_ASM("asm/field/nonmatchings/fe_object1b", func_800A63AC);
  * dispatches on @c quad->hE flags:
  *
  *  - @c bit 0 set (path A): full keyframe transform — calls
- *    @c func_800406A4 to set GTE registers, @c func_80040734 to push,
+ *    @c SetRotMatrix to set GTE registers, @c SetTransMatrix to push,
  *    interpolates the @c (h18-h8)/(h1A-hA)/(h1C-hC) position triplet by
  *    @c h4/h1E, runs the GTE transform via @c func_80040E74, copies an
  *    8-word vertex block from the source buffer, applies the delta, runs
- *    a second @c func_80040E74 + @c func_800406A4 pair, increments
+ *    a second @c func_80040E74 + @c SetRotMatrix pair, increments
  *    @c h4 and either flips the @c hE bit-0 / sets bit-2 (if exhausted)
  *    or sets @c slot->unk78 = -1 (otherwise).
  *
  *  - @c bit 2 set (path B): same single-step transform without the
  *    second round.
  *
- *  - @c neither set (path C): just @c func_800406A4 + @c func_80040734
+ *  - @c neither set (path C): just @c SetRotMatrix + @c SetTransMatrix
  *    on the vertex buffer.
  *
  * After the per-vertex dispatch, calls @c func_800AD048 (or zeroes the

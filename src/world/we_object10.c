@@ -320,11 +320,107 @@ void func_800BDB5C(u8 *input, s32 flag, s32 mode) {
     func_800AC0A0(marker, input, buf, 0);
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDBE0);
+extern void *func_80047CE4(void *dst, s32 c, u32 n);
+extern s32 func_8009CC3C(void);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDC94);
+/**
+ * @brief Emit @c unitCount*8 randomized samples around the @p target via
+ *        @c func_800AC0A0 (marker @c 2).
+ *
+ * Initializes an @c SVECTOR scratch to zero, then loops @c unitCount*8
+ * times: each iteration shifts @c vy by @c i*0x200, perturbs both @c vy
+ * and @c vz by two consecutive @c func_8009CC3C draws (each biased by
+ * @c -0x80), and dispatches @c (2, target, &buf, 3) to the AC0A0 emitter.
+ *
+ * @param target Input pointer forwarded to each AC0A0 emit (a0 of caller).
+ * @param unitCount Outer multiplier — total iterations are @c unitCount*8.
+ */
+void func_800BDBE0(u8 *target, s32 unitCount) {
+    SVECTOR buf;
+    s32 i;
+    s32 totalIters;
+    func_80047CE4(&buf, 0, 8);
+    totalIters = unitCount * 8;
+    for (i = 0; i < totalIters; i++) {
+        s32 r1, r2;
+        buf.vy += i * 0x200;
+        r1 = func_8009CC3C();
+        buf.vy += (r1 - 0x80) * 8;
+        r2 = func_8009CC3C();
+        buf.vz += (r2 - 0x80) << 2;
+        func_800AC0A0(2, target, (u8 *)&buf, 3);
+    }
+}
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDDC4);
+extern s32 D_800C4D4C;
+
+/**
+ * @brief Visibility-gated double emit: snapshot @p input+0x14 twice and
+ *        dispatch each as marker @c 0xE to @c func_800AC0A0, displaced
+ *        @c ±0x320 in @c vy and perturbed by random draws.
+ *
+ * Early-rejects when @c func_8009CC3C() returns @c >= @c D_800C4D4C @c * @c 2
+ * (so the spawn is rejected when no longer within visible range).
+ *
+ * Each emit:
+ *  1. memcpy 8 bytes from @c input+0x14 into a stack scratch (the
+ *     unaligned @c lwl/lwr/swl/swr matches the original source's byte-pointer
+ *     pattern).
+ *  2. Offset @c scratch[+2] by @c ±0x320 (forward / backward of base).
+ *  3. Two @c func_8009CC3C draws perturb the @c vy / @c vz fields
+ *     (each biased by @c -0x80, scaled by @c 8 and @c 4 respectively).
+ *  4. @c func_800AC0A0(0xE, input, scratch, 3) dispatches the result.
+ */
+void func_800BDC94(u8 *input) {
+    u8 buf[8];
+    s32 r;
+    s32 threshold = D_800C4D4C * 2;
+    if (func_8009CC3C() >= threshold) return;
+    memcpy(buf, input + 0x14, 8);
+    *(u16 *)(buf + 2) += 0x320;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 2) += (r - 0x80) * 8;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 4) += (r - 0x80) << 2;
+    func_800AC0A0(0xE, input, buf, 3);
+    memcpy(buf, input + 0x14, 8);
+    *(u16 *)(buf + 2) -= 0x320;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 2) += (r - 0x80) * 8;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 4) += (r - 0x80) << 2;
+    func_800AC0A0(0xE, input, buf, 3);
+}
+
+/**
+ * @brief Sibling of @c func_800BDC94 — same @c ±0x320 vy-displaced double
+ *        emit pattern, but with a @c 4x visibility threshold and marker
+ *        @c 3 / last-arg @c 3.
+ *
+ * Early-rejects when @c func_8009CC3C() returns @c >= @c D_800C4D4C @c * @c 4.
+ * Otherwise emits twice with the same snapshot + perturb pipeline. See
+ * @c func_800BDC94 for the per-emit body details.
+ */
+void func_800BDDC4(u8 *input) {
+    u8 buf[8];
+    s32 r;
+    s32 threshold = D_800C4D4C * 4;
+    if (func_8009CC3C() >= threshold) return;
+    memcpy(buf, input + 0x14, 8);
+    *(u16 *)(buf + 2) += 0x320;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 2) += (r - 0x80) * 8;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 4) += (r - 0x80) << 2;
+    func_800AC0A0(3, input, buf, 3);
+    memcpy(buf, input + 0x14, 8);
+    *(u16 *)(buf + 2) -= 0x320;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 2) += (r - 0x80) * 8;
+    r = func_8009CC3C();
+    *(u16 *)(buf + 4) += (r - 0x80) << 2;
+    func_800AC0A0(3, input, buf, 3);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BDEF4);
 
@@ -353,7 +449,36 @@ s32 func_800BE158(s32 idx) {
     return result;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BE1A8);
+/**
+ * @brief Visibility-gated single emit with a caller-supplied threshold and a
+ *        @c -0x140 displacement on @p input's field-4 word.
+ *
+ * Sibling of @c func_800BDC94. Early-rejects when
+ * @c func_8009CC3C() @c >= @c threshold. Otherwise snapshots @c input's
+ * trailing 8 bytes at @c +0x14 (unaligned) and the leading 16 bytes
+ * (aligned via an @c s32* cache so gcc emits @c lw/sw for the 16-byte
+ * memcpy and @c lwl/lwr for the 8-byte trailing). Subtracts @c 0x140
+ * from the scratch buf's word at @c +4, then perturbs the trailing's
+ * @c vy/@c vz with two @c func_8009CC3C draws (each biased by @c -0x80,
+ * scaled by @c 8 / @c 4 respectively) and dispatches the result to
+ * @c func_800AC0A0 with marker @c target+4.
+ */
+void func_800BE1A8(u8 *input, u8 *target, s32 threshold) {
+    u8 trailing[8];
+    u8 buf[16];
+    s32 *vec_src;
+    s32 r;
+    if (func_8009CC3C() >= threshold) return;
+    vec_src = (s32 *)input;
+    memcpy(trailing, input + 0x14, 8);
+    memcpy(buf, vec_src, 16);
+    *(s32 *)(buf + 4) -= 0x140;
+    r = func_8009CC3C();
+    *(u16 *)(trailing + 2) += (r - 0x80) * 8;
+    r = func_8009CC3C();
+    *(u16 *)(trailing + 4) += (r - 0x80) * 4;
+    func_800AC0A0((s32)(target + 4), buf, trailing, 3);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BE284);
 
@@ -543,7 +668,41 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BE720);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BE7FC);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BE8B0);
+extern u8 *D_800DD6C0;
+extern u8 *D_800DD6E4;
+extern void func_800BC51C(s32 *src, s32 *dst);
+extern void func_800BC544(s32 *src, s32 *dst);
+extern void func_800A40F8(s32 *src, u8 *dst);
+
+/**
+ * @brief Pick a rotation source from a one-byte selector, copy/negate via
+ *        @c func_800BC51C, then mirror-and-project via @c func_800BC544
+ *        and @c func_800A40F8.
+ *
+ * Reads a byte from @p byteIn and uses it to choose a rotation source:
+ *  - @c 1: @c &D_800DD6C0[0x34]
+ *  - @c 2 or @c 3: @c &D_800DD6C0[0x68]
+ *  - @c 4: @c &D_800DD6E4[0x68]
+ *  - anything else: skip the rotation copy
+ *
+ * The selected source is fed through @c func_800BC51C(src, transform)
+ * (swap-Y/Z and negate Z). Then @c func_800BC544(transform, &buf) does
+ * the mirror copy into a scratch vector, and @c func_800A40F8(&buf, output)
+ * projects/dispatches the final result.
+ */
+void func_800BE8B0(u8 *byteIn, s32 *transform, u8 *output) {
+    u8 byte = *byteIn;
+    s32 buf[4];
+    if (byte == 1) {
+        func_800BC51C((s32 *)(D_800DD6C0 + 0x34), transform);
+    } else if ((u8)(byte - 2) < 2) {
+        func_800BC51C((s32 *)(D_800DD6C0 + 0x68), transform);
+    } else if (byte == 4) {
+        func_800BC51C((s32 *)(D_800DD6E4 + 0x68), transform);
+    }
+    func_800BC544(transform, buf);
+    func_800A40F8(buf, output);
+}
 
 extern u8 *D_800C9E34;
 extern ScriptOp *func_800AF004(u8 *base, s32 flag);
@@ -796,12 +955,102 @@ s32 func_800BED90(s32 *outIndex, s32 *outCount) {
     return found;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BEDF0);
+extern s32 D_800C4DA8;
+extern s32 D_800C4DAC;
+extern s32 D_800C4DB0;
+extern s32 D_800C4DB4;
+extern u8 *D_800C96D0;
+
+/**
+ * @brief Scan the @c D_800C96D0 script for non-control opcodes and snapshot
+ *        each one's low @c param byte into @p output; gate the result with
+ *        the @c D_800C4DA8..@c D_800C4DB4 lock quad.
+ *
+ * Sets all four lock slots to @c 1 on entry, then walks the script returned
+ * by @c func_800AF004(D_800C96D0, 0):
+ *  - @c 0xFF05: stop walking.
+ *  - @c 0xFF0E: follow the @c param-relative jump.
+ *  - other: write the opcode's low @c param byte to @c *output and continue.
+ *
+ * Clears all four lock slots to @c 0 on the way out. Returns @c 1 if any
+ * non-control opcode was processed, else @c 0.
+ *
+ * @note Each non-control hit overwrites @c *output, so callers see only the
+ *       last byte the script emitted before the @c 0xFF05 terminator.
+ */
+s32 func_800BEDF0(u8 *output) {
+    s32 found = 0;
+    ScriptOp *p;
+    D_800C4DA8 = 1;
+    D_800C4DAC = 1;
+    D_800C4DB0 = 1;
+    D_800C4DB4 = 1;
+    p = func_800AF004(D_800C96D0, 0);
+    if (p != 0) {
+        while (1) {
+            u16 op = p->op;
+            if (op == 0xFF05) break;
+            if (op == 0xFF0E) {
+                p = (ScriptOp *)(D_800C96D0 + p->param);
+                continue;
+            }
+            found = 1;
+            *output = (u8)p->param;
+            p++;
+        }
+    }
+    D_800C4DA8 = 0;
+    D_800C4DAC = 0;
+    D_800C4DB0 = 0;
+    D_800C4DB4 = 0;
+    return found;
+}
 
 void func_800BEECC(void) {
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object10", func_800BEED4);
+extern s32 func_800A358C(s32 a0, void *a1, void *a2, s32 a3);
+
+/**
+ * @brief When dialogue-mode 0xD is pending and the current scene is active,
+ *        post the next dialogue chunk via @c func_800A358C and reflect the
+ *        result in the @c D_800C4DC4 ready flag.
+ *
+ * Always sets @c D_800C4DC4 to 1 on entry (optimistic ready). Then early-outs
+ * unless @c D_800D23D8[0] is mode 0xD and @c D_800C4DC0 is non-zero (scene
+ * has a valid context). Looks up the current slot via @c D_800C5C24 into
+ * @c D_800DBFB8 and calls @c func_800A358C(0x32, &slot, slot.data14, 0). On
+ * success (@c ret @>= @c 0) @c D_800C4DC4 stays 1; on failure it's reset to
+ * 0 and the mode byte at @c D_800D23D8[0] is cleared.
+ *
+ * @note The declared @c s32 return type is a matching artifact, not a
+ *       meaningful API: the original C declared a return type but used
+ *       bare @c return; (and an implicit fall-off at the end), leaving @c v0
+ *       as whatever the last computation produced. As a result the
+ *       "return value" is path-dependent garbage:
+ *           - mode != 0xD path → @c 0xD (residue of the bne compare)
+ *           - @c D_800C4DC0 == 0 path → @c 0 (the loaded value)
+ *           - success path → @c 1 (the success boolean)
+ *           - failure path → @c 0 (the success boolean)
+ *       Callers should treat this as effectively @c void. The non-void
+ *       declaration is what forces gcc 2.8.0 to schedule the
+ *       @c %hi(D_800DBFB8) load into the @c beqz delay slot, matching
+ *       the original byte layout — a @c void declaration plateaus at
+ *       99.47% with the two %hi lui's swapped.
+ */
+s32 func_800BEED4(void) {
+    s32 ret;
+
+    D_800C4DC4 = 1;
+    if (D_800D23D8[0] != 0xD) return;
+    if (D_800C4DC0 == 0) return;
+
+    ret = func_800A358C(0x32, &D_800DBFB8[D_800C5C24], &D_800DBFB8[D_800C5C24].data14, 0);
+    D_800C4DC4 = (ret >= 0);
+    if (!D_800C4DC4) {
+        D_800D23D8[0] = 0;
+    }
+}
 
 /**
  * @brief Return 1 if any active slot's marker is 0x4F, else 0.

@@ -654,4 +654,31 @@ void func_800A6358(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A63F0);
+extern s32 D_800C4D38;
+extern s16 D_800C53C4[];
+extern s16 D_800C53D0[];
+extern s16 D_800C53DC[];
+extern s16 D_800C53E4[];
+extern s16 D_800C53EC[];
+
+/**
+ * @brief Gated table swap — copies one of two source halfword tables into
+ *        @c D_800C53B8 and @c D_800C53EC depending on the current map id.
+ *
+ * No-op when @c D_800C4D2C is set (system busy). Otherwise, when the map
+ * id @c D_800C4D38 is @c 0x32, copies @c D_800C53C4 (5 halfwords) ->
+ * @c D_800C53B8 and @c D_800C53DC (4 halfwords) -> @c D_800C53EC.
+ * For any other map id, copies from @c D_800C53D0 and @c D_800C53E4
+ * respectively.
+ */
+void func_800A63F0(void) {
+    s32 i;
+    if (D_800C4D2C != 0) return;
+    if (D_800C4D38 == 0x32) {
+        for (i = 0; i < 5; i++) D_800C53B8[i] = D_800C53C4[i];
+        for (i = 0; i < 4; i++) D_800C53EC[i] = D_800C53DC[i];
+        return;
+    }
+    for (i = 0; i < 5; i++) D_800C53B8[i] = D_800C53D0[i];
+    for (i = 0; i < 4; i++) D_800C53EC[i] = D_800C53E4[i];
+}

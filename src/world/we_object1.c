@@ -1,5 +1,7 @@
 #include "common.h"
+#include "cd.h"
 #include "sound.h"
+#include "world.h"
 #include "psxsdk/libapi.h"
 #include "psxsdk/libgpu.h"
 
@@ -80,20 +82,7 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009C1A4);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009C294);
 
-/**
- * @brief Two-stage @c LoadImage descriptor — pair of @c RECT / @c data
- *        slots gated by the low nibble of @c flag. Shared between
- *        @c func_8009C478 and @c func_8009C5FC.
- */
-typedef struct {
-    RECT     rect1;
-    u32 *    data1;
-    RECT     rect2;
-    u32 *    data2;
-    u8       flag;
-} ImageDesc;
-
-extern void func_8009CA34(s32 *src, ImageDesc *desc);
+extern s32 func_8009CA34(s32 *src, ImageDesc *desc);
 extern RECT D_800C8698;
 
 /**
@@ -314,9 +303,133 @@ void func_8009C8CC(s32 val) {
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009C8E0);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009CA34);
+/**
+ * @brief Parse a streaming-image header out of @p src into @p desc,
+ *        skipping any embedded data payload, and return the leading
+ *        @c count word.
+ *
+ * Wire format of the buffer at @p src (u32 words unless noted):
+ *  - @c +0x00 : count / magic word (returned, not interpreted here).
+ *  - @c +0x04 : flag byte at @c [0] (only the low nibble is kept).
+ *  - if bit 3 of the flag is set, an embedded payload follows:
+ *    - @c +0x08 : payload size in bytes (rounded down to a multiple
+ *      of 4, then the 12 leading header bytes are subtracted to get
+ *      the data-stride to skip).
+ *    - @c +0x0C : @c rect2 (x, y, w, h — four u16s).
+ *    - @c +0x14 : @c data2 starts here; consumed (size - 12) bytes
+ *      worth, after which @p src is advanced past it.
+ *  - the next u32 boundary holds the @c rect1 header (x, y, w, h)
+ *    followed by the @c data1 pointer.
+ *
+ * @param src   Source buffer.
+ * @param desc  Output @ref ImageDesc — receives @c rect1, @c data1,
+ *              optional @c rect2 / @c data2 (when the flag bit is
+ *              set), and the @c flag itself.
+ * @return      The leading @c count word at @p src[0]. Callers in
+ *              this TU ignore it, but the value is real ABI.
+ *
+ * @note Matching needs the two-step @c size mask
+ *       (@c size = (u32)size >> 2; @c size = size << 2;) instead of
+ *       the one-line @c (((u32)size) >> 2) << 2 — gcc 2.8.0 otherwise
+ *       picks a slightly different register cascade for the
+ *       @c rect2.y / @c size temps.
+ */
+s32 func_8009CA34(s32 *src, ImageDesc *desc) {
+    s32 count;
+    s32 size;
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009CAE0);
+    count = *src;
+    src++;
+
+    desc->flag = *(u8 *)src & 0xF;
+    src++;
+
+    if (desc->flag >> 3) {
+        size = *src;
+        src++;
+
+        desc->rect2.x = ((u16 *)src)[0];
+        desc->rect2.y = ((u16 *)src)[1];
+        src++;
+
+        size = (u32)size >> 2;
+        size = size << 2;
+        size -= 12;
+
+        desc->rect2.w = ((u16 *)src)[0];
+        desc->rect2.h = ((u16 *)src)[1];
+        src++;
+
+        desc->data2 = (u32 *)src;
+        src = (s32 *)((u8 *)src + size);
+    }
+
+    src++;
+    desc->rect1.x = ((u16 *)src)[0];
+    desc->rect1.y = ((u16 *)src)[1];
+    src++;
+
+    desc->rect1.w = ((u16 *)src)[0];
+    desc->rect1.h = ((u16 *)src)[1];
+    src++;
+
+    desc->data1 = (u32 *)src;
+
+    return count;
+}
+
+/**
+ * @brief 16-byte CD load list entry — NULL-terminated by @c marker = 0.
+ *
+ * @c marker holds an arbitrary non-zero value while the entry is live; the
+ * walker stops on the first entry whose @c marker is 0.
+ */
+typedef struct {
+    /* 0x00 */ s32 marker;
+    /* 0x04 */ u8 *dest;
+    /* 0x08 */ s32 lba;
+    /* 0x0C */ u32 size;
+} CdLoadEntry;
+
+extern void func_80042634(s32 a);
+
+/**
+ * @brief Walk a NULL-terminated @ref CdLoadEntry list, issuing a @c cdRead
+ *        for each entry and spinning on @c func_800393C8 between entries.
+ *
+ * For each non-terminator entry, kicks off @c cdRead(lba, size, dest, NULL)
+ * then busy-waits in a poll loop on @c func_800393C8 until it returns 0
+ * (read complete). While polling, optionally calls @p spin_cb each iteration
+ * after a @c func_80042634(0) prep step — used by callers to keep the frame
+ * advancing / GPU buffer flushing during the wait.
+ *
+ * Returns immediately if the first entry's marker is 0.
+ *
+ * @param entries  CD load list (NULL-terminated by @c marker = 0).
+ * @param spin_cb  Optional polling callback (may be @c NULL).
+ *
+ * @note Uses a @c goto top loop to suppress gcc 2.8.0's induction-variable
+ *       optimizer — without it, the @c entries pointer is split into a
+ *       second @c entries+4 base register for the field cluster
+ *       (@c lba/@c size/@c dest), forcing @p spin_cb out to @c s2 and
+ *       adding 3 extra instructions. The byte-perfect output requires a
+ *       single base register, which structured loops can't produce here.
+ */
+void func_8009CAE0(CdLoadEntry *entries, void (*spin_cb)(void)) {
+    CdLoadEntry *e;
+    if (entries->marker == 0) return;
+    e = entries;
+top:
+    cdRead(e->lba, e->size, e->dest, 0);
+    while (func_800393C8() != 0) {
+        if (spin_cb != 0) {
+            func_80042634(0);
+            spin_cb();
+        }
+    }
+    e++;
+    if (e->marker != 0) goto top;
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009CB70);
 
