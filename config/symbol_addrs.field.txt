@@ -1,3 +1,5 @@
+SetRotMatrix = 0x800406A4;
+SetTransMatrix = 0x80040734;
 preInitStub = 0x8001152C;
 flushGpuOt = 0x800115F0;
 loadFieldDataA = 0x80011A60;

@@ -343,8 +343,8 @@ s32 func_8009FED0(void) {
                 node->scale = 0x18;
                 node->unk24 = 0x200;
             }
-            func_800406A4(node->subNode);
-            func_80040734(node->subNode);
+            SetRotMatrix(node->subNode);
+            SetTransMatrix(node->subNode);
             D_801C2EB4 = func_8009AE6C((u8)D_801D44FC, 0x13, &D_801C2EB0[3], D_801C2EB4);
             func_80098BA0(0x28);
             D_80182E64 = D_801D44FC;

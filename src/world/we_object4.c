@@ -23,7 +23,7 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object4", func_800A6BE0);
  *
  * @param a0 Entity model whose @c primList holds the prims to splice.
  */
-void func_800A735C(EntityModel *a0) {
+void func_800A735C(BattleSceneCtx *a0) {
     s32 cond = (a0 != &D_800CA040) ? 1 : 0;
 
     addPrims(&a0->primList[D_800C53B8[0]], &D_800D3E50[cond][0].link, &D_800D3E98[cond][0].link);
@@ -117,7 +117,37 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object4", func_800A9300);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object4", func_800A9CC0);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object4", func_800A9E24);
+#undef D_800D3E50
+#undef D_800D4090
+extern u8 D_800D3E50[];
+extern u8 D_800D4090[];
+extern void func_800491E8(void *p);
+extern void func_80048C50(s32 arg);
+
+/**
+ * @brief Initialise 8 sub-OT slots (4 from each of two pools) for the
+ *        entity model in @p a0, biased by @c 0x120 for non-canonical models.
+ *
+ * Each @c OTSlot in @c D_800D3E50/@c D_800D4090 holds 4 sub-OT slots at
+ * stride @c 0x18. This call walks slot 0 of each pool (@c &D_800D3E50[cond][0]
+ * and @c &D_800D4090[cond][0]) and runs @c func_800491E8 on each of the 4
+ * sub-OTs, then dispatches @c func_80048C50(0). @c cond is the canonical
+ * entity bit — @c 0 for @c &D_800CA040, @c 1 otherwise — which selects the
+ * @c [0] or @c [1] row of the pool array via the @c 0x120-byte bias.
+ */
+void func_800A9E24(BattleSceneCtx *a0) {
+    s32 cond = (a0 != &D_800CA040) ? 1 : 0;
+    s32 bias = cond * 0x120;
+    func_800491E8(D_800D3E50 + bias);
+    func_800491E8(D_800D3E50 + bias + 0x18);
+    func_800491E8(D_800D3E50 + bias + 0x30);
+    func_800491E8(D_800D3E50 + bias + 0x48);
+    func_800491E8(D_800D4090 + bias);
+    func_800491E8(D_800D4090 + bias + 0x18);
+    func_800491E8(D_800D4090 + bias + 0x30);
+    func_800491E8(D_800D4090 + bias + 0x48);
+    func_80048C50(0);
+}
 
 extern POLY_GT4 D_800D5A00[2][64];
 extern POLY_GT3 D_800D7400[2][64];
@@ -202,9 +232,9 @@ s32 func_800AB02C(PrimLink *p, s32 unused, s32 maskTake, s32 maskKeep) {
 
     p->prim_len = 0xC;
     ctx = D_800D244C;
-    p->link = (p->link & maskKeep) | (ctx->otHead & maskTake);
-    result = (ctx->otHead & maskKeep) | ((s32)p & maskTake);
-    ctx->otHead = result;
+    p->link = (p->link & maskKeep) | (ctx->primList[BSC_OTHEAD_IDX] & maskTake);
+    result = (ctx->primList[BSC_OTHEAD_IDX] & maskKeep) | ((s32)p & maskTake);
+    ctx->primList[BSC_OTHEAD_IDX] = result;
     return result;
 }
 

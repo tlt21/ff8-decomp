@@ -154,6 +154,7 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object2", func_8009D2D8);
 extern SceneState D_80082C8C;
 extern u8 D_800C4D38;
 extern void func_800B3FD4(Slot *a0, s32 a1);
+extern void func_8009D630(void);
 
 /**
  * @brief Reset the scene state block and kick off the scene loader.
@@ -173,7 +174,46 @@ void func_8009D3F4(void) {
     func_800B3FD4(D_800D226C, 5);
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object2", func_8009D44C);
+extern s16 D_800C8CEA;
+extern BattleSceneCtx *D_800D244C;
+extern SfxSlot D_800C526C[];
+extern void fadeOutSfxFast(s32 sfx);
+extern void renderAndUpdateDisplay(s32 mode);
+extern s32 renderBattleDisplayList(s32 *colorTag);
+
+/**
+ * @brief Enter scene mode @c 3 with a packed @c marker, then mass-reset
+ *        the world @c SfxSlot table and trigger a render flush.
+ *
+ * Steps:
+ *  1. Snapshot @p marker into @c D_800C8CEA, tear down prior scene
+ *     state via @c func_8009D630, and reset @c D_80082C8C to mode 3
+ *     with the marker's two bytes in @c unk02 / @c unk03 and the
+ *     current dispatch code (@c D_800C4D38) in @c cmd.
+ *  2. @c func_800B3FD4(D_800D226C, 3) re-enters the scene driver.
+ *  3. Walk the first 13 @c D_800C526C @c SfxSlot entries: fade out each
+ *     active slot via @c fadeOutSfxFast and mark it inactive (@c -1).
+ *  4. Force a full render: @c renderAndUpdateDisplay(2) then dispatch
+ *     the world display list at @c D_800D244C+0x74.
+ */
+void func_8009D44C(s32 marker) {
+    s32 i;
+    D_800C8CEA = marker;
+    func_8009D630();
+    D_80082C8C.mode = 3;
+    D_80082C8C.unk02 = (s8)marker;
+    D_80082C8C.unk03 = (s8)((u32)marker >> 8);
+    D_80082C8C.cmd = D_800C4D38;
+    func_800B3FD4(D_800D226C, 3);
+    D_80082C0A = 0;
+    for (i = 0; i < 13; i++) {
+        s32 sfx = D_800C526C[i].field02;
+        D_800C526C[i].field00 = -1;
+        fadeOutSfxFast(sfx);
+    }
+    renderAndUpdateDisplay(2);
+    renderBattleDisplayList(&D_800D244C->primList[BSC_COLORTAG_IDX]);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object2", func_8009D510);
 
@@ -360,7 +400,7 @@ void func_8009D954(void) {
         fadeOutSfxFast(sfxIdx);
     }
     renderAndUpdateDisplay(2);
-    renderBattleDisplayList(&D_800D244C->colorTag);
+    renderBattleDisplayList(&D_800D244C->primList[BSC_COLORTAG_IDX]);
 }
 
 extern s32 getSfxField28(s32 idx);
@@ -597,7 +637,49 @@ s32 func_8009FF0C(s32 mapId, s32 mode) {
     return mode == 1 ? 0x280 : 1;
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object2", func_8009FF70);
+extern u16 D_800C5354[3];
+extern u16 D_800C535C[3];
+extern u16 D_800C5364[3];
+
+/**
+ * @brief Copy a per-map 3-halfword parameter triple into @p out, keyed by
+ *        @p mapId. Sibling of @c func_8009FF0C — same map-ID classifier,
+ *        different output payload.
+ *
+ * The default source is @c D_800C5354. Two single-map cases pick alternate
+ * sources: @c mapId @c == @c 0x30 → @c D_800C5364, @c mapId @c == @c 0x32 →
+ * @c D_800C535C. All other map IDs in the "common" set (the ranges
+ * @c [0x20, 0x29), @c [0x10, 0x17), @c [0x40, 0x43) and @c mapId @c == @c 0x84)
+ * also use the default. The triple is three halfwords (likely RGB or a small
+ * fade/colour vector — exact meaning uncertain).
+ *
+ * @param mapId  World-map area identifier.
+ * @param mode   Unused at this call site (kept for ABI; sibling reads it).
+ * @param out    Destination halfword triple — receives @c src[0..2].
+ */
+void func_8009FF70(s32 mapId, s32 mode, u16 *out) {
+    u16 *src;
+    int new_var;
+
+    if ((u32)(mapId - 0x20) < 9 || mapId == 0x84
+        || (u32)(mapId - 0x10) < 7 || (u32)(mapId - 0x40) < 3) {
+        src = D_800C5354;
+        out[0] = src[0];
+    } else if (mapId == 0x30) {
+        src = D_800C5364;
+        new_var = src[0];
+        out[0] = new_var;
+    } else if (mapId == 0x32) {
+        src = D_800C535C;
+        out[0] = src[0];
+    } else {
+        src = D_800C5354;
+        out[0] = src[0];
+    }
+    new_var = src[1];
+    out[1] = new_var;
+    out[2] = src[2];
+}
 
 extern s16 D_800C534C;
 extern s16 D_800C5344;

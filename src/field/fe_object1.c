@@ -943,8 +943,8 @@ s32 func_800A0F34(SVECTOR *v, s32 *sxy) {
     s32 result;
     s32 unk_p, unk_flag;
     func_8003FEE4();
-    func_800406A4((u8 *)D_800C71F8);
-    func_80040734((u8 *)D_800C71F8);
+    SetRotMatrix((u8 *)D_800C71F8);
+    SetTransMatrix((u8 *)D_800C71F8);
     func_800408C4(0, 0);
     result = func_80040DE4(v, sxy, &unk_p, &unk_flag);
     func_8003FF88();

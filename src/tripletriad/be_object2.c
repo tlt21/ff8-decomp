@@ -220,8 +220,8 @@ s32 func_8009AA68(BattleObjectCtl *ctl) {
         }
     }
 
-    func_800406A4(node);
-    func_80040734(node);
+    SetRotMatrix(node);
+    SetTransMatrix(node);
 
     D_801C2EB4 = func_8009AE6C(entity->entityType, entity->initFlags,
                                 &D_801C2EB0[(s16)node->sortKey], D_801C2EB4);
