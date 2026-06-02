@@ -368,11 +368,85 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009AEE4);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009B358);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009B550);
+extern SfxSlot D_800C526C[];
+extern s32  getCurrentFieldMusic(void); /* defined u16 in btl_sfx; used full-width here */
+extern void setSfxPitch(s32 idx, s32 val);
+extern void setSfxEntityType(s32 idx, s32 val);
+extern void setSfxReverbMode(s32 idx, s32 val);
+extern void setSfxGlobalFlag(s32 val);
+extern void startSfxSlow(s32 idx);
+extern void func_8002D784(s32 sfxIdx, u8 *data, s32 paramY, s32 paramZ, s32 paramW, s32 paramV);
+extern void func_8002E064(s32 index, RECT *srcRect);
+extern s32  func_8002E680(u8 *text);
+
+/**
+ * @brief Configure and start a positioned world-map SFX/voice clip on a slot.
+ *
+ * Resolves the clip's data pointer: the caller-supplied @p text when non-NULL,
+ * otherwise — unless @p strIdx is the @c -2 sentinel — a self-relative lookup
+ * @c (u8 *)D_800C97D4 + D_800C97D4->first[strIdx] into the string table. The
+ * slot's @c field00 records @p strIdx (or @c -2). After priming the voice via
+ * @c func_8002D784, it sets pitch from the current field music, entity type 6,
+ * reverb from @c field03, and the global flag.
+ *
+ * It then sizes a text box: @c func_8002E680 returns the rendered dimensions
+ * packed as @c width|(height<<16); the @ref RECT is placed relative to the
+ * slot's anchor (@c field04, @c field06) per the alignment mode @c field01
+ * (0 = top-left, 1/3 = right-aligned, 2 = centered, 3 = also bottom-aligned),
+ * submitted via @c func_8002E064, and the SFX is started with @c startSfxSlow.
+ *
+ * @param slotIdx Index into the @c D_800C526C SFX-slot table.
+ * @param strIdx  String-table index for the clip text (@c -2 = none).
+ * @param text    Explicit text/data pointer; overrides @p strIdx when non-NULL.
+ * @param arg3..arg6 Forwarded to @c func_8002D784.
+ */
+void func_8009B550(s32 slotIdx, s32 strIdx, u8 *text, s32 arg3, s32 arg4, s32 arg5, s32 arg6) {
+    RECT rect;
+    s32 id;
+    u8 *ptr;
+    s32 dim;
+    StringTable *tbl;
+    s32 *offsets;
+    s32 off;
+    s32 v;
+    s32 hi;
+
+    ptr = text;
+    tbl = D_800C97D4;
+    offsets = tbl->first;
+    off = offsets[strIdx];
+    id = D_800C526C[slotIdx].field02;
+    if (text == 0 && strIdx != -2) {
+        ptr = (u8 *)tbl + off;
+        D_800C526C[slotIdx].field00 = strIdx;
+    } else {
+        D_800C526C[slotIdx].field00 = -2;
+    }
+
+    func_8002D784(id, ptr, arg3, arg4, arg5, arg6);
+    setSfxPitch(id, getCurrentFieldMusic());
+    setSfxEntityType(id, 6);
+    setSfxReverbMode(id, D_800C526C[slotIdx].field03);
+    setSfxGlobalFlag(id);
+
+    dim = func_8002E680(ptr);
+    v = dim + 0x20;
+    hi = (u32)dim >> 16;
+    if (D_800C526C[slotIdx].field01 == 1) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - v - 0x10, D_800C526C[slotIdx].field06, dim + 0x30, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 0) {
+        setRECT(&rect, D_800C526C[slotIdx].field04, D_800C526C[slotIdx].field06, dim + 0x30, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 2) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - ((s16)v >> 1) - 8, D_800C526C[slotIdx].field06, dim + 0x30, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 3) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - v - 0x10, D_800C526C[slotIdx].field06 - hi - 0x10, dim + 0x30, hi + 0x10);
+    }
+    func_8002E064(id, &rect);
+    startSfxSlow(id);
+}
 
 extern s32 D_800C4DBC;
 extern u32 D_800D2278[];
-extern SfxSlot D_800C526C[];
 extern void fadeOutSfxSlow(s32 idx);
 
 /**
@@ -422,12 +496,6 @@ void func_8009B748(void) {
 }
 
 extern void initSfxPlayback(s32 index, u8 *data);
-extern s32 getCurrentFieldMusic(void); /* defined u16 in btl_sfx; used full-width here */
-extern void setSfxPitch(s32 idx, s32 val);
-extern void setSfxEntityType(s32 idx, s32 val);
-extern s32 func_8002E680(u8 *text);
-extern void func_8002E064(s32 index, RECT *srcRect);
-extern void startSfxSlow(s32 idx);
 
 /**
  * @brief Sync the world-map voice/SFX on channel 1 to the requested clip.
