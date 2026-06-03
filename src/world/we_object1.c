@@ -67,7 +67,80 @@ void func_80099B48(Entity *entity, s32 *script) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_80099C84);
+/**
+ * @brief (Re)initialise the world-map sound sequence and reload the sample banks.
+ *
+ * Decides whether to reload the current sequence: it skips the reload (just issuing
+ * @c sndCmdC1(0,0x1E,0x7F)) only when the scatter key @c D_800D2442 already matches
+ * @c g_fieldVars->audioChannel0State AND the scene is not mode 2. Otherwise it parses
+ * the sequence for @c (s8)D_800D2442 via @c func_8009CE70 (which fills bank selector,
+ * a "ready" flag, and three handles), wires it up with @c func_80039678, records the
+ * bank selector, and then either — for an active mode-2 scene — drains the audio
+ * engine and pushes the new sequence (@c sndProcessAudio + @c func_8009CDC4), or stops
+ * the old one and caches its handles in @c D_800C4FC0 / @c D_800C4FBC. The new channel
+ * state is latched via @c func_8009D7D8.
+ *
+ * Afterwards it always drains the sound engine, uploads the sample bank selected by the
+ * scene command @c D_80082C8D (@c D_800C9EE0 for @c 0x40..0x42, else @c D_800C9EDC),
+ * rebinds @c D_800C4FD8 sequence slots 4-9/12 to self-relative pointers in the bank
+ * header @c D_800C97A8, and clears every slot's runtime state (@c field12).
+ */
+void func_80099C84(void) {
+    u8  b18;
+    s32 w1C, w20, w24, w28;
+    s32 result;
+    s32 mode2;
+    s32 key;
+    s32 i;
+    s32 *bank;
+    s32 *offs;
+
+    D_800C4FBC = 0;
+    D_800C4FC0 = 0;
+    mode2 = (D_80082C8C.mode == 2);
+    key = D_800D2442;
+    if (key != g_fieldVars->audioChannel0State || mode2) {
+        result = func_8009CE70((s8)key, &b18, &w1C, &w20, &w24, &w28);
+        if (result != 0) {
+            func_80039678(w24, result, w28);
+            g_fieldVars->soundBankSelector = b18;
+            if (mode2 && w1C != 0) {
+                while (sndGetEngineState() > 0) {}
+                sndProcessAudio(w20, 1);
+                func_8009CDC4(w24, 0x7F);
+            } else {
+                if (sndGetStatus() != 0) {
+                    sndCmdC1(0, 0x1E, 0);
+                }
+                D_800C4FC0 = w20;
+                D_800C4FBC = w24;
+            }
+            g_fieldVars->audioChannel0State = func_8009D7D8(result);
+        } else {
+            func_8009CE40();
+        }
+    } else {
+        sndCmdC1(0, 0x1E, 0x7F);
+    }
+    while (sndGetEngineState() > 0) {}
+    if ((u32)(D_80082C8D - 0x40) < 3) {
+        while (sndUploadSamples(D_800C9EE0, 1) != 0) {}
+    } else {
+        while (sndUploadSamples(D_800C9EDC, 1) != 0) {}
+    }
+    bank = D_800C97A8;
+    offs = bank + 1;
+    D_800C4FD8[4].bankHandle = D_800C97AC;
+    D_800C4FD8[5].bankHandle = (s32)bank + offs[1];
+    D_800C4FD8[6].bankHandle = (s32)bank + offs[2];
+    D_800C4FD8[7].bankHandle = (s32)bank + offs[3];
+    D_800C4FD8[8].bankHandle = (s32)bank + offs[4];
+    D_800C4FD8[9].bankHandle = (s32)bank + offs[5];
+    D_800C4FD8[12].bankHandle = (s32)bank + offs[6];
+    for (i = 0x1F; i >= 0; i--) {
+        D_800C4FD8[i].field12 = 0;
+    }
+}
 
 
 /**
@@ -289,7 +362,70 @@ void func_8009AD3C(void) {
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009AEE4);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object1", func_8009B358);
+/**
+ * @brief Set up a positioned world-map SFX/voice clip, skipping if already current.
+ *
+ * Sibling of @c func_8009B550. Resolves the clip's data pointer (explicit @p text,
+ * else a self-relative @c D_800C97D4 string-table lookup) but first early-outs when
+ * the slot already records this @p strIdx and no explicit @p text was given. Primes
+ * the voice via @c initSfxPlayback, then sets pitch (from the current field music),
+ * entity type 6 and reverb (@c field03). Finally it sizes a text box —
+ * @c func_8002E680 returns the rendered dimensions packed as @c width|(height<<16) —
+ * positioned relative to the slot anchor (@c field04, @c field06) per the alignment
+ * mode @c field01, submits it via @c func_8002E064, and starts the SFX.
+ *
+ * @note Declared non-void to match the original's codegen: a non-void return keeps
+ *       @c v0 live, which leaves the early-return branch-delay slot as a @c nop.
+ *       No meaningful value is returned.
+ *
+ * @param slotIdx Index into the @c D_800C526C SFX-slot table.
+ * @param strIdx  String-table index (@c -2 = none); also the "already current" key.
+ * @param text    Explicit clip pointer; overrides @p strIdx when non-NULL.
+ */
+s32 func_8009B358(s32 slotIdx, s32 strIdx, u8 *text) {
+    RECT rect;
+    s32 id;
+    u8 *ptr;
+    s32 dim;
+    StringTable *tbl;
+    s32 *offsets;
+    s32 off;
+    s32 hi;
+
+    ptr = text;
+    tbl = D_800C97D4;
+    offsets = tbl->first;
+    off = offsets[strIdx];
+    if (text == 0 && strIdx == D_800C526C[slotIdx].field00) {
+        return;
+    }
+    id = D_800C526C[slotIdx].field02;
+    if (text == 0 && strIdx != -2) {
+        ptr = (u8 *)tbl + off;
+        D_800C526C[slotIdx].field00 = strIdx;
+    } else {
+        D_800C526C[slotIdx].field00 = -2;
+    }
+
+    initSfxPlayback(id, ptr);
+    setSfxPitch(id, getCurrentFieldMusic());
+    setSfxEntityType(id, 6);
+    setSfxReverbMode(id, D_800C526C[slotIdx].field03);
+
+    dim = func_8002E680(ptr);
+    hi = (u32)dim >> 16;
+    if (D_800C526C[slotIdx].field01 == 1) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - dim - 0x10, D_800C526C[slotIdx].field06, dim + 0x10, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 0) {
+        setRECT(&rect, D_800C526C[slotIdx].field04, D_800C526C[slotIdx].field06, dim + 0x10, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 2) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - ((s16)dim >> 1) - 8, D_800C526C[slotIdx].field06, dim + 0x10, hi + 0x10);
+    } else if (D_800C526C[slotIdx].field01 == 3) {
+        setRECT(&rect, D_800C526C[slotIdx].field04 - dim - 0x10, D_800C526C[slotIdx].field06 - hi - 0x10, dim + 0x10, hi + 0x10);
+    }
+    func_8002E064(id, &rect);
+    startSfxSlow(id);
+}
 
 
 /**

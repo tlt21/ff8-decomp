@@ -46,7 +46,7 @@ extern u8 *D_800C96C8;
 extern s32 func_800A5DC8(s32 x, s32 y);
 extern s8 func_800B01A0(s16 viewY, s16 viewX, TrackEntry *e, u16 *posOut, s8 *unk30Out, u8 *unk2COut);
 extern s32 func_80041E84(s32 y, s32 x);
-extern void func_8009B358(s32 a0, s32 a1, s32 a2);
+extern s32 func_8009B358(s32 slotIdx, s32 strIdx, u8 *text);
 extern void func_8009B550(s32 a0, s32 a1, s32 a2, s32 a3, s32 a4, s32 a5, s32 a6);
 extern void func_8009D8A8(s32 a0);
 extern void addItemToInventory(s32 itemId, s32 count);

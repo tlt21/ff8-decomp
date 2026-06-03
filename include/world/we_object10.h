@@ -68,7 +68,7 @@ extern void func_800BC51C(VECTOR *src, VECTOR *dst);
 extern void func_800BC544(VECTOR *src, VECTOR *dst);
 extern void func_800A40F8(VECTOR *src, u8 *dst);
 extern ScriptOp *func_800AF004(u8 *base, s32 flag);
-extern void func_8009B358(s32 a0, s32 a1, s32 a2);
+extern s32 func_8009B358(s32 slotIdx, s32 strIdx, u8 *text);
 extern void func_8009D8A8(s32 a0);
 extern void func_80048C50(s32 a0);
 extern void fadeOutSfxFast(s32 idx);
