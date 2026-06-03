@@ -1,6 +1,7 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
 #include "world.h"
+#include "world/we_object3.h"
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A01DC);
 
@@ -36,13 +37,6 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A3C9C);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A3EE4);
 
-typedef struct {
-    s32 val;    /* +0x00 */
-    s16 hval;   /* +0x04 */
-    s16 pad;    /* +0x06 */
-} FeaEntry40C0; /* size 0x08 */
-
-extern FeaEntry40C0 D_800D24A8[12];
 
 /** Clears an array of 12 entries. */
 void func_800A40C0(void) {
@@ -60,8 +54,6 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A40F8);
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A41E0);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A4420);
-
-extern s32 D_800C4D20;
 
 /**
  * @brief Tag-based flag lookup — larger sibling of @c func_800A4670.
@@ -178,18 +170,6 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A50A0);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A568C);
 
-extern WorldObject D_800D3320[16];
-extern WorldObject *D_800D3318;
-extern WorldObject *D_800D34E0;
-extern WorldObject *D_800D34E4;
-extern u32 D_800D2284;
-extern u32 D_800D34A0[16];
-extern u32 D_800D34F0;
-extern WorldObject D_800D33E0[16];
-extern WorldObject D_800C9EF0[16];
-extern WorldObject *D_800CA030;
-extern WorldSection *D_800C4D5C;
-extern u16 D_800C4D60;
 void func_800A62E0(s16 val, u16 *coarse, u16 *fine);
 
 /**
@@ -237,9 +217,6 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A5A3C);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A5B48);
 
-extern POLY_F4 D_800D3300;
-extern s16 D_800C97EA;
-extern s16 D_800C97E8;
 
 /**
  * @brief Draw a translucent dark-gray fullscreen quad and wait for the GPU.
@@ -506,8 +483,6 @@ WorldObject *func_800A60B4(s32 key, WorldObject *head) {
     return NULL;
 }
 
-extern u8 D_800C5398[];
-
 /**
  * @brief Walk a WorldObject list and return the first section-byte that
  *        isn't 0xFF, @c D_800C5398[0], or @c D_800C5398[2]; else 0xFF.
@@ -539,25 +514,6 @@ s32 func_800A610C(WorldObject *head) {
     return 0xFF;
 }
 
-typedef struct {
-    u16 x;
-    u16 y;
-} ImageCoord;
-
-typedef struct {
-    /* 0x0000 */ u32 id;                /**< TIM magic */
-    /* 0x0004 */ u32 flags;             /**< TIM flags */
-    /* 0x0008 */ u32 size1;             /**< First image block size */
-    /* 0x000C */ RECT rect1;            /**< First image rect (unused here) */
-    /* 0x0014 */ u32 image1[0x800];     /**< First image pixel data (256*16 16bpp) */
-    /* 0x2014 */ u32 size2;             /**< Second image block size */
-    /* 0x2018 */ RECT rect2;            /**< Second image rect (unused here) */
-    /* 0x2020 */ u32 image2[1];         /**< Second image pixel data */
-} PackedTIMPair;
-
-extern ImageCoord D_800C5388[];
-extern ImageCoord D_800C5378[];
-extern RECT D_800D32F0;
 
 /**
  * @brief Upload two subimages from a packed-TIM bundle into VRAM.
@@ -592,8 +548,6 @@ void func_800A6188(PackedTIMPair *tim, u8 tableIdx) {
     LoadImage(&D_800D32F0, img1 + 0x803);
     DrawSync(0);
 }
-
-extern s32 func_800A629C(WorldObject *target);
 
 /**
  * @brief Walk a WorldObject list and return 1 if any node's id hits D_800C9EF0's list.
@@ -694,12 +648,6 @@ void func_800A6358(void) {
     }
 }
 
-extern s32 D_800C4D38;
-extern s16 D_800C53C4[];
-extern s16 D_800C53D0[];
-extern s16 D_800C53DC[];
-extern s16 D_800C53E4[];
-extern s16 D_800C53EC[];
 
 /**
  * @brief Gated table swap — copies one of two source halfword tables into
