@@ -749,7 +749,7 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object2", func_8009F594);
  * @c 0xB7, bit 30 with @c 0x11. Each remaining low bit then advances one camera
  * value toward a map-id-dependent target by a fixed step, snapping and clearing
  * its own bit on arrival:
- *  - @c 0x1:  projection distance @c D_800C9730 (±8), then @c func_800408E4 (SetGeomScreen).
+ *  - @c 0x1:  projection distance @c D_800C9730 (±8), then @c SetGeomScreen.
  *  - @c 0x2:  zoom/scale @c D_800C4D30 (±0x80).
  *  - @c 0x4:  set @c D_800C4D40 / @c D_800C4D44 from the map id (immediate, no step).
  *  - @c 0x8:  yaw @c D_800D2390.tail.angle — shortest-arc angle step (±0x20).
@@ -797,7 +797,7 @@ void func_8009F6EC(void) {
             D_800C9730 = target;
             D_800C4D2C ^= 0x1;
         }
-        func_800408E4(D_800C9730);
+        SetGeomScreen(D_800C9730);
     }
 
     /* bit 0x2: step zoom/scale toward target. */
@@ -1016,7 +1016,7 @@ void setupWorldMapView(VECTOR *pos, WorldView *proj, WorldView *view) {
     view->flag   = 0;
     proj->flag   = 0;
     proj->scroll = 0;
-    func_800408E4(D_800C9730);
+    SetGeomScreen(D_800C9730);
 }
 
 /**

@@ -69,8 +69,6 @@ extern s32  func_800A017C(SVECTOR *v);
 /* Shared world helper: projects @p pos through the GTE (writes screen x/y/z to @p out),
  * returns a derived angle. Canonical signature — must match we_object1.h. */
 extern s32 func_800A40F8(VECTOR *pos, VECTOR *out);
-/* libgte SetGeomScreen — sets the projection-plane distance h. */
-extern void func_800408E4(s32 h);
 /* Reports whether a script is active and writes its current key to @p output. */
 extern s32  func_800BEDF0(u8 *output);
 
