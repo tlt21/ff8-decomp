@@ -1,4 +1,5 @@
 g_seedSalaryTable = 0x800C85F8;
+worldPosToCell = 0x800A40F8;
 SetRotMatrix = 0x800406A4;
 SetTransMatrix = 0x80040734;
 SetGeomOffset = 0x800408C4;

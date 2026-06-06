@@ -66,7 +66,7 @@ extern void func_800AEB58(XformEntry *entry, XformGroup *group);
 extern void func_8009C5FC(s32 *data);
 extern void func_800BC51C(VECTOR *src, VECTOR *dst);
 extern void func_800BC544(VECTOR *src, VECTOR *dst);
-extern void func_800A40F8(VECTOR *src, u8 *dst);
+extern s32 worldPosToCell(VECTOR *pos, SVECTOR *out);
 extern ScriptOp *func_800AF004(u8 *base, s32 flag);
 extern s32 func_8009B358(s32 slotIdx, s32 strIdx, u8 *text);
 extern void func_8009D8A8(s32 a0);

@@ -77,7 +77,7 @@ typedef struct {
  * @param out Optional destination for the angle triple (s16 x/y/z); may be NULL.
  * @return    Grid-cell index @c col + row * 0x80.
  */
-s32 func_800A40F8(VECTOR *pos, SVECTOR *out) {
+s32 worldPosToCell(VECTOR *pos, SVECTOR *out) {
     WorldVec *p = (WorldVec *)pos;
 
     if (out != NULL) {

@@ -990,7 +990,7 @@ s32  func_800A0000(s32 mapId, s32 mode, s32 scroll);
  *
  * Converts the camera position @p pos into GTE space (swap Y/Z and negate the
  * new Z for the PS1 y-down convention) and projects it into @p proj via
- * @c func_800A40F8. Then, keyed by the current map id @c D_800C4D38 and mode
+ * @c worldPosToCell. Then, keyed by the current map id @c D_800C4D38 and mode
  * @c D_800C4D3C, it latches the projection-plane distance (@c D_800C9730), a
  * zoom constant (@c D_800C4D30), copies a per-map parameter triple into
  * @p view, derives a scroll offset from the projected Y, clears the two view
@@ -1007,7 +1007,7 @@ void setupWorldMapView(VECTOR *pos, WorldView *proj, WorldView *view) {
     vec.vx = pos->vx;
     vec.vy = pos->vz;
     vec.vz = -pos->vy;
-    func_800A40F8(&vec, (VECTOR *)proj);
+    worldPosToCell(&vec, (VECTOR *)proj);
 
     D_800C9730 = func_8009FF0C(D_800C4D38, D_800C4D3C);
     D_800C4D30 = func_800A009C(D_800C4D38, D_800C4D3C);

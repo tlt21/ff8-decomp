@@ -291,7 +291,7 @@ void func_800BC09C(ParticleSource *src) {
  *     extern void   RotMatrix(SVECTOR *angles, MATRIX *out);  // = RotMatrix
  *     extern s32    ratan2(s32 y, s32 x);                     // = func_80041E84
  *     extern void  *memset(void *dst, s32 val, s32 n);        // = func_80047CE4
- *     extern s32    project(VECTOR *src, VECTOR *out);        // = func_800A40F8
+ *     extern s32    project(VECTOR *src, VECTOR *out);        // = worldPosToCell
  *     extern GlyphHeader *glyphAt(VECTOR *v, DVECTOR *out);   // = func_800A3870
  *     extern s32    lookupKey(u32 key);                       // = func_800A45D8
  *
@@ -1066,7 +1066,7 @@ s32 func_800BD09C(SlotEntry *slot, s32 arg1, CmdDesc *cmd, s32 worldAngle) {
  *   - -@c D_800DD680.vz → @c D_800C9868.y (Z negated)
  *   - @c D_800DD690[0..8] → @c D_800C9770[8..0xF] (unaligned 8 bytes)
  *   - @c D_800DD69C → @c D_800C4D3C (secondary cmd byte)
- * and calls @c func_800A40F8 with the source vector and @c D_800C9770 buffer.
+ * and calls @c worldPosToCell with the source vector and @c D_800C9770 buffer.
  */
 void func_800BD180(void) {
     if (D_800C4DC8 != 0) {
@@ -1074,7 +1074,7 @@ void func_800BD180(void) {
         D_800C9868.x = D_800DD680.vx;
         D_800C9868.z = D_800DD680.vy;
         D_800C9868.y = -D_800DD680.vz;
-        func_800A40F8(&D_800DD680, D_800C9770);
+        worldPosToCell(&D_800DD680, D_800C9770);
         memcpy(&D_800C9770[0x8], D_800DD690, 8);
         D_800C4D3C = D_800DD69C;
     }
