@@ -396,7 +396,10 @@ typedef struct {
 } KindParams;                          /* 0x28 bytes */
 
 extern Slot30     D_800D9CB0[64];
-extern Slot30     D_800DA8B0[];        /* end-sentinel = &D_800D9CB0[64] */
+extern MATRIX     D_800DA8B0;          /**< GTE lighting color matrix (sits at &D_800D9CB0[64]). */
+extern MATRIX     D_800C5428;          /**< Source color matrix copied into D_800DA8B0. */
+extern CVECTOR    D_800C53F8;          /**< Far (fog) color source. */
+extern CVECTOR    D_800DB0E0;          /**< Active far-color cache (programmed via SetFarColor). */
 extern KindParams D_800C5480[];
 
 /**
