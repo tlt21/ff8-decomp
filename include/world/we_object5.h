@@ -74,7 +74,7 @@ extern void func_80048FBC(RECT *r, s32 src_x, s32 src_y);
 extern s32  func_80048C50(s32 arg);
 extern s32  func_8003F4A4(s32 a);
 extern s32  func_80041E84(s32 y, s32 x);
-extern s32  func_800A40F8(VECTOR *pos, SVECTOR *out_buf);
+extern s32  worldPosToCell(VECTOR *pos, SVECTOR *out);
 extern s32  func_800A4700(s32 a, s32 b);
 extern s32  func_800A475C(s32 a, s32 b);
 extern s32  func_800A5DC8(s32 x, s32 y);

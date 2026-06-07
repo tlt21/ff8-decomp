@@ -44,6 +44,8 @@ MATRIX *TransposeMatrix(MATRIX *m0, MATRIX *m1);
 void SetRotMatrix(MATRIX *m);
 void SetTransMatrix(MATRIX *m);
 void SetLightMatrix(MATRIX *m);
+void SetColorMatrix(MATRIX *m);
+void SetBackColor(s32 rbk, s32 gbk, s32 bbk);
 void SetFarColor(s32 rfc, s32 gfc, s32 bfc);
 
 /* --- GTE transform operations --- */
@@ -62,6 +64,7 @@ void DpqColor(CVECTOR *v0, s32 p, CVECTOR *v1);
 /* --- GTE initialization --- */
 
 void InitGeom(void);
+void SetGeomOffset(s32 ofx, s32 ofy);   /**< Set GTE screen offset OFX/OFY (signed, scaled <<16). */
 void SetGeomScreen(s32 h);   /**< Set GTE projection-plane distance H (screen depth). */
 
 /* --- GTE math --- */

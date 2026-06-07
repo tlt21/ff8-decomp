@@ -556,7 +556,7 @@ s32 func_800AC3EC(s32 idx, s32 divisor, s32 use_alt) {
  *    @c D_800C9858 toward @c D_800C9868 — the per-axis delta is clamped to
  *    ±0x20000 (X) / ±0x18000 (Y) with ±0x40000 / ±0x30000 wraparound, then a
  *    1:1 XY and biased 3:1 Z blend — projects it via @c func_800BC544 /
- *    @c func_800A40F8 to seed @c D_800C97F8[0], folds in a tile-space yaw
+ *    @c worldPosToCell to seed @c D_800C97F8[0], folds in a tile-space yaw
  *    offset (@c func_800A4700 / @c func_800A475C scaled by @c WORLD_TILE_SIZE),
  *    floors the pitch (vy) to @c -0x80 when @c D_800C4D38 == @c 0x30, and
  *    composes the matrix via @c func_800ACC68.
@@ -619,7 +619,7 @@ void func_800AC468(void *unused_a0, WorldViewXform *oa, WorldViewXform *mh, s32 
         {
             VECTOR *vp = &viewPos;
             func_800BC544(&D_800C9858, vp);
-            viewYaw = func_800A40F8(vp, &D_800C97F8[0]);
+            viewYaw = worldPosToCell(vp, &D_800C97F8[0]);
         }
 
         tileX = func_800A4700(viewYaw, viewAngle);
@@ -661,7 +661,7 @@ void func_800AC468(void *unused_a0, WorldViewXform *oa, WorldViewXform *mh, s32 
  *  -# Takes the 3D and horizontal sqrts (@c func_8003F4A4) for the slant
  *     and ground-plane distances.
  *  -# Resolves @c pitch and @c yaw via @c func_80041E84 (atan2-like).
- *  -# Calls @c func_800A40F8 (with @p posB) to seed @c rotBuf[0] with the
+ *  -# Calls @c worldPosToCell (with @p posB) to seed @c rotBuf[0] with the
  *     view-yaw projection and returns the view-yaw.
  *  -# Wraps the view-yaw and @p angleArg into per-axis tile deltas
  *     (@c func_800A4700 / @c func_800A475C), scales them by
@@ -673,7 +673,7 @@ void func_800AC468(void *unused_a0, WorldViewXform *oa, WorldViewXform *mh, s32 
  *     @p outOffset ← (0,0,-distFull), @p outRotBuf ← @c rotBuf[0].
  *
  * @param posA       World position A (delta source).
- * @param posB       World position B (delta target; also fed to @c func_800A40F8).
+ * @param posB       World position B (delta target; also fed to @c worldPosToCell).
  * @param angleArg   Camera yaw wrapped together with view-yaw into tile deltas.
  * @param outMat     Optional 32-byte rotation matrix output.
  * @param outAngles  Optional 8-byte SVECTOR output ← (pitch, yaw, 0).
@@ -714,7 +714,7 @@ void func_800AC778(VECTOR *posA, VECTOR *posB, s16 angleArg,
     offset.vy = 0;
     offset.vz = -distFull;
 
-    viewYaw = func_800A40F8(posB, &rotBuf[0]);
+    viewYaw = worldPosToCell(posB, &rotBuf[0]);
     tileX = func_800A4700(viewYaw, angleArg);
     tileZ = func_800A475C(viewYaw, angleArg);
 

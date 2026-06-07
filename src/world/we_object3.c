@@ -1,6 +1,7 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
 #include "world.h"
+#include "world/we_object1.h"
 #include "world/we_object3.h"
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A01DC);
@@ -15,11 +16,57 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A1678);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A1F10);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A2350);
+/**
+ * @brief Initialize the world's two double-buffered graphics contexts.
+ *
+ * Sets up the draw/display environments for both @c BattleSceneCtx buffers
+ * (the sentinel @c D_800CA040 and its successor at @c +0x4070) at VRAM x=0 /
+ * x=384, sized by @c D_800C97EA x @c D_800C97E8. Then, for each buffer, clears
+ * the 0x1000-entry ordering table, patches the display screen region to the
+ * NTSC active area (@c y=8, @c h=224), and enables dithering. Finally installs
+ * the first buffer as the active scene context (@c D_800D244C).
+ */
+void func_800A2350(void) {
+    s32 i;
+
+    SetDefDrawEnv(&(&D_800CA040)[1].drawEnv, 0, 0, D_800C97EA, D_800C97E8);
+    SetDefDrawEnv(&(&D_800CA040)[0].drawEnv, 384, 0, D_800C97EA, D_800C97E8);
+    SetDefDispEnv(&(&D_800CA040)[1].disp, 384, 0, D_800C97EA, D_800C97E8);
+    SetDefDispEnv(&(&D_800CA040)[0].disp, 0, 0, D_800C97EA, D_800C97E8);
+
+    for (i = 0; i < 2; i++) {
+        ClearOTagR((u32 *)(&D_800CA040)[i].primList, 0x1000);
+        (&D_800CA040)[i].disp.screen.y = 8;
+        (&D_800CA040)[i].disp.screen.h = 224;
+        (&D_800CA040)[i].drawEnv.dtd = 1;
+    }
+
+    D_800D244C = &D_800CA040;
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A246C);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A25F8);
+/**
+ * @brief Program the GTE for world-map rendering: screen offset, back color, color matrix.
+ *
+ * Sets the GTE projection screen offset to half the worldmap screen dimensions
+ * (@c D_800C97EA, @c D_800C97E8), copies the background (ambient) color
+ * @c D_800C53F8 into the active back-color cache @c D_800DB0E0 and programs it
+ * via @c SetBackColor, then copies the lighting color matrix @c D_800C5428 into
+ * @c D_800DA8B0 and loads it via @c SetColorMatrix.
+ */
+void setupWorldRenderParams(void) {
+    func_800488D4(3);
+    SetGeomOffset((s16)D_800C97EA / 2, (s16)D_800C97E8 / 2);
+
+    D_800DB0E0.r = D_800C53F8.r;
+    D_800DB0E0.g = D_800C53F8.g;
+    D_800DB0E0.b = D_800C53F8.b;
+    SetBackColor(D_800DB0E0.r, D_800DB0E0.g, D_800DB0E0.b);
+
+    D_800DA8B0 = D_800C5428;
+    SetColorMatrix(&D_800DA8B0);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A26E8);
 
@@ -29,7 +76,53 @@ INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A2D50);
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A358C);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A3870);
+/**
+ * @brief Resolve the command descriptor (glyph) for the projected world query @p v.
+ *
+ * Fetches the object glyph header for the query's cell key (@c v->buf.angle)
+ * via @c func_800A5EC4, then searches two tables for the descriptor whose
+ * region contains the projected point @c v->buf.proj (tested by
+ * @c func_800BF024): first the @c D_800D24A8 cell cache, then the header's own
+ * @c entries[]. On a hit the test's result word is copied to @p out (when
+ * non-NULL) and the matching @c CmdDesc is returned; otherwise NULL.
+ *
+ * @param v   Projected world query (position + projection + cell key).
+ * @param out Optional slot to receive the hit's result word.
+ * @return The matching command descriptor, or NULL.
+ */
+CmdDesc *func_800A3870(GlyphQuery *v, AngleSlot *out) {
+    GlyphHeader *hdr;
+    FeaEntry40C0 *e = &D_800D24A8[0];
+    CmdDesc *g;
+    AngleSlot res1, res2;
+
+    hdr = (GlyphHeader *)func_800A5EC4(v->buf.angle);
+    if (hdr == NULL) {
+        return NULL;
+    }
+
+    for (; e < &D_800D24A8[12]; e++) {
+        if (e->val != 0 && v->buf.angle == e->hval) {
+            if (func_800BF024((CmdDesc *)e->val, &v->buf.proj, &res1, &hdr->entries[hdr->count])) {
+                if (out != NULL) {
+                    *out = res1;
+                }
+                return (CmdDesc *)e->val;
+            }
+        }
+    }
+
+    for (g = &hdr->entries[0]; g < &hdr->entries[hdr->count]; g++) {
+        if (func_800BF024(g, &v->buf.proj, &res2, &hdr->entries[hdr->count])) {
+            if (out != NULL) {
+                *out = res2;
+            }
+            return g;
+        }
+    }
+
+    return NULL;
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A39BC);
 
@@ -49,7 +142,51 @@ void func_800A40C0(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A40F8);
+/* Dual view of a world coordinate: full position (@c word) and its
+ * low-16-bit angle component (@c half). */
+typedef union {
+    s32 word;
+    u16 half;
+} WorldCoord;
+
+typedef struct {
+    WorldCoord x, y, z;
+} WorldVec;
+
+/**
+ * @brief Project a world position to a grid-cell index, optionally emitting its angle triple.
+ *
+ * When @p out is non-NULL, copies @p pos's three low-16-bit angle components into
+ * @p out — the X/Y components masked to 11 bits, the Z component additionally
+ * wrapped into the @c [-0x800, 0] half-revolution range.
+ *
+ * Always returns a grid-cell index derived from @p pos's X/Z world coordinates:
+ * the X coordinate (biased by @c 0x60000) folds modulo @c 0x40000 into one of
+ * @c 0x80 columns, and the Z coordinate (taken as @c 0x48000 - z) folds modulo
+ * @c 0x30000 into one of @c 0x60 rows, combined as @c col + row * 0x80.
+ *
+ * @param pos World position; each coordinate is read both as a full word and as
+ *            a low-u16 angle component.
+ * @param out Optional destination for the angle triple (s16 x/y/z); may be NULL.
+ * @return    Grid-cell index @c col + row * 0x80.
+ */
+s32 worldPosToCell(VECTOR *pos, SVECTOR *out) {
+    WorldVec *p = (WorldVec *)pos;
+
+    if (out != NULL) {
+        out->vx = p->x.half & 0x7FF;
+        out->vy = p->y.half;
+        {
+            s32 t = p->z.half & 0x7FF;
+            out->vz = t;
+            if (t != 0) out->vz = t - 0x800;
+        }
+        if (out->vz < -0x7FF) out->vz = (u16)out->vz + 0x800;
+    }
+
+    return ((p->x.word + 0x60000) % 0x40000) / 0x800
+         + ((0x48000 - p->z.word) % 0x30000) / 0x800 * 0x80;
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A41E0);
 
@@ -213,7 +350,70 @@ void func_800A581C(void) {
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A58EC);
 
-INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A5A3C);
+/**
+ * @brief Drain the pending @c WorldObject list at @c D_800D34E4.
+ *
+ * For each node on the @c D_800D34E4 list: look it up in the @c D_800C9EF0[16]
+ * id table; if its @c id is present, append a copy (id + sectionIdx) to the
+ * @c D_800CA030 active list — which grows in place through the @c D_800D33E0[16]
+ * pool via @c tail->next = tail + 1 — otherwise clear @c D_800D34A0 for the
+ * node's section. Either way the node is then pushed onto the @c D_800D3318
+ * free list. Iterates until the pending list is empty.
+ *
+ * @note The match needs the search to leave its result in a @c found flag that
+ *       is set only at the two loop exits (1 on a hit, 0 on exhaustion), which
+ *       requires the @c goto over the @c found=0 — a plain @c break cannot skip
+ *       it.
+ */
+void func_800A5A3C(void) {
+    WorldObject *node;
+    WorldObject *entry;
+
+    node = D_800D34E4;
+    if (node == 0) {
+        return;
+    }
+
+    do {
+        WorldObject *search;
+        s32 found;
+
+        D_800D34E4 = node->next;
+        search = &D_800C9EF0[0];
+        while (search != 0) {
+            if (node->id == search->id) {
+                found = 1;
+                goto matched;
+            }
+            search = search->next;
+        }
+        found = 0;
+    matched:
+        if (found) {
+            if (D_800CA030 != 0) {
+                entry = D_800CA030;
+                while (entry->next != 0) {
+                    entry = entry->next;
+                }
+                entry->next = entry + 1;
+                entry += 1;
+            } else {
+                entry = &D_800D33E0[0];
+                D_800CA030 = &D_800D33E0[0];
+            }
+            entry->id = node->id;
+            entry->sectionIdx = node->sectionIdx;
+            entry->next = 0;
+        } else {
+            D_800D34A0[node->sectionIdx] = 0;
+        }
+
+        node->next = D_800D3318;
+        D_800D3318 = node;
+
+        node = D_800D34E4;
+    } while (node != 0);
+}
 
 INCLUDE_ASM("asm/ovl/world/nonmatchings/we_object3", func_800A5B48);
 

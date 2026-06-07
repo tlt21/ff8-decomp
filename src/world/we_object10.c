@@ -669,7 +669,7 @@ done:;
 /**
  * @brief Pick a rotation source from a one-byte selector, copy/negate via
  *        @c func_800BC51C, then mirror-and-project via @c func_800BC544
- *        and @c func_800A40F8.
+ *        and @c worldPosToCell.
  *
  * Reads a byte from @p byteIn and uses it to choose a rotation source:
  *  - @c 1: @c &D_800DD6C0->vecA
@@ -679,7 +679,7 @@ done:;
  *
  * The selected source is fed through @c func_800BC51C(src, transform)
  * (swap-Y/Z and negate Z). Then @c func_800BC544(transform, &buf) does
- * the mirror copy into a scratch vector, and @c func_800A40F8(&buf, output)
+ * the mirror copy into a scratch vector, and @c worldPosToCell(&buf, output)
  * projects/dispatches the final result.
  */
 void func_800BE8B0(u8 *byteIn, VECTOR *transform, u8 *output) {
@@ -693,7 +693,7 @@ void func_800BE8B0(u8 *byteIn, VECTOR *transform, u8 *output) {
         func_800BC51C(&D_800DD6E4->vecB, transform);
     }
     func_800BC544(transform, &buf);
-    func_800A40F8(&buf, output);
+    worldPosToCell(&buf, output);
 }
 
 

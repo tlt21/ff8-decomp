@@ -13,7 +13,7 @@ typedef struct {
 /**
  * @brief 16-byte world-map view/projection buffer (setupWorldMapView fills two).
  *
- * @note Field roles are partly inferred. @c func_800A40F8 projects a VECTOR
+ * @note Field roles are partly inferred. @c worldPosToCell projects a VECTOR
  *       into @c [0x0..0x4] of one buffer; @c func_8009FF70 writes a per-map
  *       halfword triple into @c [0x0..0x4] of the other. @c setupWorldMapView
  *       reads @c [0x2] as the scroll input, stores a per-map scroll offset at
@@ -66,9 +66,9 @@ extern s32  func_800BD460(s16 *outLow, s16 *outHigh);
 extern s32  func_8002CE84(s32 idx);
 extern s32  func_800A017C(SVECTOR *v);
 
-/* Shared world helper: projects @p pos through the GTE (writes screen x/y/z to @p out),
- * returns a derived angle. Canonical signature — must match we_object1.h. */
-extern s32 func_800A40F8(VECTOR *pos, VECTOR *out);
+/* Shared world helper: copies @p pos's low-16-bit angle triple into @p out and
+ * returns a 128x96 grid-cell index derived from its X/Z world coords. */
+extern s32 worldPosToCell(VECTOR *pos, SVECTOR *out);
 /* Reports whether a script is active and writes its current key to @p output. */
 extern s32  func_800BEDF0(u8 *output);
 

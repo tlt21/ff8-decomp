@@ -106,7 +106,7 @@ extern u8 *func_800BCE74(u8 *buf, s32 statId);
 extern s32 func_800A4670(u32 a, s32 b);
 extern s32 func_800A358C(s32 a, SlotEntry *b, u8 *c, s32 d);
 extern s32 func_800B00D8(s32 a);
-extern void func_800A40F8(VECTOR *src, u8 *dst);
+extern s32 worldPosToCell(VECTOR *pos, SVECTOR *out);
 extern s32 func_800A5DC8(s32 x, s32 y);
 
 #endif /* WORLD_WE_OBJECT9_H */

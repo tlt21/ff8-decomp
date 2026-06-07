@@ -1,0 +1,355 @@
+#!/usr/bin/env python3
+"""find_struct_symbols.py — find raw ``D_`` symbols that are actually fields of an
+already-typed struct global.
+
+Many addresses in the symbol tables are still named ``D_8007XXXX`` even though they
+fall squarely inside a global that the headers already describe with a real struct
+type (e.g. ``D_80077E58`` is ``g_gameState.config.battleSpeed``). This tool finds
+those and prints the exact field path, so they can be replaced with proper struct
+access instead of raw externs.
+
+Pipeline
+--------
+1.  Compile a throwaway TU that ``#include``\\s the project headers with
+    ``gcc -g -fno-eliminate-unused-debug-types`` so every struct layout lands in DWARF.
+2.  Parse the DWARF (pyelftools) to get, for every struct type, its ``sizeof`` and a
+    recursive *offset -> field-path* resolver (handles nested structs, arrays and unions).
+3.  Parse ``extern <Type> <name>;`` from the headers -> the set of typed globals.
+4.  Parse ``config/symbol_addrs.txt`` + ``config/undefined_syms_auto.*.txt`` -> name->addr.
+5.  Each typed global with a struct type becomes a *container* interval
+    ``[addr, addr + sizeof)``. Every untyped ``D_`` symbol that lands inside the tightest
+    such interval is reported with its resolved field path.
+
+Overlay awareness
+-----------------
+FF8 swaps overlays in and out of one shared window (everything at/above ``0x80098000``;
+see docs/memory-map.md), so an address there means different things depending on which
+overlay is loaded. Symbols are therefore bucketed by *memory context* -- ``resident``
+(below the line, always in RAM) or the owning overlay -- and a candidate is only matched
+to a container in the **same context**. Resident hits are reliable in every game mode;
+overlay hits are only valid while that overlay is loaded.
+
+Caveats (the tool *suggests*, you confirm):
+*   ``field[1]`` "index-past" arrays make ``sizeof`` underestimate the real extent, so
+    symbols past the nominal end of such a struct are missed (false negatives).
+*   Adjacency is not membership: a ``D_`` right past a container may be a separate global.
+*   A hit in a ``<pad>`` region means the offset is accessed but the struct does not model
+    it yet — a cue to *add* a field, not a finished answer.
+*   Replacing a symbol still needs a build check (codegen matches when the address is
+    outside the GP-relative window, which is the usual case).
+"""
+import argparse
+import glob
+import io
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+INCLUDE = os.path.join(ROOT, "include")
+CONFIG = os.path.join(ROOT, "config")
+
+SYM_RE = re.compile(r"^\s*([A-Za-z_]\w*)\s*=\s*0x([0-9A-Fa-f]+)\s*;")
+EXTERN_RE = re.compile(
+    r"^\s*extern\s+(?:(?:volatile|const)\s+)*"
+    r"([A-Za-z_]\w*)\s+"          # 1: type
+    r"([A-Za-z_]\w*)\s*"          # 2: name
+    r"(?:\[\s*(\d*)\s*\])?\s*;",  # 3: optional array count (may be empty)
+)
+CAND_RE = re.compile(r"^D_[0-9A-Fa-f]{6,8}$")
+
+
+# --------------------------------------------------------------------------- DWARF
+
+def compile_one(header, cc):
+    """Compile ``common.h`` + *header* alone; return its ELF bytes, or None on failure."""
+    tu = f'#include "common.h"\n#include "{header}"\n'
+    with tempfile.TemporaryDirectory() as td:
+        cpath, opath = os.path.join(td, "probe.c"), os.path.join(td, "probe.o")
+        with open(cpath, "w") as f:
+            f.write(tu)
+        proc = subprocess.run(
+            [cc, "-g", "-gdwarf-4", "-fno-eliminate-unused-debug-types",
+             "-w", "-c", f"-I{INCLUDE}", cpath, "-o", opath],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0:
+            return None
+        with open(opath, "rb") as f:
+            return f.read()
+
+
+class Dwarf:
+    """Struct layouts from one compiled object: type name -> aggregate DIE, + resolvers."""
+
+    def __init__(self, elf_bytes):
+        from elftools.elf.elffile import ELFFile
+        dw = ELFFile(io.BytesIO(elf_bytes)).get_dwarf_info()
+        self.dies = [d for cu in dw.iter_CUs() for d in cu.iter_DIEs()]
+        self.by_name = {}  # typedef / tag name -> aggregate DIE
+        for d in self.dies:
+            if d.tag == "DW_TAG_typedef":
+                t = self._strip(self._ref(d))
+                if t is not None and t.tag in ("DW_TAG_structure_type", "DW_TAG_union_type"):
+                    self.by_name.setdefault(self._name(d), t)
+            elif d.tag in ("DW_TAG_structure_type", "DW_TAG_union_type") and self._name(d):
+                self.by_name.setdefault(self._name(d), d)
+
+    @staticmethod
+    def _name(d):
+        a = d.attributes.get("DW_AT_name")
+        return a.value.decode() if a else None
+
+    @staticmethod
+    def _ref(d):
+        return d.get_DIE_from_attribute("DW_AT_type") if "DW_AT_type" in d.attributes else None
+
+    def _strip(self, d):
+        while d is not None and d.tag in ("DW_TAG_typedef", "DW_TAG_const_type",
+                                          "DW_TAG_volatile_type"):
+            d = self._ref(d)
+        return d
+
+    def size(self, d):
+        d = self._strip(d)
+        if d is None:
+            return 1
+        if "DW_AT_byte_size" in d.attributes:
+            return d.attributes["DW_AT_byte_size"].value
+        if d.tag == "DW_TAG_array_type":
+            return self.size(self._ref(d)) * self._array_count(d)
+        if d.tag == "DW_TAG_pointer_type":
+            return 4
+        return 1
+
+    @staticmethod
+    def _array_count(arr):
+        for c in arr.iter_children():
+            if c.tag == "DW_TAG_subrange_type":
+                if "DW_AT_count" in c.attributes:
+                    return c.attributes["DW_AT_count"].value
+                if "DW_AT_upper_bound" in c.attributes:
+                    return c.attributes["DW_AT_upper_bound"].value + 1
+        return 1
+
+    def field_at(self, agg, off, path=""):
+        """Resolve byte *off* within aggregate DIE *agg* to a ``.field[.sub]`` path."""
+        agg = self._strip(agg)
+        if agg is None or agg.tag not in ("DW_TAG_structure_type", "DW_TAG_union_type"):
+            return path
+        for m in agg.iter_children():
+            if m.tag != "DW_TAG_member":
+                continue
+            loc = m.attributes.get("DW_AT_data_member_location")
+            mo = loc.value if loc else 0
+            if not isinstance(mo, int):           # skip exotic location exprs (bitfields etc.)
+                continue
+            mt = self._strip(self._ref(m))
+            msz = self.size(mt)
+            if not (mo <= off < mo + msz):
+                continue
+            seg = f".{self._name(m)}" if self._name(m) else ""   # anon struct/union -> no segment
+            rel = off - mo
+            if mt is not None and mt.tag == "DW_TAG_array_type":
+                et = self._strip(self._ref(mt))
+                esz = self.size(et) or 1
+                i = rel // esz
+                seg = f".{self._name(m)}[{i}]"
+                if et is not None and et.tag in ("DW_TAG_structure_type", "DW_TAG_union_type"):
+                    return self.field_at(et, rel % esz, path + seg)
+                return path + seg
+            if mt is not None and mt.tag in ("DW_TAG_structure_type", "DW_TAG_union_type"):
+                return self.field_at(mt, rel, path + seg)
+            return path + seg
+        return f"{path}.<+0x{off:X} pad>"
+
+
+class Registry:
+    """Merge struct layouts across many independently-compiled headers."""
+
+    def __init__(self, headers, cc):
+        self.index = {}       # type name -> (Dwarf, DIE); first definition wins
+        self.skipped = []
+        for h in headers:
+            b = compile_one(h, cc)
+            if b is None:
+                self.skipped.append(h)
+                continue
+            dw = Dwarf(b)
+            for tn, die in dw.by_name.items():
+                self.index.setdefault(tn, (dw, die))
+
+    def has(self, type_name):
+        return type_name in self.index
+
+    def size(self, type_name):
+        dw, die = self.index[type_name]
+        return dw.size(die)
+
+    def field_at(self, type_name, off):
+        dw, die = self.index[type_name]
+        return dw.field_at(die, off)
+
+
+# ----------------------------------------------------------------------- parsing
+
+def discover_headers():
+    hs = []
+    for dirpath, _, files in os.walk(INCLUDE):
+        for f in files:
+            if f.endswith(".h"):
+                hs.append(os.path.relpath(os.path.join(dirpath, f), INCLUDE))
+    hs.sort(key=lambda p: (p != "common.h", p))   # common.h first (base typedefs)
+    return hs
+
+
+def parse_externs(headers):
+    """Yield (type, name, count) for every ``extern T name[..];`` in *headers*."""
+    out = []
+    for h in headers:
+        path = os.path.join(INCLUDE, h)
+        try:
+            text = open(path, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        for line in text.splitlines():
+            m = EXTERN_RE.match(line)
+            if not m:
+                continue
+            typ, name, count = m.group(1), m.group(2), m.group(3)
+            out.append((typ, name, int(count) if count else 1))
+    return out
+
+
+# Everything below this is the resident main exe (RAM 0x80010000..0x80098000); at or
+# above it is the swappable overlay window (game-mode engines, menus, scratch). A symbol's
+# meaning above the line depends on which overlay is loaded, so matches there are only valid
+# within a single overlay -- see docs/memory-map.md.
+RESIDENT_END = 0x80098000
+
+
+def overlay_of(source):
+    m = re.search(r"(?:undefined_syms_auto|symbol_addrs)\.(\w+)\.txt", source)
+    return m.group(1) if m else "main"
+
+
+def parse_entries(files):
+    """Group symbols by *memory context*: ``resident`` (below the overlay line, always in
+    RAM) or an overlay name (above it). Within a context, first definition of a name wins."""
+    by_ctx = {}
+    for fn in files:
+        ovl = overlay_of(os.path.basename(fn))
+        for line in open(fn, encoding="utf-8", errors="replace"):
+            m = SYM_RE.match(line)
+            if not m:
+                continue
+            name, addr = m.group(1), int(m.group(2), 16)
+            ctx = "resident" if addr < RESIDENT_END else ovl
+            by_ctx.setdefault(ctx, {}).setdefault(name, addr)
+    return by_ctx
+
+
+def ctx_label(ctx):
+    if ctx == "resident":
+        return "RESIDENT  (main RAM < 0x80098000 — valid in every game mode)"
+    return f"{ctx} overlay  (0x80098000+ window — valid only while {ctx} is loaded)"
+
+
+# -------------------------------------------------------------------------- main
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--cc", default=os.environ.get("HOST_CC", "gcc"),
+                    help="host C compiler used to emit DWARF (default: gcc)")
+    ap.add_argument("--header", action="append", dest="headers",
+                    help="restrict the probe to these headers (repeatable); default: all")
+    ap.add_argument("--overlay", metavar="CTX",
+                    help="only report one memory context: 'resident' or an overlay name "
+                         "(e.g. battle, world, menucfg)")
+    ap.add_argument("--container", help="only consider this typed global as a container")
+    ap.add_argument("--pads", action="store_true",
+                    help="also list hits that land in unmodeled <pad> regions")
+    args = ap.parse_args()
+
+    headers = args.headers or discover_headers()
+    reg = Registry(headers, args.cc)
+
+    sym_files = [os.path.join(CONFIG, "symbol_addrs.txt")] + sorted(
+        glob.glob(os.path.join(CONFIG, "undefined_syms_auto.*.txt"))
+        + glob.glob(os.path.join(CONFIG, "symbol_addrs.*.txt")))
+    sym_files = [f for f in sym_files if os.path.exists(f)]
+    by_ctx = parse_entries(sym_files)
+
+    externs = {}                       # name -> (type, count); first declaration wins
+    for typ, name, count in parse_externs(headers):
+        externs.setdefault(name, (typ, count))
+
+    # Match within each memory context: a candidate is only ever co-resident with a
+    # container that lives in the same context (resident, or the same overlay window).
+    n_field = n_pad = 0
+    for ctx in sorted(by_ctx, key=lambda c: (c != "resident", c)):
+        if args.overlay and ctx != args.overlay:
+            continue
+        names = by_ctx[ctx]
+
+        containers, cnames = [], set()
+        for name, addr in names.items():
+            if args.container and name != args.container:
+                continue
+            ext = externs.get(name)
+            if not ext or not reg.has(ext[0]) or reg.size(ext[0]) <= 0:
+                continue
+            elem = reg.size(ext[0])
+            containers.append((name, addr, elem * ext[1], ext[0], elem, ext[1]))
+            cnames.add(name)
+        if not containers:
+            continue
+        containers.sort(key=lambda c: c[2])     # tightest (smallest) container wins
+
+        hits = {}
+        for name, addr in names.items():
+            if not CAND_RE.match(name) or name in cnames:
+                continue
+            for cname, base, size, tname, elem, count in containers:
+                if not (base <= addr < base + size):
+                    continue
+                off = addr - base
+                prefix = cname
+                if count > 1:
+                    i, off = off // elem, off % elem
+                    prefix = f"{cname}[{i}]"
+                path = reg.field_at(tname, off)
+                is_pad = "pad>" in path          # offset not modeled by any field
+                hits.setdefault(cname, []).append((name, addr, prefix + path, is_pad))
+                break                            # tightest container only
+
+        printed = False
+        for cname in sorted(hits, key=lambda c: next(b for n, b, *_ in containers if n == c)):
+            rows = sorted(hits[cname], key=lambda r: r[1])
+            shown = [r for r in rows if not r[3] or args.pads]
+            n_field += sum(1 for r in rows if not r[3])
+            n_pad += sum(1 for r in rows if r[3])
+            if not shown:
+                continue
+            if not printed:
+                print(f"\n######## {ctx_label(ctx)} ########")
+                printed = True
+            print(f"\n=== {cname} ({len(rows)} symbols inside) ===")
+            for sym, addr, path, is_pad in shown:
+                tag = "  [pad]" if is_pad else ""
+                print(f"  {sym:<14} 0x{addr:08X}  ->  {path}{tag}")
+
+    print(f"\n{n_field} field hits, {n_pad} pad hits.")
+    if not args.pads and n_pad:
+        print("(re-run with --pads to see symbols that land in unmodeled struct padding)")
+    if reg.skipped:
+        print(f"({len(reg.skipped)} header(s) skipped, did not compile standalone: "
+              f"{', '.join(reg.skipped)})")
+
+
+if __name__ == "__main__":
+    main()
