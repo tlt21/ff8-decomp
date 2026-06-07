@@ -30,7 +30,19 @@ void func_8009DD2C(s32 a0, s32 a1, u16 a2, s32 a3);
  * @param a1 Default return value if bit 15 not set.
  * @return Combined ability flags (u16) or a1 (u16).
  */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BAC4);
+u16 func_8009BAC4(s32 arg0, u16 arg1) {
+    s16 result;
+    
+    D_800EE476 = arg0;
+    result = func_800B0F9C(D_80078E00.unk3737[arg0].val) 
+           | func_800B0F7C(D_80078E00.unk3737[arg0].val);
+    
+    if (result & 0x8000) {
+        return result;
+    }
+    
+    return arg1;
+}
 
 /**
  * @brief Look up entity ability flags with adjusted index.
@@ -67,7 +79,18 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BB98);
  * D_800ED70C (stride 20), copies entry[0] and D_800ED70C[0xD6A]
  * into D_800EE4C0 buffer with command byte 0xF9.
  */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BBD0);
+BattleEntry* func_8009BBD0(void) {
+    s32 idx;
+    BattleEntry* entry;
+
+    idx = func_8009BB98();
+    entry = &D_800ED70C[idx];
+
+    D_800EE4C0.unk0 = entry->unk_00;
+    D_800EE4C0.unk1 = 249;
+    D_800EE4C0.unk3 = ((u8*)D_800ED70C)[0xD6A];
+    return entry;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BC28);
 
@@ -123,26 +146,71 @@ s32 func_8009BF50(s32 newFlags, s32 *flagsPtr, s32 mask) {
     return current;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BF70);
+void func_8009BF70(s32 newFlags, s32 *flagsPtr) {
+    s32 current = *flagsPtr;
+    if (current != newFlags) {
+        s32 masked = current & ~(0xE | 0x300);
+        *flagsPtr = masked
+                  | func_8009BF50(newFlags, flagsPtr, 0xE)
+                  | func_8009BF50(newFlags, flagsPtr, 0x300);
+    }
+}
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BFE0);
+s32 func_8009BFE0(s32 arg0, u16* arg1, s32* arg2, s32 arg3) {
+    if ((D_800EE471 == 0) && (*arg1 & 0x40) && (arg3 & 1)) {
+        return 0;
+    }
+        
+    
+    if((*arg2 & 0x02000000) && (arg3 & 0x30) != 0) {
+        return 0;
+    }
+    
+    if ((*arg2 & 0x400) && (arg3 & 0x40)) {
+            *arg2 = *arg2 & ~0x400;
+            func_800B0600(arg0, 0x400);
+    }
+    
+    *arg1 |= arg3;
+    return 1;
+}
 
 /**
- * @brief Apply a status flag to an entity if not blocked by guards.
- *
- * Performs cascading guard checks against the proposed flag (a3):
- * - If bit 0x800 in a3 is set and a0 >= 3, rejects (returns 0)
- * - If bit 0x40 in a1 is set and bit 0x400 in a3 is set, rejects
- * - If bit 0x2000000 in *a2 is set and bit 0x4000 in a3 is set, rejects
- * If all checks pass, ORs a3 into *a2 and calls func_800B0574.
- *
- * @param a0 Entity index.
- * @param a1 Entity status byte.
- * @param a2 Pointer to entity flags word.
- * @param a3 Proposed status flag to apply.
- * @return 1 if flag was applied, 0 if rejected.
- */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009C090);
+* @brief Apply a status flag to an entity if not blocked by guards.
+*
+* Performs cascading guard checks against the proposed flag (a3):
+* - If bit 0x800 in a3 is set and a0 >= 3, rejects (returns 0)
+* - If bit 0x40 in a1 is set and bit 0x400 in a3 is set, rejects
+* - If bit 0x2000000 in *a2 is set and bit 0x4000 in a3 is set, rejects
+* If all checks pass, ORs a3 into *a2 and calls func_800B0574.
+*
+* @param a0 Entity index.
+* @param a1 Entity status byte.
+* @param a2 Pointer to entity flags word.
+* @param a3 Proposed status flag to apply.
+* @return 1 if flag was applied, 0 if rejected.
+*/
+s32 func_8009C090(s32 arg0, s32 arg1, s32* arg2, u32 arg3) {
+    s32 a1 = arg1;
+
+    if ((arg3 & 0x800) && (arg0 >= 3)) {
+        return 0;
+    }
+    
+    if ((a1 & 0x40) && (arg3 & 0x400)) {
+        return 0;
+    
+    }
+    
+    if ((*arg2 & 0x02000000) && (arg3 & 0x4000)) {
+        return 0;
+    }
+    
+    *arg2 |= arg3;
+    func_800B0574(arg0, arg3);
+    
+    return 1;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009C104);
 
@@ -743,7 +811,20 @@ s32 func_8009FDE0(s32 a0, s32 a1) {
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009FE14);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_800A085C);
+s32 func_800A085C(void) {
+    s32 i;
+    u16 total = 0;
+    s32 count = 0;
+
+    for (i = 0; i < 16; i++) {
+        if (g_gameState.gfs[i].exists & 1) {
+            count++;
+            total += g_battleChars.levelEntries[i].level;
+        }
+    }
+
+    return total / count;
+}
 
 /**
  * @brief Get the active entity count, defaulting to 1 if unset.
@@ -758,7 +839,28 @@ s32 func_800A08C0(void) {
     return val;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_800A08E0);
+void func_800A08E0(void) {
+    u8 temp_a0;
+
+    if (D_800ED148.unk1319 != 0xFF) {
+        temp_a0 = D_800EE4C0.flags6 & 0x3F;
+    
+        switch (D_800ED148.unk1319) {
+            case 0:
+                D_800EE4C0.flags6 = temp_a0;
+                break;
+            case 1:
+                D_800EE4C0.flags6 = temp_a0 | CTRL_FLAG_40;;
+                break;
+            case 2:
+                D_800EE4C0.flags6 = temp_a0 | CTRL_FLAG_80;
+                break;
+        }
+        
+        D_800EE4C0.unk4 = 22;
+        D_800EE4C0.flags6 |= 8;
+    }
+}
 
 /**
  * @brief Apply 1.5x multiplier to battle control value if entity has status bit 0x20.
@@ -782,7 +884,41 @@ void func_800A0978(s32 entityIdx) {
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_800A09D0);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_800A1760);
+void func_800A1760(s32 arg0, BattleCharData* arg1) {
+    s32 i;
+    
+    for (i = 0; i < 4; i++) {
+        switch (arg1->cmdSlots[i].cmdType) {
+            case 2:
+                if (arg0 == 0) {
+                    if (!(g_battleConfig.unk8 & 2)) {
+                        arg1->cmdSlots[i].field3 &= ~2;
+                    }
+                } else {
+                    arg1->cmdSlots[i].field3 |= 2;
+                }
+            break;
+            case 3:
+                if (arg0 == 0) {
+                    if (!(g_battleConfig.unk8 & 4)) {
+                        arg1->cmdSlots[i].field3 &= ~2;
+                    }
+                } else {
+                    arg1->cmdSlots[i].field3 |= 2;
+                }
+            break;
+            case 6:
+                if (arg0 == 0) {
+                    if (!(g_battleConfig.unk8 & 8)) {
+                        arg1->cmdSlots[i].field3 &= ~2;
+                    }
+                } else {
+                    arg1->cmdSlots[i].field3 |= 2;
+                }
+            break;
+        }
+    }
+}
 
 /**
  * @brief Set masked attribute values on a g_battleChars table entry (stride 0x1D0).
@@ -807,14 +943,15 @@ void func_800A184C(s32 idx, s32 attr, s32 flags) {
  * bit is set, or 0 if clear.
  *
  * @param a0 Entity index (stride 0x1D0).
- *
- * @code
- * void func_800A1888(s32 a0) {
- *     u8 *entry = (u8 *)((s32)g_battleChars + a0 * 0x1D0);
- *     s32 flag = 0;
- *     if (*(u16 *)(entry + 0x1B2) & 0x10) flag = 1;
- *     func_800A1760(flag);
- * }
- * @endcode
  */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_800A1888);
+void func_800A1888(s32 arg0) {
+    BattleCharData* temp_a1 = &g_battleChars.chars[arg0];
+    
+    if (temp_a1->displayStatus & 0x10) {
+        func_800A1760(1, temp_a1);
+    }
+        
+    else {
+        func_800A1760(0, temp_a1);
+    }   
+}
