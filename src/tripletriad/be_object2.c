@@ -300,7 +300,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
         s8 elementMod = D_801D3398.cells[entity->priority + 1][col].elementMod;
         if (elementMod != 0) {
             D_801C2EB4 = drawCardOverlaySprite(node, elementMod,
-                                        &D_801C2EB0[(s16)node->base.pad], D_801C2EB4);
+                                        &D_801C2EB0[node->base.pad], D_801C2EB4);
         }
     }
 
@@ -308,8 +308,8 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
     SetTransMatrix(&node->mat);
 
     D_801C2EB4 = func_8009AE6C(entity->cardId, entity->initFlags,
-                                &D_801C2EB0[(s16)node->base.pad], D_801C2EB4);
-    transformCardEffect(entity, node, &D_801C2EB0[(s16)node->base.pad]);
+                                &D_801C2EB0[node->base.pad], D_801C2EB4);
+    transformCardEffect(entity, node, &D_801C2EB0[node->base.pad]);
 
     func_80098BA0(0x28);
     return 0;
@@ -360,9 +360,9 @@ void setupTripleTriadHands(void) {
             entity->cardId = hand[slot];
             entity->state      = 0;
             entity->initFlags  = 0x12 | player;
-            entity->groupId    = (u8)player;
+            entity->groupId    = player;
             entity->fieldD     = 0;
-            entity->priority   = (u8)slot;
+            entity->priority   = slot;
             entity->posData[0] = 0;
             if ((g_tripleTriadRules & 1) == 0 && *playerType == 3) {
                 entity->posData[1] = 0x800;
@@ -884,7 +884,7 @@ store:
  *       jtbl) at exactly that offset.
  */
 void updateTriadMenu(void) {
-    s32 state = (s32)*(u8 *)&D_801D3338;
+    s32 state = *(u8 *)&D_801D3338;
 
     switch (state) {
     case 0:
@@ -1240,10 +1240,10 @@ void func_8009C12C(TripleTriadCardObject *entity) {
 
     case 7:
         entity->field02++;
-        t = ((s16)entity->field02 << 12) / 10;
+        t = (entity->field02 << 12) / 10;
         t = rsin(t / 4);
         entity->offY = (u32)t >> 7;
-        if ((s16)entity->field02 >= 10) {
+        if (entity->field02 >= 10) {
             entity->offY = 0;
             entity->state = 0;
             entity->field02 = 0;
@@ -1363,7 +1363,7 @@ flip:
     if (stateCopy == 6) {
         D_801C2EB4 = drawCardEffectQuad(node, ((field02 + 1) * 4096) / 20, &D_801C2EB0[6], D_801C2EB4);
         entity->field02++;
-        if ((s16)entity->field02 >= 20) {
+        if (entity->field02 >= 20) {
             entity->state = 0;
             entity->field02 = 0;
         }
@@ -2007,13 +2007,13 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
         }
 
         node->col++;
-        if ((u8)node->col >= 3) {
+        if (node->col >= 3) {
             node->col = 0;
             node->row++;
-            if ((u8)node->row >= 3) {
+            if (node->row >= 3) {
                 node->row = 0;
                 node->card++;
-                if ((u8)node->card >= 5) {
+                if (node->card >= 5) {
                     node->card = 0;
                     node->noBest = 1;
                     node->checkBound = 1;
@@ -2148,13 +2148,13 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
         }
 
         node->col++;
-        if ((u8)node->col >= 3) {
+        if (node->col >= 3) {
             node->col = 0;
             node->row++;
-            if ((u8)node->row >= 3) {
+            if (node->row >= 3) {
                 node->row = 0;
                 node->card++;
-                if ((u8)node->card >= 5) {
+                if (node->card >= 5) {
                     node->card = 0;
                     node->noBest = 1;
                     node->checkBound = 1;
