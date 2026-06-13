@@ -99,7 +99,7 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BCE4);
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BD60);
 
 s32 func_8009BDD0(s32 arg0, s32 arg1) {
-    if ((D_800ED148.entities[arg1].flags & (1 | 8)) || (D_800EEBBB == 255)) {
+    if ((D_800ED148.entities[arg1].flags & (ENTITY_FLAG_1 | ENTITY_FLAG_4)) || (D_800EEBBB == 255)) {
         return 1;
     }
     
