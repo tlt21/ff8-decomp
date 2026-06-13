@@ -5,13 +5,11 @@ extern s32 D_80074EB8[];
 extern u8 D_80070D60[];
 extern s32 D_80073CA8;
 extern u8 *D_80073C34;
-extern s32 *D_80074F08;
 extern s32 D_80074EB0;
 extern u8 *D_80074ED8;
 extern VoicePoolEntry D_80074F20[12];
 extern u16 D_80074FE4;
 extern s32 D_80075078;
-extern u8 D_80072F70[];
 
 /**
  * @brief Adjusts instrument index upward if flag 0x400 is set and instrument is in range.
@@ -216,7 +214,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017DB0);
  * Checks the halfword at D_80073DF0+0x5E (active sequence ID). If non-zero
  * and matches a0[8], calls func_80017DB0(a0[0], 0) to stop. Otherwise calls
  * func_8001708C(a0[0], -1) and stores a0[8] into the structure pointed to
- * by D_80074F08 at offset 0x5E.
+ * by g_sndSeqState at offset 0x5E.
  *
  * @param a0 Pointer to a sound config structure (word 0 = track ID, halfword 8 = sequence ID).
  */
@@ -226,7 +224,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017DB0);
  * Checks the halfword at D_80073DF0+0x5E (active sequence ID). If non-zero
  * and matches a0[8], calls func_80017DB0(a0[0], 0) to stop. Otherwise calls
  * func_8001708C(a0[0], -1) and stores a0[8] into the structure pointed to
- * by D_80074F08 at offset 0x5E.
+ * by g_sndSeqState at offset 0x5E.
  *
  * @param a0 Pointer to a sound config structure (word 0 = track ID, halfword 8 = sequence ID).
  */
@@ -236,7 +234,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80018158);
  * @brief Configure audio track and update playback globals.
  *
  * Calls func_8001708C with the first and fourth fields of the input struct,
- * copies field8 to D_80074F08->0x5E, and sets D_80074EB0 to field10-1
+ * copies field8 to g_sndSeqState->0x5E, and sets D_80074EB0 to field10-1
  * (or 0 if field10 is 0).
  *
  * @param a0 Pointer to audio config struct.
@@ -245,7 +243,7 @@ void sndConfigureTrackPlayback(s32 *a0) {
     register s32 result asm("$4");
     s32 val;
     func_8001708C(a0[0], a0[3]);
-    ((SoundSeqTrack *)D_80074F08)->field5E = *(u16 *)((u8 *)a0 + 8);
+    g_sndSeqState->field5E = *(u16 *)((u8 *)a0 + 8);
     val = a0[4];
     result = 0;
     if (val != 0) {

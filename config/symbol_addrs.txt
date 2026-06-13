@@ -1353,6 +1353,7 @@ g_drawEnvs = 0x80067388;
 g_dispEnvs = 0x80067440;
 g_clearTiles = 0x80070474;
 g_fieldEntity = 0x800704A8;
+g_sndSeqState = 0x80074F08;
 g_gameState = 0x80077378;
 g_characters = 0x80077808; // CharacterData[8] base (g_gameState + 0x490)
 g_characterMagic = 0x80077818; // character magic slots (g_gameState + 0x4A0)

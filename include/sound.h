@@ -21,16 +21,14 @@
  * at D_80070D60 holds all active tracks.
  */
 typedef struct {
-    /* 0x00 */ u8 field00;
-    /* 0x01 */ u8 field01;
-    /* 0x02 */ u8 field02;
-    /* 0x03 */ u8 field03;
+    /* 0x00 */ s32 field00;       /**< Status/control flags; bit 0x400 selects the alternate SPU transfer address. */
     /* 0x04 */ s32 instParams;
-    /* 0x08 */ u8 pad08[4];
+    /* 0x08 */ s32 field08;       /**< Flag accumulator (set/cleared via sndTrackSetFlags/ClearFlags). */
     /* 0x0C */ u16 field0C;
     /* 0x0E */ u16 field0E;
     /* 0x10 */ s32 voiceIdx;
-    /* 0x14 */ u8 pad14[12];
+    /* 0x14 */ u8 pad14[8];
+    /* 0x1C */ s32 keyOnPending;
     /* 0x20 */ s32 tempoRaw;
     /* 0x24 */ s32 keyOnMask;
     /* 0x28 */ s32 loopCounter;
@@ -108,6 +106,9 @@ typedef struct {
     /* 0x10C */ u8 pad10C[4];
 } SoundSeqTrack; /* 0x110 = 272 bytes */
 
+/** @brief 12-entry CD-audio track array (voices 12-23), stride 0x110. */
+extern SoundSeqTrack D_80072F70[];
+
 /**
  * @brief Instrument/sample descriptor (D_80073E68, stride 16 bytes).
  *
@@ -133,6 +134,14 @@ typedef struct {
     /* 0x08 */ s32 field8;        /**< Passed as the 4th arg to @c sndPlay*. */
     /* 0x0C */ s32 fieldC;        /**< Passed as the 3rd arg to @c sndPlay*. */
 } VoicePoolEntry; /* 16 bytes */
+
+/**
+ * @brief Pointer to the active sound-engine state / primary sequence track.
+ *
+ * Paired with the @c D_80070D60 track array as the primary sound source
+ * (see @c sndTransferData).
+ */
+extern SoundSeqTrack *g_sndSeqState;
 
 /** @brief 12-entry SFX play queue, replayed by @c func_800BF718 after a sound reset. */
 extern VoicePoolEntry D_80074F20[12];
@@ -199,7 +208,8 @@ typedef struct {
  */
 typedef struct {
     /* 0x00 */ u32 magic;           /**< Validation magic (checked by sndValidateBank). */
-    /* 0x04 */ u8 pad04[0x0C];     /**< Unknown header fields. */
+    /* 0x04 */ s32 bankId;          /**< Bank/sample identifier; tracked in load tables (D_80073DE0, D_80074EB8). */
+    /* 0x08 */ u8 pad08[0x08];     /**< Unknown header fields. */
     /* 0x10 */ s32 spuAddr;         /**< SPU sample start address / transfer size. */
     /* 0x14 */ u8 pad14[4];        /**< Unknown. */
     /* 0x18 */ s32 spuSize;         /**< SPU transfer size in bytes. */

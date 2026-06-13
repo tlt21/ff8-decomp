@@ -90,22 +90,21 @@ s32 sndStopAll(void) {
     return 0;
 }
 
-extern s32 D_80075058;
-extern s32 *D_80074F08;
+extern s32 D_80075058[];
 extern s32 *D_80073CA8;
 
 /**
  * @brief Check sound subsystem status flags.
  *
- * Returns a bitfield: bit 0 set if D_80074F08->field04 is nonzero,
+ * Returns a bitfield: bit 0 set if g_sndSeqState->field04 is nonzero,
  * bit 1 set if D_80073CA8 is non-NULL and its field04 is nonzero.
  *
  * @return Status bitfield.
  */
 s32 sndGetStatus(void) {
-    s32 *ptr = D_80074F08;
+    SoundSeqTrack *ptr = g_sndSeqState;
     s32 *ptr2 = D_80073CA8;
-    s32 result = ptr[1] != 0;
+    s32 result = ptr->instParams != 0;
     if (ptr2 != 0 && ptr2[1] != 0) {
         result |= 2;
     }
@@ -122,7 +121,7 @@ extern s32 D_800772CC;
  * @brief Compute the maximum volume from multiple sound sources.
  *
  * Combines volume values from up to three sources based on the bitmask
- * in @p a0. Bit 0: use D_80074F08->0x58 as initial volume. Bit 1: clamp
+ * in @p a0. Bit 0: use g_sndSeqState->0x58 as initial volume. Bit 1: clamp
  * up to D_80073E62. Bit 2: clamp up to D_80073E60.
  *
  * @param a0 Bitmask selecting which volume sources to consider.
@@ -131,7 +130,7 @@ extern s32 D_800772CC;
 s32 sndGetMaxVolume(s32 a0) {
     s32 vol = 0;
     if (a0 & 1) {
-        vol = (s16)((SoundSeqTrack *)D_80074F08)->pitchValue;
+        vol = (s16)g_sndSeqState->pitchValue;
     }
     if (a0 & 2) {
         s32 v = D_80073E62;
@@ -150,13 +149,13 @@ s32 sndGetMaxVolume(s32 a0) {
 
 /** @brief Sends SPU command 0x10 with parameter @p a0 via the command buffer. */
 s32 sndCmd10(s32 a0) {
-    D_80075058 = a0;
+    D_80075058[0] = a0;
     return func_8001A1E8(0x10);
 }
 
 /** @brief Sends SPU command 0x11 with parameter @p a0 via the command buffer. */
 s32 sndCmd11(s32 a0) {
-    D_80075058 = a0;
+    D_80075058[0] = a0;
     return func_8001A1E8(0x11);
 }
 
@@ -167,9 +166,9 @@ s32 sndCmd11(s32 a0) {
  * @param a2 Third command parameter (stored at D_80075058[2]).
  */
 s32 sndCmd14(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
-    *(&D_80075058 + 2) = a2;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
+    D_80075058[2] = a2;
     return func_8001A1E8(0x14);
 }
 
@@ -183,8 +182,8 @@ void sndCmd40(void) {
  *  @param a1 Second parameter, masked to 7 bits.
  */
 s32 sndCmd19(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0x7F;
     return func_8001A1E8(0x19);
 }
 
@@ -194,9 +193,9 @@ s32 sndCmd19(s32 a0, s32 a1) {
  *  @param a2 Third command parameter (masked to 0x7F).
  */
 s32 sndCmd1A(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
-    *(&D_80075058 + 2) = a2 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
+    D_80075058[2] = a2 & 0x7F;
     return func_8001A1E8(0x1A);
 }
 
@@ -205,30 +204,29 @@ s32 sndCmd1A(s32 a0, s32 a1, s32 a2) {
  *  @param a1 Second command parameter.
  */
 s32 sndCmd12(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
     return func_8001A1E8(0x12);
 }
 
 /**
  * @brief Query the current SPU transfer position as a packed 32-bit value.
  *
- * Returns 0 if neither field +0x04 nor +0x1C of the sound engine state
- * (D_80074F08) is set. Otherwise returns the current position as
- * (field_0x6C << 16) | (field_0x66 + 1).
+ * Returns 0 if neither @c instParams nor @c keyOnPending of the sound engine
+ * state (g_sndSeqState) is set. Otherwise returns the current position as
+ * (pitchModCounter << 16) | (instrument + 1).
  *
  * @return Packed position value, or 0 if inactive.
  */
-/**
- * @brief Query the current SPU transfer position as a packed 32-bit value.
- *
- * Returns 0 if neither field +0x04 nor +0x1C of the sound engine state
- * (D_80074F08) is set. Otherwise returns the current position as
- * (field_0x6C << 16) | (field_0x66 + 1).
- *
- * @return Packed position value, or 0 if inactive.
- */
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80012FEC);
+s32 func_80012FEC(void) {
+    SoundSeqTrack *ptr = g_sndSeqState;
+    s32 result = 0;
+    if ((ptr->instParams | ptr->keyOnPending) != 0) {
+        result = ptr->pitchModCounter << 16;
+        result |= ptr->instrument + 1;
+    }
+    return result;
+}
 
 /**
  * @brief Sends SPU command 0x20 (play sound effect) with voice and playback parameters.
@@ -238,10 +236,10 @@ INCLUDE_ASM("asm/nonmatchings/snd_init", func_80012FEC);
  * @param a3 Pan or pitch parameter, masked to 7 bits (0-127).
  */
 void sndPlaySfx(s32 a0, s32 a1, s32 a2, s32 a3) {
-    D_80075058 = a0 & 0x3FF;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
-    *(&D_80075058 + 3) = a3 & 0x7F;
+    D_80075058[0] = a0 & 0x3FF;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2 & 0xFF;
+    D_80075058[3] = a3 & 0x7F;
     func_8001A1E8(0x20);
 }
 
@@ -263,10 +261,10 @@ s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3) {
     if (result != 0) {
         return result;
     }
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
-    *(&D_80075058 + 3) = a3 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2 & 0xFF;
+    D_80075058[3] = a3 & 0x7F;
     func_8001A1E8(0x24);
     return a0;
 }
@@ -277,8 +275,8 @@ s32 sndPlayBankSfx(s32 a0, s32 a1, s32 a2, s32 a3) {
  * @param a1 Second parameter, masked to 24 bits (stored at D_80075058[1]).
  */
 void sndCmd21(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
     func_8001A1E8(0x21);
 }
 
@@ -287,7 +285,7 @@ void sndCmd21(s32 a0, s32 a1) {
  * @param a0 Voice bitmask, masked to 10 bits.
  */
 void sndKeyOn(s32 a0) {
-    D_80075058 = a0 & 0x3FF;
+    D_80075058[0] = a0 & 0x3FF;
     func_8001A1E8(0x30);
 }
 
@@ -314,9 +312,63 @@ void sndCmd45(void) {
  *
  * @return Combined key-on mask (24-bit), or 0 if D_80075028 is 0.
  */
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_800131A8);
+s32 func_800131A8(void) {
+    s32 mask = D_80075028[0];
+    SoundSeqTrack *track;
+    s32 bit;
+    s32 result;
 
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80013210);
+    if (mask == 0) {
+        return 0;
+    }
+
+    track = D_80072F70;
+    result = 0;
+    for (bit = 0x1000; bit & 0xFFFFFF; bit <<= 1, track++) {
+        if (mask & bit) {
+            result |= track->keyOnMask;
+        }
+    }
+
+    result &= 0xFFFFFF;
+    return result;
+}
+
+/**
+ * @brief Test whether any active CD-audio track has a given key-on mask.
+ *
+ * Scans the 12 CD-audio tracks (D_80072F70, voices 12-23) and, for each
+ * track whose voice bit is set in D_80075028, compares its keyOnMask field
+ * against @p a0.
+ *
+ * @param a0 Key-on mask value to search for (nonzero).
+ * @return 1 if a matching active track is found; 0 otherwise (including when
+ *         @p a0 is 0 or no voices are active).
+ */
+s32 func_80013210(s32 a0) {
+    s32 mask;
+    SoundSeqTrack *track;
+    s32 bit;
+
+    if (a0 == 0) {
+        return 0;
+    }
+    mask = D_80075028[0];
+    if (mask == 0) {
+        return 0;
+    }
+
+    track = D_80072F70;
+    for (bit = 0x1000; bit & 0xFFFFFF; bit <<= 1, track++) {
+        if (mask & bit) {
+            if (a0 == track->keyOnMask) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
 
 /** @brief Sends SPU command 0x81 if a0 == 1, else 0x80.
  *  @param a0 Selects command (1 = 0x81, else 0x80).
@@ -333,7 +385,7 @@ void sndSelectMode(s32 a0) {
  *  @param a0 Command parameter.
  */
 void sndCmd90(s32 a0) {
-    D_80075058 = a0;
+    D_80075058[0] = a0;
     func_8001A1E8(0x90);
 }
 
@@ -341,7 +393,7 @@ void sndCmd90(s32 a0) {
  *  @param a0 Command parameter.
  */
 void sndCmd92(s32 a0) {
-    D_80075058 = a0;
+    D_80075058[0] = a0;
     func_8001A1E8(0x92);
 }
 
@@ -420,7 +472,7 @@ s32 sndSetEngineFlag(s32 a0) {
  * @param a0 Volume value, masked to 7 bits (0-127).
  */
 void sndSetMasterVolume(s32 a0) {
-    D_80075058 = a0 & 0x7F;
+    D_80075058[0] = a0 & 0x7F;
     func_8001A1E8(0xA8);
 }
 
@@ -429,8 +481,8 @@ void sndSetMasterVolume(s32 a0) {
  *  @param a1 Second parameter, masked to 7 bits.
  */
 void sndSetChannelVolume(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0x7F;
     func_8001A1E8(0xA9);
 }
 
@@ -440,9 +492,9 @@ void sndSetChannelVolume(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 7 bits.
  */
 void sndSeqPlay7bit(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2 & 0x7F;
     func_8001A1E8(0xA0);
 }
 
@@ -453,10 +505,10 @@ void sndSeqPlay7bit(s32 a0, s32 a1, s32 a2) {
  *  @param a3 Fourth parameter, masked to 7 bits.
  */
 void sndSeqPlayPan7bit(s32 a0, s32 a1, s32 a2, s32 a3) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2;
-    *(&D_80075058 + 3) = a3 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2;
+    D_80075058[3] = a3 & 0x7F;
     func_8001A1E8(0xA1);
 }
 
@@ -464,7 +516,7 @@ void sndSeqPlayPan7bit(s32 a0, s32 a1, s32 a2, s32 a3) {
  *  @param a0 Command parameter, masked to 8 bits.
  */
 void sndSeqSetTempo(s32 a0) {
-    D_80075058 = (u8)a0;
+    D_80075058[0] = (u8)a0;
     func_8001A1E8(0xAA);
 }
 
@@ -473,8 +525,8 @@ void sndSeqSetTempo(s32 a0) {
  *  @param a1 Second parameter, masked to 8 bits.
  */
 void sndSeqSetChannelTempo(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (u8)a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = (u8)a1;
     func_8001A1E8(0xAB);
 }
 
@@ -484,9 +536,9 @@ void sndSeqSetChannelTempo(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 8 bits.
  */
 void sndSeqPlay8bit(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2 & 0xFF;
     func_8001A1E8(0xA2);
 }
 
@@ -497,10 +549,10 @@ void sndSeqPlay8bit(s32 a0, s32 a1, s32 a2) {
  *  @param a3 Fourth parameter, masked to 8 bits.
  */
 void sndSeqPlayPan8bit(s32 a0, s32 a1, s32 a2, s32 a3) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2;
-    *(&D_80075058 + 3) = a3 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2;
+    D_80075058[3] = a3 & 0xFF;
     func_8001A1E8(0xA3);
 }
 
@@ -508,7 +560,7 @@ void sndSeqPlayPan8bit(s32 a0, s32 a1, s32 a2, s32 a3) {
  *  @param a0 Command parameter, masked to 8 bits.
  */
 void sndSeqSetTempoAlt(s32 a0) {
-    D_80075058 = (u8)a0;
+    D_80075058[0] = (u8)a0;
     func_8001A1E8(0xAC);
 }
 
@@ -517,8 +569,8 @@ void sndSeqSetTempoAlt(s32 a0) {
  *  @param a1 Second parameter, masked to 8 bits.
  */
 void sndSeqSetChannelTempoAlt(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (u8)a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = (u8)a1;
     func_8001A1E8(0xAD);
 }
 
@@ -528,9 +580,9 @@ void sndSeqSetChannelTempoAlt(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 8 bits.
  */
 void sndSeqStart(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2 & 0xFF;
     func_8001A1E8(0xA4);
 }
 
@@ -541,10 +593,10 @@ void sndSeqStart(s32 a0, s32 a1, s32 a2) {
  *  @param a3 Fourth parameter, masked to 8 bits.
  */
 void sndSeqStartPan(s32 a0, s32 a1, s32 a2, s32 a3) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFFFFFF;
-    *(&D_80075058 + 2) = a2;
-    *(&D_80075058 + 3) = a3 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFFFFFF;
+    D_80075058[2] = a2;
+    D_80075058[3] = a3 & 0xFF;
     func_8001A1E8(0xA5);
 }
 
@@ -554,8 +606,8 @@ void sndSeqStartPan(s32 a0, s32 a1, s32 a2, s32 a3) {
  * @param a1 Parameter value, masked to 7 bits (0-127).
  */
 s32 sndCmdC0(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0x7F;
     return func_8001A1E8(0xC0);
 }
 
@@ -565,9 +617,9 @@ s32 sndCmdC0(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 7 bits.
  */
 s32 sndCmdC1(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
-    *(&D_80075058 + 2) = a2 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
+    D_80075058[2] = a2 & 0x7F;
     return func_8001A1E8(0xC1);
 }
 
@@ -578,10 +630,10 @@ s32 sndCmdC1(s32 a0, s32 a1, s32 a2) {
  *  @param a3 Fourth parameter, masked to 7 bits.
  */
 s32 sndCmdC2(s32 a0, s32 a1, s32 a2, s32 a3) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
-    *(&D_80075058 + 2) = a2 & 0x7F;
-    *(&D_80075058 + 3) = a3 & 0x7F;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
+    D_80075058[2] = a2 & 0x7F;
+    D_80075058[3] = a3 & 0x7F;
     return func_8001A1E8(0xC2);
 }
 
@@ -589,7 +641,7 @@ s32 sndCmdC2(s32 a0, s32 a1, s32 a2, s32 a3) {
  *  @param a0 Command parameter.
  */
 void sndCmdC8(s32 a0) {
-    D_80075058 = a0;
+    D_80075058[0] = a0;
     func_8001A1E8(0xC8);
 }
 
@@ -598,8 +650,8 @@ void sndCmdC8(s32 a0) {
  *  @param a1 Second command parameter.
  */
 void sndCmdC9(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
     func_8001A1E8(0xC9);
 }
 
@@ -609,9 +661,9 @@ void sndCmdC9(s32 a0, s32 a1) {
  *  @param a2 Third command parameter.
  */
 void sndCmdCA(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
-    *(&D_80075058 + 2) = a2;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
+    D_80075058[2] = a2;
     func_8001A1E8(0xCA);
 }
 
@@ -619,7 +671,7 @@ void sndCmdCA(s32 a0, s32 a1, s32 a2) {
  *  @param a0 Command parameter, masked to 8 bits.
  */
 void sndCmdD0(s32 a0) {
-    D_80075058 = (u8)a0;
+    D_80075058[0] = (u8)a0;
     func_8001A1E8(0xD0);
 }
 
@@ -628,8 +680,8 @@ void sndCmdD0(s32 a0) {
  *  @param a1 Second parameter, masked to 8 bits.
  */
 void sndCmdD1(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (u8)a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = (u8)a1;
     func_8001A1E8(0xD1);
 }
 
@@ -639,9 +691,9 @@ void sndCmdD1(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 8 bits.
  */
 void sndCmdD2(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFF;
+    D_80075058[2] = a2 & 0xFF;
     func_8001A1E8(0xD2);
 }
 
@@ -649,7 +701,7 @@ void sndCmdD2(s32 a0, s32 a1, s32 a2) {
  *  @param a0 Command parameter, masked to 8 bits.
  */
 void sndCmdD4(s32 a0) {
-    D_80075058 = (u8)a0;
+    D_80075058[0] = (u8)a0;
     func_8001A1E8(0xD4);
 }
 
@@ -658,8 +710,8 @@ void sndCmdD4(s32 a0) {
  *  @param a1 Second parameter, masked to 8 bits.
  */
 void sndCmdD5(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (u8)a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = (u8)a1;
     func_8001A1E8(0xD5);
 }
 
@@ -669,9 +721,9 @@ void sndCmdD5(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 8 bits.
  */
 void sndCmdD6(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFF;
+    D_80075058[2] = a2 & 0xFF;
     func_8001A1E8(0xD6);
 }
 
@@ -679,7 +731,7 @@ void sndCmdD6(s32 a0, s32 a1, s32 a2) {
  *  @param a0 Command parameter, masked to 8 bits.
  */
 void sndCmdD8(s32 a0) {
-    D_80075058 = (u8)a0;
+    D_80075058[0] = (u8)a0;
     func_8001A1E8(0xD8);
 }
 
@@ -688,8 +740,8 @@ void sndCmdD8(s32 a0) {
  *  @param a1 Second parameter, masked to 8 bits.
  */
 void sndCmdD9(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (u8)a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = (u8)a1;
     func_8001A1E8(0xD9);
 }
 
@@ -699,9 +751,9 @@ void sndCmdD9(s32 a0, s32 a1) {
  *  @param a2 Third parameter, masked to 8 bits.
  */
 void sndCmdDA(s32 a0, s32 a1, s32 a2) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1 & 0xFF;
-    *(&D_80075058 + 2) = a2 & 0xFF;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1 & 0xFF;
+    D_80075058[2] = a2 & 0xFF;
     func_8001A1E8(0xDA);
 }
 
@@ -767,7 +819,54 @@ s32 sndProcessAudio(s32 a0, s32 a1) {
     return result;
 }
 
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80013F38);
+extern s32 D_80074968;
+extern s32 D_80073DE0[];
+
+/**
+ * @brief Validate/track a sound bank and dispatch its SPU transfer (command via
+ *        func_800148B0), choosing the transfer address from engine state.
+ *
+ * If a sequence is active (@c g_sndSeqState->field5E nonzero), defers the
+ * address/level computation to @c func_80013AA8. Otherwise picks a fixed SPU
+ * region based on the current transfer address @c D_80074968:
+ *   - @c 0x5D000  -> level 0x40, address 0x2B000, slot @c D_80073DE0[0]
+ *   - otherwise   -> level 0x60, address 0x4B000, slot @c D_80073DE0[1]
+ * The bank's @c bankId is written into its region slot; if it already matches
+ * the other slot, that slot is cleared. The chosen level/address are forwarded
+ * to @c func_800148B0.
+ *
+ * @param a0 Sound bank descriptor (@c SndBankDesc *).
+ * @param a1 Passthrough parameter forwarded to @c func_800148B0.
+ * @return @c func_80013AA8's result when a sequence is active; otherwise 0 for
+ *         the 0x5D000 region or 1 for the alternate region.
+ */
+s32 func_80013F38(SndBankDesc *a0, s32 a1) {
+    s32 level;
+    s32 addr;
+    s32 result;
+
+    if (g_sndSeqState->field5E != 0) {
+        result = func_80013AA8((s32)a0, &level, &addr);
+    } else if (D_80074968 == 0x5D000) {
+        result = 0;
+        D_80073DE0[0] = a0->bankId;
+        level = 0x40;
+        addr = 0x2B000;
+        if (D_80073DE0[1] == a0->bankId) {
+            D_80073DE0[1] = 0;
+        }
+    } else {
+        result = 1;
+        D_80073DE0[1] = a0->bankId;
+        level = 0x60;
+        addr = 0x4B000;
+        if (D_80073DE0[0] == a0->bankId) {
+            D_80073DE0[0] = 0;
+        }
+    }
+    func_800148B0((s32)a0, a1, level, addr);
+    return result;
+}
 
 /**
  * @brief Configure audio playback address based on sound structure state.
@@ -780,16 +879,54 @@ INCLUDE_ASM("asm/nonmatchings/snd_init", func_80013F38);
  * @param a1 Second parameter (passed through to func_800148B0).
  */
 void sndSetPlaybackAddr(s32 a0, s32 a1) {
-    s32 *ptr = D_80074F08;
+    SoundSeqTrack *ptr = g_sndSeqState;
     s32 addr = 0x5D000;
-    if ((ptr[1] | ptr[7]) && (ptr[0] & 0x400)) {
+    if ((ptr->instParams | ptr->keyOnPending) && (ptr->field00 & 0x400)) {
         addr = 0x3D000;
     }
     func_800148B0(a0, a1, 0xB0, addr);
 }
 
+/**
+ * @brief Clears matching bank-ID entries and uploads a sound bank (variant of
+ *        func_80014190 with a different SPU address/level set).
+ *
+ * Scans the 6-entry bank-ID table @c D_80074EB8 and zeroes every slot whose
+ * value equals @c a0->bankId. Then, based on @p a1, selects an SPU transfer
+ * address and level (1 -> 0x51000/0x90, 2 -> 0x57000/0xA0, else 0x4B000/0x80),
+ * records @c a0->bankId into the corresponding slot (@c D_80074EBC / @c D_80074EC0
+ * / @c D_80074EB8), adjusts the address by -0x20000 when the engine is active
+ * with flag bit 10 set (@c g_sndSeqState), and dispatches via @c func_800148B0.
+ *
+ * @param a0 Sound bank descriptor (@c SndBankDesc *); @c bankId is at offset 0x04.
+ * @param a1 Mode selector (1, 2, or default) choosing the SPU address/level.
+ * @param a2 Passthrough parameter forwarded to @c func_800148B0.
+ *
+ * @note Near-match (99.29%): shares the identical @c D_80074EB8 clear-loop with
+ *       func_80014190 (https://decomp.me/scratch/RIMDb) and the same loop
+ *       induction-variable register swap (counter wants @c a3, array pointer
+ *       wants @c t0). Same fix applies to both; WIP:
+ *       https://decomp.me/scratch/r2C1V
+ */
 INCLUDE_ASM("asm/nonmatchings/snd_init", func_80014094);
 
+/**
+ * @brief Clears any matching bank-ID entries and uploads a sound bank.
+ *
+ * Scans the 6-entry bank-ID table @c D_80074EB8 and zeroes every slot whose
+ * value equals @c a0->bankId. Then, based on @p a1, selects an SPU transfer
+ * address and level (1 -> 0x6F800/0xE0, 2 -> 0x74000/0xF0, else 0x6B000/0xD0),
+ * records @c a0->bankId into the corresponding slot (@c D_80074EC8 / @c D_80074ECC
+ * / @c D_80074EC4), and dispatches the transfer via @c func_800148B0.
+ *
+ * @param a0 Sound bank descriptor (@c SndBankDesc *); @c bankId is at offset 0x04.
+ * @param a1 Mode selector (1, 2, or default) choosing the SPU address/level.
+ * @param a2 Passthrough parameter forwarded to @c func_800148B0.
+ *
+ * @note Near-match (99.06%): the only diff is a loop induction-variable register
+ *       swap (counter wants @c a3, array pointer wants @c t0). Work in progress:
+ *       https://decomp.me/scratch/RIMDb
+ */
 INCLUDE_ASM("asm/nonmatchings/snd_init", func_80014190);
 
 /**
@@ -836,9 +973,9 @@ void sndCmdE0(s32 a0, s32 a1, s32 a2) {
     if (sndValidateBank() == 0) {
         register s32 cmd asm("$4") = 0xE0; // FIXME: register+barrier forces li into bne delay slot
         REGALLOC_BARRIER(cmd);
-        D_80075058 = a0;
-        *(&D_80075058 + 1) = (a1 & 0xFF) << 8;
-        *(&D_80075058 + 2) = a2;
+        D_80075058[0] = a0;
+        D_80075058[1] = (a1 & 0xFF) << 8;
+        D_80075058[2] = a2;
         func_8001A1E8(cmd);
     }
 }
@@ -852,7 +989,7 @@ void sndCmdE2(void) {
  *  @param a0 Parameter, masked to 7 bits then shifted left 8.
  */
 void sndCmdE4(s32 a0) {
-    D_80075058 = (a0 & 0x7F) << 8;
+    D_80075058[0] = (a0 & 0x7F) << 8;
     func_8001A1E8(0xE4);
 }
 
@@ -862,8 +999,8 @@ void sndCmdE4(s32 a0) {
  * @param a1 Second parameter, masked to 7 bits and shifted left 8.
  */
 void sndCmdE5(s32 a0, s32 a1) {
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = (a1 & 0x7F) << 8;
+    D_80075058[0] = a0;
+    D_80075058[1] = (a1 & 0x7F) << 8;
     func_8001A1E8(0xE5);
 }
 
@@ -871,7 +1008,7 @@ void sndCmdE5(s32 a0, s32 a1) {
  *  @param a0 Parameter, masked to 8 bits then shifted left 8.
  */
 void sndCmdE6(s32 a0) {
-    D_80075058 = (u8)a0 << 8;
+    D_80075058[0] = (u8)a0 << 8;
     func_8001A1E8(0xE6);
 }
 
@@ -911,8 +1048,8 @@ s32 func_80014400(s32 a0, s32 a1) {
         spuAddr = 0x4B000;
     }
     {
-        s32 *ptr = D_80074F08;
-        if ((ptr[1] | ptr[7]) && (ptr[0] & 0x400)) {
+        SoundSeqTrack *ptr = g_sndSeqState;
+        if ((ptr->instParams | ptr->keyOnPending) && (ptr->field00 & 0x400)) {
             spuAddr -= 0x20000;
             a1 = a0;
         } else {
@@ -937,8 +1074,8 @@ done:
  * @param a1 Secondary parameter stored at D_80075058+4.
  */
 void sndCmdED(s32 a0, s32 a1) {
-    D_80075058 = (a0 & 0xFF) << 8;
-    *(&D_80075058 + 1) = a1;
+    D_80075058[0] = (a0 & 0xFF) << 8;
+    D_80075058[1] = a1;
     func_8001A1E8(0xED);
 }
 
@@ -955,7 +1092,26 @@ void sndCmdED(s32 a0, s32 a1) {
  * @param a2 Bank slot selector (0 = primary, nonzero = alternate).
  * @param a3 Additional parameter stored at D_80075058[3].
  */
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_8001451C);
+void func_8001451C(s32 a0, s32 a1, s32 a2, s32 a3) {
+    s32 spuAddr;
+    SoundSeqTrack *ptr;
+
+    if (sndValidateBank((u32 *)a0) == 0) {
+        spuAddr = 0x51000;
+        if (a2 == 0) {
+            spuAddr = 0x4B000;
+        }
+        ptr = g_sndSeqState;
+        if ((ptr->instParams | ptr->keyOnPending) && (ptr->field00 & 0x400)) {
+            spuAddr -= 0x20000;
+        }
+        D_80075058[0] = a0;
+        D_80075058[1] = (a1 & 0xFF) << 8;
+        D_80075058[2] = spuAddr;
+        D_80075058[3] = a3;
+        func_8001A1E8(0xEC);
+    }
+}
 
 /**
  * @brief Initialize SPU IRQ and sound engine state for playback.
@@ -975,8 +1131,8 @@ s32 sndInitIrq(s32 a0, s32 a1) {
     }
     SpuSetIRQ(0);
     SpuSetIRQAddr(0);
-    D_80075058 = a0;
-    *(&D_80075058 + 1) = a1;
+    D_80075058[0] = a0;
+    D_80075058[1] = a1;
     D_80077298[13] = -1;
     D_80077298[8] = 0;
     D_80077298[9] = 0;
