@@ -1226,32 +1226,32 @@ s32 sndUploadSampleBank(s32 a0, s32 a1) {
     s32 result;
 
     result = sndValidateBank(a0);
-    if (result != 0) {
-        goto fail;
-    }
-    sndDmaWait();
-    spuAddr = 0x51000;
-    if (a1 == 0) {
-        spuAddr = 0x4B000;
-    }
-    {
-        SoundSeqTrack *ptr = g_sndSeqState;
-        if ((ptr->instParams | ptr->keyOnPending) && (ptr->field00 & 0x400)) {
-            spuAddr -= 0x20000;
-            a1 = a0;
-        } else {
-            a1 = a0;
+    if (result == 0) {
+        sndDmaWait();
+        spuAddr = 0x51000;
+        if (a1 == 0) {
+            spuAddr = 0x4B000;
         }
-        a0 += 0x40;
-        SpuSetTransferStartAddr(spuAddr);
-        sndDmaWriteSpu(a0, ((SndBankDesc *)a1)->spuAddr);
-        ((SndBankDesc *)a1)->spuLoadedAddr = spuAddr;
-        func_8001A57C(a1, (s32)D_80073C38, 0x70);
+        {
+            SoundSeqTrack *ptr = g_sndSeqState;
+            /* a1 = a0 is set in both branches below rather than hoisted after
+               the if: the original stores the descriptor pointer twice, and
+               collapsing it to a single assignment drops the match. */
+            if ((ptr->instParams | ptr->keyOnPending) && (ptr->field00 & 0x400)) {
+                spuAddr -= 0x20000;
+                a1 = a0;
+            } else {
+                a1 = a0;
+            }
+            a0 += 0x40;
+            SpuSetTransferStartAddr(spuAddr);
+            sndDmaWriteSpu(a0, ((SndBankDesc *)a1)->spuAddr);
+            ((SndBankDesc *)a1)->spuLoadedAddr = spuAddr;
+            func_8001A57C(a1, (s32)D_80073C38, 0x70);
+        }
+    } else {
+        D_80073C58 = 0;
     }
-    goto done;
-fail:
-    D_80073C58 = 0;
-done:
     return result;
 }
 
