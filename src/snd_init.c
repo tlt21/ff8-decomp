@@ -94,8 +94,8 @@ s32 sndStopAll(void) {
 /**
  * @brief Check sound subsystem status flags.
  *
- * Returns a bitfield: bit 0 set if g_sndSeqState->field04 is nonzero,
- * bit 1 set if D_80073CA8 is non-NULL and its field04 is nonzero.
+ * Returns a bitfield: bit 0 set if g_sndSeqState->instParams is nonzero,
+ * bit 1 set if D_80073CA8 is non-NULL and its word at +4 is nonzero.
  *
  * @return Status bitfield.
  */
@@ -114,7 +114,7 @@ s32 sndGetStatus(void) {
  * @brief Compute the maximum volume from multiple sound sources.
  *
  * Combines volume values from up to three sources based on the bitmask
- * in @p a0. Bit 0: use g_sndSeqState->0x58 as initial volume. Bit 1: clamp
+ * in @p a0. Bit 0: use g_sndSeqState->pitchValue as initial volume. Bit 1: clamp
  * up to D_80073E62. Bit 2: clamp up to D_80073E60.
  *
  * @param a0 Bitmask selecting which volume sources to consider.
@@ -282,10 +282,7 @@ void sndKeyOn(s32 a0) {
     func_8001A1E8(0x30);
 }
 
-/**
- * @brief Sends SPU command 0x44 (stop/reset playback).
- * @note TODO: maspsx schedules addiu $sp into load delay slot instead of jr delay slot.
- */
+/** @brief Sends SPU command 0x44 (stop/reset playback). */
 void sndStopPlayback(void) {
     func_8001A1E8(0x44);
 }
@@ -423,16 +420,6 @@ void sndDisableReverb(u32 a0) {
     func_8001A1E8(val);
 }
 
-/**
- * @brief Multiply input by 256, call func_8003ED24 with sign-extended 16-bit value, return full shifted result.
- *
- * Shifts the input left by 8, sign-extends the lower 16 bits, passes
- * the sign-extended value to func_8003ED24 as both arguments, then
- * returns the original (non-truncated) shifted value.
- *
- * @param a0 Input value to shift.
- * @return a0 * 256 (full 32-bit result, not truncated).
- */
 /**
  * @brief Multiply input by 256, call func_8003ED24 with sign-extended 16-bit value,
  *        return full shifted result.
@@ -992,7 +979,7 @@ s32 sndUploadBank(SndBankDesc *a0, s32 a1) {
     s32 result;
 
     if (g_sndSeqState->field5E != 0) {
-        result = sndSelectBankSlot((s32)a0, &level, &addr);
+        result = sndSelectBankSlot(a0, &level, &addr);
     } else if (D_80074968 == 0x5D000) {
         result = 0;
         D_80073DE0[0] = a0->bankId;

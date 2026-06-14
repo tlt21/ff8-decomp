@@ -6,9 +6,7 @@
  * the @c sndCmd* SPU command dispatchers, sequence and SFX playback,
  * reverb/volume control, and the sample-bank upload/streaming path.
  * Shared sound types (@c SndBankDesc, @c SoundSeqTrack, @c DmaState, ...)
- * live in @c sound.h, which this header pulls in. @c sound.h re-includes
- * this header so existing @c #include "sound.h" callers keep resolving
- * these prototypes.
+ * and the shared sound globals live in @c sound.h, which this header pulls in.
  */
 #ifndef SND_INIT_H
 #define SND_INIT_H
