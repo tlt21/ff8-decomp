@@ -1154,20 +1154,20 @@ void func_80014190(SndBankDesc *a0, s32 a1, s32 a2) {
  */
 s32 sndSetCdMixVolume(s32 a0) {
     if (D_8007728C & 2) {
-        s32 base = (s32)D_80073C30;
+        CdlATV *atv = &g_cdMixVolume;
         s32 vol = (u32)(a0 * 46448) >> 17;
-        *(u8 *)(base + 3) = vol;
-        *(u8 *)(base + 1) = vol;
-        *(u8 *)(base + 2) = vol;
-        *(u8 *)(base + 0) = vol;
+        atv->val3 = vol;
+        atv->val1 = vol;
+        atv->val2 = vol;
+        atv->val0 = vol;
     } else {
-        s32 base = (s32)D_80073C30;
-        *(u8 *)(base + 2) = a0;
-        *(u8 *)(base + 0) = a0;
-        *(u8 *)(base + 3) = 0;
-        *(u8 *)(base + 1) = 0;
+        CdlATV *atv = &g_cdMixVolume;
+        atv->val2 = a0;
+        atv->val0 = a0;
+        atv->val3 = 0;
+        atv->val1 = 0;
     }
-    CdMix((s32 *)D_80073C30);
+    CdMix(&g_cdMixVolume);
     return 0;
 }
 

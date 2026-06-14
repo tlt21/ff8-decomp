@@ -14,6 +14,7 @@
 #define SND_INIT_H
 
 #include "sound.h"
+#include "psxsdk/libcd.h"
 
 /* ---- Data symbols referenced by snd_init.c ------------------------- *
  * Declared with snd_init.c's view of each global. Several of these are
@@ -23,7 +24,7 @@
 
 extern s32  D_8005169C;
 extern u8   D_800516B8[];
-extern u8   D_80073C30[];
+extern CdlATV g_cdMixVolume;
 extern u8   D_80073C38[];
 extern s32  D_80073C58;
 extern s32 *D_80073CA8;
