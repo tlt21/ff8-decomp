@@ -239,12 +239,15 @@ INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80018158);
  * @param a0 Pointer to audio config struct.
  */
 void sndConfigureTrackPlayback(s32 *a0) {
-    register s32 result asm("$4");
-    s32 val;
+    s32 val, result;
     func_8001708C(a0[0], a0[3]);
     g_sndSeqState->field5E = *(u16 *)((u8 *)a0 + 8);
-    val = a0[4];
     result = 0;
+    /* The val load is block-extracted so result binds to $a0: a plain
+       `val = a0[4];` here schedules result into $v1 and mismatches. */
+    do {
+        val = a0[4];
+    } while (0);
     if (val != 0) {
         result = val - 1;
     }
