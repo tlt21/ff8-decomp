@@ -1225,16 +1225,6 @@ s32 sndUploadSampleBank(s32 a0, s32 a1) {
     s32 spuAddr;
     s32 result;
 
-    /* Regalloc: a0 init first (saves s1 first), boost a1 for s0 */
-    a0++;
-    a0--;
-    a1++;
-    a1--;
-    a1++;
-    a1--;
-    a1++;
-    a1--;
-
     result = sndValidateBank(a0);
     if (result != 0) {
         goto fail;
