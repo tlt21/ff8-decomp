@@ -21,16 +21,14 @@
  * at D_80070D60 holds all active tracks.
  */
 typedef struct {
-    /* 0x00 */ u8 field00;
-    /* 0x01 */ u8 field01;
-    /* 0x02 */ u8 field02;
-    /* 0x03 */ u8 field03;
+    /* 0x00 */ s32 field00;       /**< Status/control flags; bit 0x400 selects the alternate SPU transfer address. */
     /* 0x04 */ s32 instParams;
-    /* 0x08 */ u8 pad08[4];
+    /* 0x08 */ s32 field08;       /**< Flag accumulator (set/cleared via sndTrackSetFlags/ClearFlags). */
     /* 0x0C */ u16 field0C;
     /* 0x0E */ u16 field0E;
     /* 0x10 */ s32 voiceIdx;
-    /* 0x14 */ u8 pad14[12];
+    /* 0x14 */ u8 pad14[8];
+    /* 0x1C */ s32 keyOnPending;
     /* 0x20 */ s32 tempoRaw;
     /* 0x24 */ s32 keyOnMask;
     /* 0x28 */ s32 loopCounter;
@@ -108,6 +106,9 @@ typedef struct {
     /* 0x10C */ u8 pad10C[4];
 } SoundSeqTrack; /* 0x110 = 272 bytes */
 
+/** @brief 12-entry CD-audio track array (voices 12-23), stride 0x110. */
+extern SoundSeqTrack D_80072F70[];
+
 /**
  * @brief Instrument/sample descriptor (D_80073E68, stride 16 bytes).
  *
@@ -122,6 +123,41 @@ typedef struct {
     /* 0x0E */ u16 adsrHigh;      /**< ADSR envelope high halfword. */
 } SndInstrument; /* 16 bytes */
 
+/** @brief Loaded sound sample bank, parsed by @c sndLoadBank.
+ *
+ * A 16-byte header (checked by @c sndValidateBank) followed by three
+ * regions whose base pointers are cached in @c D_80074ED0 / @c D_80074ED8 /
+ * @c D_80074EDC for playback lookups. */
+typedef struct {
+    /* 0x000 */ u8  header[0x10];            /**< Validated by sndValidateBank. */
+    /* 0x010 */ u16 sampleOffsets[0x200];    /**< Sample-offset pairs (base cached in D_80074ED0). */
+    /* 0x410 */ u16 instrumentGroups[0x100]; /**< Instrument->group table (base cached in D_80074ED8). */
+    /* 0x610 */ u8  sampleData[1];           /**< Variable-length ADPCM sample data (base cached in D_80074EDC). */
+} SoundBank;
+
+/** @brief Base of the loaded bank's sample-offset table (points into a @ref SoundBank). */
+extern u16 *D_80074ED0;
+/** @brief Base of the loaded bank's instrument->group table (points into a @ref SoundBank). */
+extern u16 *D_80074ED8;
+/** @brief Base of the loaded bank's ADPCM sample data (points into a @ref SoundBank). */
+extern u8  *D_80074EDC;
+
+/** @brief Sound-bank streaming/DMA state at @c D_80077358.
+ *
+ * Tracks an in-progress bank upload driven by @c sndStreamBank: the
+ * decode source pointer, the SPU destination address, and the two
+ * remaining byte counts (one for the ADPCM decode pass, one for the SPU
+ * DMA). All four are seeded on the first chunk and drained as the bank
+ * streams out. */
+typedef struct {
+    /* 0x00 */ s32 decodePtr;    /**< Instrument-table source pointer fed to @c func_800146F0. */
+    /* 0x04 */ s32 spuAddr;      /**< Current SPU transfer address. */
+    /* 0x08 */ u32 spuBytes;     /**< Bytes still to DMA to the SPU. */
+    /* 0x0C */ u32 decodeBytes;  /**< Bytes still to decode through @c func_800146F0. */
+} DmaState; /* 16 bytes */
+
+extern DmaState D_80077358;
+
 /** @brief Voice pool entry (D_80074F20, stride 16 bytes).
  *
  * Used by @c func_800BF718 to replay any queued SFX after a sound reset:
@@ -133,6 +169,14 @@ typedef struct {
     /* 0x08 */ s32 field8;        /**< Passed as the 4th arg to @c sndPlay*. */
     /* 0x0C */ s32 fieldC;        /**< Passed as the 3rd arg to @c sndPlay*. */
 } VoicePoolEntry; /* 16 bytes */
+
+/**
+ * @brief Pointer to the active sound-engine state / primary sequence track.
+ *
+ * Paired with the @c D_80070D60 track array as the primary sound source
+ * (see @c sndTransferData).
+ */
+extern SoundSeqTrack *g_sndSeqState;
 
 /** @brief 12-entry SFX play queue, replayed by @c func_800BF718 after a sound reset. */
 extern VoicePoolEntry D_80074F20[12];
@@ -199,17 +243,18 @@ typedef struct {
  */
 typedef struct {
     /* 0x00 */ u32 magic;           /**< Validation magic (checked by sndValidateBank). */
-    /* 0x04 */ u8 pad04[0x0C];     /**< Unknown header fields. */
+    /* 0x04 */ s32 bankId;          /**< Bank/sample identifier; tracked in load tables (D_80073DE0, D_80074EB8). */
+    /* 0x08 */ u8 pad08[0x08];     /**< Unknown header fields. */
     /* 0x10 */ s32 spuAddr;         /**< SPU sample start address / transfer size. */
-    /* 0x14 */ u8 pad14[4];        /**< Unknown. */
+    /* 0x14 */ u32 dataSize;        /**< Sample data size in bytes (DMA length); banks > 0x20000 are rejected. */
     /* 0x18 */ s32 spuSize;         /**< SPU transfer size in bytes. */
-    /* 0x1C */ u8 pad1C[4];        /**< Unknown. */
+    /* 0x1C */ u32 sampleCount;     /**< Number of 16-byte sample descriptors (header size / 16); must be < 0x21. */
     /* 0x20 */ s32 spuLoadedAddr;   /**< SPU address where sample was uploaded (written after transfer). */
     /* 0x24 */ u8 pad24[0x1C];     /**< Remaining header padding (total header = 0x40 bytes). */
 } SndBankDesc; /* 0x40 bytes */
 
 /**
- * @brief CD audio / streaming sound state (D_80077298).
+ * @brief CD audio / streaming sound state (@c g_sndStream).
  *
  * Controls SPU streaming playback, tracking voice indices, pitch,
  * volume/pan, loop counters and IRQ state.
@@ -217,16 +262,17 @@ typedef struct {
 typedef struct {
     /* 0x00 */ s32 spuBaseAddr;    /**< SPU base address for stream. */
     /* 0x04 */ s32 unk04;
-    /* 0x08 */ s32 unk08;
+    /* 0x08 */ s32 flags;          /**< Control flags (bit 24 gates the tick IRQ callback). */
     /* 0x0C */ s32 active;         /**< Active/IRQ voice bitmask (nonzero = playing). */
     /* 0x10 */ s32 voiceIdx;       /**< First SPU voice index for this stream. */
     /* 0x14 */ u8 pad14[0x0C];
     /* 0x20 */ s32 unk20;
     /* 0x24 */ s32 tickCounter;    /**< Tick counter (incremented each frame). */
     /* 0x28 */ s32 tickCount;      /**< Running tick accumulator. */
-    /* 0x2C */ u8 pad2C[0x08];
+    /* 0x2C */ s32 unk2C;          /**< Engine state set by sndStreamInitEngine. */
+    /* 0x30 */ s32 unk30;          /**< Engine state set by sndStreamInitEngine. */
     /* 0x34 */ s32 unk34;          /**< Set to -1 during init. */
-    /* 0x38 */ s32 unk38;
+    /* 0x38 */ s32 frameCounter;   /**< Frame counter; wraps back to 0 at loopLimit. */
     /* 0x3C */ s32 loopLimit;      /**< Loop/sector limit (sectorCount >> 12). */
     /* 0x40 */ s32 panVolume;      /**< Raw pan/volume value. */
     /* 0x44 */ u8 pad44[0x04];
@@ -235,6 +281,9 @@ typedef struct {
     /* 0x58 */ s32 savedPitch;     /**< Saved pitch value for voice restore. */
     /* 0x5C */ u8 pad5C[0x04];
 } SoundStream; /* 0x60 = 96 bytes */
+
+/** @brief CD audio / streaming sound state instance (at 0x80077298). */
+extern SoundStream g_sndStream;
 
 /**
  * @brief Sound sequence table entry (stride 20 bytes).
@@ -266,61 +315,6 @@ typedef struct {
     /* 0x06 */ u16 field06;     /**< Text-box anchor Y. */
     /* 0x08 */ u8  pad08[8];
 } SfxSlot; /* 0x10 = 16 bytes */
-
-/**
- * @brief Play a one-shot SFX.
- *
- * @param sfxId  Sound effect id (rank-up = 0x5B..0x5D, Angelo learn = 0x83, etc.).
- * @param a1     Channel / mode flag (typically 0).
- * @param a2     Volume (typically 0x80).
- * @param a3     Pan (typically 0x7F).
- */
-extern void sndPlaySfx(s32 sfxId, s32 a1, s32 a2, s32 a3);
-
-/** @brief Play one SFX from a specific bank with explicit volume and pan. */
-extern s32 sndPlayBankSfx(s32 bank, s32 idx, s32 vol, s32 pan);
-
-/** @brief Stop a sequence by track pair (bank, channel) packed pair. */
-extern void sndCmd21(s32 a0, s32 a1);
-
-/** @brief Query the current active-channel mask for SFX dispatch. */
-extern s32 func_800131A8(void);
-
-/**
- * @brief SPU command-bus wrappers. Each writes its args into the
- *        command buffer at @c D_80075058 and tail-calls
- *        @c func_8001A1E8 to dispatch the indicated opcode. The
- *        SPU-handle / dispatch result is left in @c $v0 by the inner
- *        @c jal, which is why callers can treat them as returning
- *        @c s32 even though the body has no explicit @c return.
- */
-extern s32 sndCmd10(s32 a0);
-extern s32 sndCmd11(s32 a0);
-extern s32 sndCmd12(s32 a0, s32 a1);
-extern s32 sndCmd14(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmd19(s32 a0, s32 a1);
-extern s32 sndCmd1A(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmdC0(s32 a0, s32 a1);
-extern s32 sndCmdC1(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmdC2(s32 a0, s32 a1, s32 a2, s32 a3);
-
-/** @brief Send SPU command @c 0x45 (no args). */
-extern void sndCmd45(void);
-
-/** @brief Reset SPU command bus (issued by the music-state reset opcode). */
-extern void sndCmdF1(void);
-
-/** @brief Set the global SPU master volume (0..0x7F). */
-extern void sndSetMasterVolume(s32 vol);
-
-/** @brief Set the global SEQ tempo (0x80 = normal). */
-extern void sndSeqSetTempo(s32 tempo);
-
-/** @brief Upload a staged sample bank to the SPU; returns -1 while busy. */
-extern s32 sndUploadSamples(s32 a0, s32 a1);
-
-/** @brief Query the sound engine's current busy state (0 = idle). */
-extern s32 sndGetEngineState(void);
 
 /** @brief Toggle the current sound-bank-selector flag and return a pointer to the new bank table. */
 extern u8 *toggleSoundBank(void);

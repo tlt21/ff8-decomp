@@ -1006,13 +1006,13 @@ s32 opHandler_MUSICSTATUS(Eline *e) {
 }
 
 /**
- * @brief Call @c func_80012FEC and split its packed 32-bit return into
+ * @brief Call @c sndGetSeqPosition and split its packed 32-bit return into
  *        the high halfword (@c resultSlots[0]) and zero-extended low
  *        halfword (@c resultSlots[1]).
  */
 s32 opHandler_OP16F(Eline *e) {
     s32 result;
-    result = func_80012FEC(e);
+    result = sndGetSeqPosition(e);
     e->resultSlots[1] = result;
     e->resultSlots[0] = result >> 16;
     e->resultSlots[1] = *(u16 *)&e->resultSlots[1];

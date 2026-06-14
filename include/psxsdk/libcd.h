@@ -11,6 +11,14 @@ typedef struct {
     u8 track;
 } CdlLOC;
 
+/** @brief CD audio attenuation (mixing) levels. */
+typedef struct {
+    u8 val0; /**< L-to-L attenuation. */
+    u8 val1; /**< L-to-R attenuation. */
+    u8 val2; /**< R-to-R attenuation. */
+    u8 val3; /**< R-to-L attenuation. */
+} CdlATV;
+
 /** @brief CD callback function pointer. */
 typedef void (*CdlCB)(s32 intr, u8 *result);
 
@@ -19,6 +27,7 @@ typedef void (*CdlCB)(s32 intr, u8 *result);
 s32 CdControl(u8 com, u8 *param, u8 *result);
 s32 CdControlB(u8 com, u8 *param, u8 *result);
 s32 CdControlF(u8 com, u8 *param);
+void CdMix(CdlATV *vol);
 s32 CdGetSector(void *madr, s32 size);
 s32 CdPosToInt(CdlLOC *p);
 void CdIntToPos(s32 i, CdlLOC *p);
