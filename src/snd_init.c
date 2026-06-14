@@ -115,6 +115,15 @@ extern s32 D_80077288[];
 extern s32 D_80074EB8[];
 extern s32 D_80077298[];
 extern s32 D_800772CC;
+extern s32 D_80074FE8[];        /* parsed bank header (level/addr/counts) */
+extern s32 D_80074FF8;          /* decode work buffer / scratch pointer */
+extern SndInstrument D_80073E68[];
+extern s32 D_80077360;          /* active streaming handle (0 = idle) */
+extern s32 D_80074EBC;          /* bank-ID slot for mode 1 (D_80074EB8[1]) */
+extern s32 D_80074EC0;          /* bank-ID slot for mode 2 (D_80074EB8[2]) */
+extern s32 D_80074EC4;          /* func_80014190: bank-ID slot, default mode */
+extern s32 D_80074EC8;          /* func_80014190: bank-ID slot, mode 1 */
+extern s32 D_80074ECC;          /* func_80014190: bank-ID slot, mode 2 */
 
 
 /**
@@ -785,7 +794,80 @@ s32 sndUploadSamples(s32 a0, s32 a1) {
     return result;
 }
 
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80013AA8);
+extern s32 D_80074968;
+extern s32 D_80073DE0[];
+
+/**
+ * @brief Choose the SPU transfer level/address for a sound bank and track it.
+ *
+ * Clears the pending flag (bit 0x10) of @c D_80077288 and, when no sequence is
+ * playing (@c g_sndSeqState->instParams == 0), clears engine flags 0x600. A
+ * bank is small enough to load when its @c sampleCount is < 0x21 and its
+ * @c dataSize is <= 0x20000 and the busy bit (0x10) was clear; otherwise it
+ * sends @c sndCmd11(0) and the alternate region is not used.
+ *
+ * The active region is chosen from the engine flags (@c field00 bits 0x200 /
+ * 0x400) and the @c D_80077288[1] reservation bit (0x10000):
+ *   - region 0 -> level 0x40, address 0x2B000, slot @c D_80073DE0[0]
+ *   - region 1 -> level 0x60, address 0x4B000, slot @c D_80073DE0[1]
+ * The bank's @c bankId is recorded into its region slot; if it already matches
+ * the other slot, that slot is cleared. When the bank is too large the busy bit
+ * is re-set in @c D_80077288.
+ *
+ * @param a0   Sound bank descriptor (@c SndBankDesc *).
+ * @param val1 Out: chosen SPU transfer level (0x40 or 0x60).
+ * @param val2 Out: chosen SPU transfer address (0x2B000 or 0x4B000).
+ * @return Region index: 0 for the primary region, 1 for the alternate.
+ */
+s32 func_80013AA8(SndBankDesc *a0, s32 *val1, s32 *val2) {
+    s32 flag;
+    s32 ctrl;
+    SoundSeqTrack *seq;
+
+    ctrl = D_80077288[0];
+    seq = g_sndSeqState;
+    D_80077288[0] = ctrl & ~0x10;
+
+    if (seq->instParams == 0) {
+        seq->field00 &= ~0x600;
+    }
+
+    flag = 0;
+    if (a0->sampleCount >= 0x21 || a0->dataSize > 0x20000 || (ctrl & 0x10)) {
+        sndCmd11(0);
+        D_80077288[1] &= ~0x10000;
+    } else {
+        s32 f = g_sndSeqState->field00;
+        if ((f & 0x200) || (!(f & 0x400) && (D_80077288[1] & 0x10000))) {
+            flag = 1;
+            D_80077288[1] &= ~0x10000;
+        } else {
+            D_80077288[1] |= 0x10000;
+        }
+    }
+
+    if (flag == 0) {
+        *val1 = 0x40;
+        *val2 = 0x2B000;
+        D_80073DE0[0] = a0->bankId;
+        if (D_80073DE0[1] == a0->bankId) {
+            D_80073DE0[1] = 0;
+        }
+    } else {
+        *val1 = 0x60;
+        *val2 = 0x4B000;
+        D_80073DE0[1] = a0->bankId;
+        if (D_80073DE0[0] == a0->bankId) {
+            D_80073DE0[0] = 0;
+        }
+    }
+
+    if (a0->sampleCount >= 0x21 || a0->dataSize > 0x20000) {
+        D_80077288[0] |= 0x10;
+    }
+
+    return flag;
+}
 
 /** @brief Returns the value of global D_80074ED4. */
 s32 sndGetEngineState(void) {
@@ -799,7 +881,92 @@ s32 sndResetState(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80013CD4);
+/**
+ * @brief Stream a sound bank to SPU in chunks (the streaming/DMA driver).
+ *
+ * Runs only while streaming is active (@c D_80077288 bit 0). On the first chunk
+ * (when @c D_80077358 has no pending transfer) it validates the bank, derives
+ * the SPU level/address via @c func_80013AA8, parses the header into
+ * @c D_80074FE8 via @c func_8001A57C, and seeds the @c D_80077358 streaming
+ * state (instrument table pointer, SPU address, and the decode/DMA byte
+ * counts). It then decodes up to the remaining bank-decode bytes through
+ * @c func_800146F0 and DMAs up to the remaining SPU bytes via
+ * @c sndDmaWriteSpu, advancing the source pointer and counters. When @p a2 is
+ * set it waits for the DMA. The streaming-active bit is cleared once the bank
+ * finishes or when @c D_80077360 is 0.
+ *
+ * @param a0 Source pointer into the sound-bank data.
+ * @param a1 Number of bytes to process this call.
+ * @param a2 If nonzero, wait for the SPU DMA to complete (@c sndDmaWait).
+ * @return @c D_80077360 (the active streaming handle, 0 when idle).
+ *
+ */
+s32 func_80013CD4(s32 a0, u32 a1, s32 a2) {
+    s32 val1;
+    s32 val2;
+
+    if (D_80077288[0] & 1) {
+        if (D_80077358.spuAddr == 0) {
+            if (sndValidateBank((u32 *)a0) == 0) {
+                func_80013AA8(a0, &val1, &val2);
+                func_8001A57C(a0, (s32)&D_80074FE8, 0x40);
+                a0 += 0x40;
+                D_80074FE8[4] = val2;
+                D_80077358.spuAddr = val2;
+                D_80074FE8[6] = val1;
+                a1 -= 0x40;
+                D_80077358.spuBytes = D_80074FE8[5];
+                D_80077358.decodePtr = (s32)&D_80073E68[val1];
+                D_80077358.decodeBytes = D_80074FE8[7] << 4;
+            } else {
+                a1 = 0;
+                D_80077358.spuBytes = 0;
+                D_80077358.decodeBytes = 0;
+            }
+        }
+
+        if (D_80077358.decodeBytes != 0) {
+            u32 chunk = D_80077358.decodeBytes;
+            if (chunk >= a1) {
+                chunk = a1;
+            }
+            /* Spill the clamped count to val2 (dead since the setup block)
+               so it survives the decode call; the compiler reloads it for
+               the post-call counter updates. */
+            val2 = chunk;
+            func_800146F0(a0, D_80077358.decodePtr, D_80074FF8, chunk >> 4);
+            a0 += ((u32)val2 >> 2) << 2;
+            a1 -= val2;
+            D_80077358.decodePtr += ((u32)val2 >> 4) << 4;
+            D_80077358.decodeBytes -= val2;
+        }
+
+        if (a1 != 0 && D_80077358.spuBytes == 0) {
+            /* Out of SPU bytes mid-bank: stop streaming. */
+            D_80077288[0] &= ~1;
+        } else {
+            if (a1 != 0) {
+                u32 n = D_80077358.spuBytes;
+                if (n >= a1) {
+                    n = a1;
+                }
+                a1 = n;
+                SpuSetTransferStartAddr(D_80077358.spuAddr);
+                sndDmaWriteSpu(a0, a1);
+                D_80077358.spuAddr += a1;
+                D_80077358.spuBytes -= a1;
+                if (a2 != 0) {
+                    sndDmaWait();
+                }
+            }
+            /* Stop streaming once this bank finishes (D_80077360 idle). */
+            if (D_80077360 == 0) {
+                D_80077288[0] &= ~1;
+            }
+        }
+    }
+    return D_80077360;
+}
 
 /**
  * @brief Process audio parameters via func_80013AA8 and dispatch to func_800148B0.
@@ -818,9 +985,6 @@ s32 sndProcessAudio(s32 a0, s32 a1) {
     func_800148B0(a0, a1, val1, val2);
     return result;
 }
-
-extern s32 D_80074968;
-extern s32 D_80073DE0[];
 
 /**
  * @brief Validate/track a sound bank and dispatch its SPU transfer (command via
@@ -901,14 +1065,49 @@ void sndSetPlaybackAddr(s32 a0, s32 a1) {
  * @param a0 Sound bank descriptor (@c SndBankDesc *); @c bankId is at offset 0x04.
  * @param a1 Mode selector (1, 2, or default) choosing the SPU address/level.
  * @param a2 Passthrough parameter forwarded to @c func_800148B0.
- *
- * @note Near-match (99.29%): shares the identical @c D_80074EB8 clear-loop with
- *       func_80014190 (https://decomp.me/scratch/RIMDb) and the same loop
- *       induction-variable register swap (counter wants @c a3, array pointer
- *       wants @c t0). Same fix applies to both; WIP:
- *       https://decomp.me/scratch/r2C1V
  */
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80014094);
+void func_80014094(SndBankDesc *a0, s32 a1, s32 a2) {
+    SndBankDesc *p = a0;
+    u32 i;
+    s32 *q;
+    s32 vol;
+    s32 addr;
+    SoundSeqTrack *ptr;
+
+    for (i = 0, q = D_80074EB8; i < 6; i++, q++) {
+        if (*q == p->bankId) {
+            *q = 0;
+        }
+    }
+
+    switch (a1) {
+    case 1:
+        addr = 0x51000;
+        vol = 0x90;
+        D_80074EBC = p->bankId;
+        break;
+    case 2:
+        addr = 0x57000;
+        vol = 0xA0;
+        D_80074EC0 = p->bankId;
+        break;
+    default:
+        addr = 0x4B000;
+        vol = 0x80;
+        D_80074EB8[0] = p->bankId;
+        break;
+    }
+
+    ptr = g_sndSeqState;
+    /* Read field00 through the loop pointer q (it is dead here); reusing it
+       keeps q live past the loop, which is what pins the loop's counter to
+       $a3 and the array pointer to $t0 to match the original codegen. */
+    q = &ptr->field00;
+    if ((ptr->instParams | ptr->keyOnPending) && (*q & 0x400)) {
+        addr -= 0x20000;
+    }
+    func_800148B0((s32)a0, a2, vol, addr);
+}
 
 /**
  * @brief Clears any matching bank-ID entries and uploads a sound bank.
@@ -922,12 +1121,43 @@ INCLUDE_ASM("asm/nonmatchings/snd_init", func_80014094);
  * @param a0 Sound bank descriptor (@c SndBankDesc *); @c bankId is at offset 0x04.
  * @param a1 Mode selector (1, 2, or default) choosing the SPU address/level.
  * @param a2 Passthrough parameter forwarded to @c func_800148B0.
- *
- * @note Near-match (99.06%): the only diff is a loop induction-variable register
- *       swap (counter wants @c a3, array pointer wants @c t0). Work in progress:
- *       https://decomp.me/scratch/RIMDb
  */
-INCLUDE_ASM("asm/nonmatchings/snd_init", func_80014190);
+void func_80014190(SndBankDesc *a0, s32 a1, s32 a2) {
+    SndBankDesc *p = a0;
+    u32 i;
+    s32 vol;
+
+    for (i = 0; i < 6; i++) {
+        if (D_80074EB8[i] == p->bankId) {
+            D_80074EB8[i] = 0;
+        }
+    }
+
+    /* The selected SPU address reuses the now-dead loop counter i: in the
+       original it shares $a3 with the counter, so one variable carries both
+       (the twin func_80014094 instead frees $a3 via its trailing pointer
+       read). Without the reuse the loop counter and array pointer swap
+       registers. */
+    switch (a1) {
+    case 1:
+        i = 0x6F800;
+        vol = 0xE0;
+        D_80074EC8 = p->bankId;
+        break;
+    case 2:
+        i = 0x74000;
+        vol = 0xF0;
+        D_80074ECC = p->bankId;
+        break;
+    default:
+        i = 0x6B000;
+        vol = 0xD0;
+        D_80074EC4 = p->bankId;
+        break;
+    }
+
+    func_800148B0((s32)a0, a2, vol, i);
+}
 
 /**
  * @brief Set CD audio volume mixing levels and apply via CdMix.

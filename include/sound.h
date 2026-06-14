@@ -123,6 +123,22 @@ typedef struct {
     /* 0x0E */ u16 adsrHigh;      /**< ADSR envelope high halfword. */
 } SndInstrument; /* 16 bytes */
 
+/** @brief Sound-bank streaming/DMA state at @c D_80077358.
+ *
+ * Tracks an in-progress bank upload driven by @c func_80013CD4: the
+ * decode source pointer, the SPU destination address, and the two
+ * remaining byte counts (one for the ADPCM decode pass, one for the SPU
+ * DMA). All four are seeded on the first chunk and drained as the bank
+ * streams out. */
+typedef struct {
+    /* 0x00 */ s32 decodePtr;    /**< Instrument-table source pointer fed to @c func_800146F0. */
+    /* 0x04 */ s32 spuAddr;      /**< Current SPU transfer address. */
+    /* 0x08 */ u32 spuBytes;     /**< Bytes still to DMA to the SPU. */
+    /* 0x0C */ u32 decodeBytes;  /**< Bytes still to decode through @c func_800146F0. */
+} DmaState; /* 16 bytes */
+
+extern DmaState D_80077358;
+
 /** @brief Voice pool entry (D_80074F20, stride 16 bytes).
  *
  * Used by @c func_800BF718 to replay any queued SFX after a sound reset:
@@ -211,9 +227,9 @@ typedef struct {
     /* 0x04 */ s32 bankId;          /**< Bank/sample identifier; tracked in load tables (D_80073DE0, D_80074EB8). */
     /* 0x08 */ u8 pad08[0x08];     /**< Unknown header fields. */
     /* 0x10 */ s32 spuAddr;         /**< SPU sample start address / transfer size. */
-    /* 0x14 */ u8 pad14[4];        /**< Unknown. */
+    /* 0x14 */ u32 dataSize;        /**< Sample data size in bytes (DMA length); banks > 0x20000 are rejected. */
     /* 0x18 */ s32 spuSize;         /**< SPU transfer size in bytes. */
-    /* 0x1C */ u8 pad1C[4];        /**< Unknown. */
+    /* 0x1C */ u32 sampleCount;     /**< Number of 16-byte sample descriptors (header size / 16); must be < 0x21. */
     /* 0x20 */ s32 spuLoadedAddr;   /**< SPU address where sample was uploaded (written after transfer). */
     /* 0x24 */ u8 pad24[0x1C];     /**< Remaining header padding (total header = 0x40 bytes). */
 } SndBankDesc; /* 0x40 bytes */
