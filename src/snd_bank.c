@@ -6,7 +6,6 @@ extern u8 D_80070D60[];
 extern s32 D_80073CA8;
 extern u8 *D_80073C34;
 extern s32 D_80074EB0;
-extern u8 *D_80074ED8;
 extern VoicePoolEntry D_80074F20[12];
 extern u16 D_80074FE4;
 extern s32 D_80075078;
@@ -314,7 +313,7 @@ void sndPlaySoundEffect(s32 *a0) {
     a0[1] = 0x2000000;
     a0[2] = 0x80;
     a0[3] = 0x7F;
-    a0[4] = sndGetBankGroup(*(u16 *)(D_80074ED8 + a0[0] * 2));
+    a0[4] = sndGetBankGroup(D_80074ED8[a0[0]]);
     func_80017AAC(a0, local10, local14, 0);
 }
 
@@ -331,7 +330,7 @@ void sndPlaySoundByIndex(s32 *a0) {
     s32 local10, local14;
 
     func_80017C9C(&local10, &local14, a0[0]);
-    a0[4] = sndGetBankGroup(*(u16 *)(D_80074ED8 + a0[0] * 2));
+    a0[4] = sndGetBankGroup(D_80074ED8[a0[0]]);
     func_80017AAC(a0, local10, local14, 0);
 }
 

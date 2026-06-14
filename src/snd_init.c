@@ -26,25 +26,37 @@ s32 sndShutdown(void) {
 }
 
 /**
- * @brief Parses a sound bank header and sets up audio data pointers.
+ * @brief Validates a sound bank and caches pointers to its data regions.
  *
- * Calls sndValidateBank to validate/process the sound bank at @p a0.
- * On success, partitions the memory after the 16-byte header into three
- * regions: D_80074ED0 (0x400 bytes), D_80074ED8 (0x200 bytes), and
- * D_80074EDC (remainder).
+ * Validates the bank via sndValidateBank. On success, walks past the
+ * @ref SoundBank header and caches a pointer to each following region: the
+ * sample-offset table (D_80074ED0), the instrument-group table (D_80074ED8),
+ * and the ADPCM sample data (D_80074EDC). The increments are taken from the
+ * @ref SoundBank field sizes so the partition tracks the documented layout.
  *
- * @param a0 Pointer to the sound bank data loaded from CD.
+ * @param bank Pointer to the sound bank data loaded from CD (see @ref SoundBank).
  * @return 0 on success, non-zero error code from sndValidateBank on failure.
  */
-s32 sndLoadBank(u8 *a0) {
-    s32 result = sndValidateBank(a0);
+s32 sndLoadBank(u8 *bank) {
+    s32 result = sndValidateBank(bank);
     if (result == 0) {
-        a0 += 0x10;
-        D_80074ED0 = (u8 *)a0;
-        a0 += 0x400;
-        D_80074ED8 = (u8 *)a0;
-        a0 += 0x200;
-        D_80074EDC = (u8 *)a0;
+        /*
+         * Publish the base of each region after the header. Conceptually
+         * (viewing bank as a SoundBank *) this is simply:
+         *     D_80074ED0 = bank->sampleOffsets;
+         *     D_80074ED8 = bank->instrumentGroups;
+         *     D_80074EDC = bank->sampleData;
+         * but it must be written as a running-pointer walk (each step advances
+         * past the region it just published) to match: the original was compiled
+         * from a chained pointer (+= 0x10, += 0x400, += 0x200), whereas direct
+         * field access emits three independent absolute offsets and does not match.
+         */
+        bank += sizeof(((SoundBank *)0)->header);
+        D_80074ED0 = (u16 *)bank;
+        bank += sizeof(((SoundBank *)0)->sampleOffsets);
+        D_80074ED8 = (u16 *)bank;
+        bank += sizeof(((SoundBank *)0)->instrumentGroups);
+        D_80074EDC = bank;
     }
     return result;
 }

@@ -38,10 +38,7 @@ extern s32  D_80074EC0;          /* bank-ID slot for mode 2 (D_80074EB8[2]) */
 extern s32  D_80074EC4;          /* func_80014190: bank-ID slot, default mode */
 extern s32  D_80074EC8;          /* func_80014190: bank-ID slot, mode 1 */
 extern s32  D_80074ECC;          /* func_80014190: bank-ID slot, mode 2 */
-extern u8  *D_80074ED0;
 extern s32  D_80074ED4;
-extern u8  *D_80074ED8;
-extern u8  *D_80074EDC;
 extern s32  D_80074FE8[];        /* parsed bank header (level/addr/counts) */
 extern s32  D_80074FF8;          /* decode work buffer / scratch pointer */
 extern s32  D_80075028[];
@@ -114,7 +111,7 @@ extern s32 sndGetEngineState(void);
 
 extern s32 sndInit(void);
 extern s32 sndShutdown(void);
-extern s32 sndLoadBank(u8 *a0);
+extern s32 sndLoadBank(u8 *bank);
 extern s32 sndStopAll(void);
 extern s32 sndGetStatus(void);
 extern s32 sndGetMaxVolume(s32 a0);

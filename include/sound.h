@@ -123,6 +123,25 @@ typedef struct {
     /* 0x0E */ u16 adsrHigh;      /**< ADSR envelope high halfword. */
 } SndInstrument; /* 16 bytes */
 
+/** @brief Loaded sound sample bank, parsed by @c sndLoadBank.
+ *
+ * A 16-byte header (checked by @c sndValidateBank) followed by three
+ * regions whose base pointers are cached in @c D_80074ED0 / @c D_80074ED8 /
+ * @c D_80074EDC for playback lookups. */
+typedef struct {
+    /* 0x000 */ u8  header[0x10];            /**< Validated by sndValidateBank. */
+    /* 0x010 */ u16 sampleOffsets[0x200];    /**< Sample-offset pairs (base cached in D_80074ED0). */
+    /* 0x410 */ u16 instrumentGroups[0x100]; /**< Instrument->group table (base cached in D_80074ED8). */
+    /* 0x610 */ u8  sampleData[1];           /**< Variable-length ADPCM sample data (base cached in D_80074EDC). */
+} SoundBank;
+
+/** @brief Base of the loaded bank's sample-offset table (points into a @ref SoundBank). */
+extern u16 *D_80074ED0;
+/** @brief Base of the loaded bank's instrument->group table (points into a @ref SoundBank). */
+extern u16 *D_80074ED8;
+/** @brief Base of the loaded bank's ADPCM sample data (points into a @ref SoundBank). */
+extern u8  *D_80074EDC;
+
 /** @brief Sound-bank streaming/DMA state at @c D_80077358.
  *
  * Tracks an in-progress bank upload driven by @c sndStreamBank: the
