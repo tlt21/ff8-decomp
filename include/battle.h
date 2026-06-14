@@ -427,7 +427,10 @@ typedef struct {
     /* 0x1144 */ TaskEntry taskData[16];        /**< Task queue data slots (16 × 16 bytes). */
     /* 0x1244 */ u8 pad1244[0x48];              /**< Pad to unk128C. */
     /* 0x128C */ s32 unk128C;                   /**< Cached userData for callback. */
-    /* 0x1290 */ u8 pad1290[0x48];              /**< Misc state. */
+    /* 0x1290 */ s16 unk1290;
+    /* 0x1292 */ s16 unk1292;
+    /* 0x1294 */ s16 unk1294;
+    /* 0x1296 */ u8 pad1296[0x42];  
     /* 0x12D8 */ s32 unk12D8;                   /**< Cached length argument for callback. */
     /* 0x12DC */ u8 pad12DC[0x4];               /**< Misc state. */
     /* 0x12E0 */ s16 unk12E0;                   /**< Low 13 bits of a packed s16 field. */
@@ -446,7 +449,23 @@ typedef struct {
     /* 0x12F9 */ u8 unk12F9;                    /**< Misc state gate byte. */
     /* 0x12FA */ u8 pad12FA[0x3];               /**< Misc state. */
     /* 0x12FD */ u8 unk12FD;                    /**< Misc state byte. */
-    /* 0x12FE */ u8 pad12FE[0x11];              /**< Misc state. */
+    /* 0x12FE */ u8 unk12FE;
+    /* 0x12FF */ u8 unk12FF;
+    /* 0x1300 */ u8 unk1300;
+    /* 0x1301 */ u8 unk1301;
+    /* 0x1302 */ u8 unk1302;
+    /* 0x1303 */ u8 unk1303;
+    /* 0x1304 */ u8 unk1304;
+    /* 0x1305 */ u8 unk1305;
+    /* 0x1306 */ u8 unk1306;
+    /* 0x1307 */ u8 unk1307;
+    /* 0x1308 */ u8 unk1308;
+    /* 0x1309 */ u8 unk1309;
+    /* 0x130A */ u8 unk130A;
+    /* 0x130B */ u8 unk130B;
+    /* 0x130C */ u8 unk130C;
+    /* 0x130D */ u8 unk130D;
+    /* 0x130E */ u8 unk130E;
     /* 0x130F */ s8 unk130F;                    /**< Upper 3 bits of a packed s16 field (sign-extended). */
     /* 0x1310 */ u8 pad1310[1];                 /**< Pad to actionType. */
     /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
@@ -836,6 +855,7 @@ extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
 extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
 extern u8  D_800EE471;
+extern u8  D_800EE4C4;
 /* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle internals).
  * ---------------------------------------------------------------- */
