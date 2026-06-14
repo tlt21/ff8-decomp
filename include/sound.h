@@ -293,61 +293,6 @@ typedef struct {
     /* 0x08 */ u8  pad08[8];
 } SfxSlot; /* 0x10 = 16 bytes */
 
-/**
- * @brief Play a one-shot SFX.
- *
- * @param sfxId  Sound effect id (rank-up = 0x5B..0x5D, Angelo learn = 0x83, etc.).
- * @param a1     Channel / mode flag (typically 0).
- * @param a2     Volume (typically 0x80).
- * @param a3     Pan (typically 0x7F).
- */
-extern void sndPlaySfx(s32 sfxId, s32 a1, s32 a2, s32 a3);
-
-/** @brief Play one SFX from a specific bank with explicit volume and pan. */
-extern s32 sndPlayBankSfx(s32 bank, s32 idx, s32 vol, s32 pan);
-
-/** @brief Stop a sequence by track pair (bank, channel) packed pair. */
-extern void sndCmd21(s32 a0, s32 a1);
-
-/** @brief Query the current active-channel mask for SFX dispatch. */
-extern s32 func_800131A8(void);
-
-/**
- * @brief SPU command-bus wrappers. Each writes its args into the
- *        command buffer at @c D_80075058 and tail-calls
- *        @c func_8001A1E8 to dispatch the indicated opcode. The
- *        SPU-handle / dispatch result is left in @c $v0 by the inner
- *        @c jal, which is why callers can treat them as returning
- *        @c s32 even though the body has no explicit @c return.
- */
-extern s32 sndCmd10(s32 a0);
-extern s32 sndCmd11(s32 a0);
-extern s32 sndCmd12(s32 a0, s32 a1);
-extern s32 sndCmd14(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmd19(s32 a0, s32 a1);
-extern s32 sndCmd1A(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmdC0(s32 a0, s32 a1);
-extern s32 sndCmdC1(s32 a0, s32 a1, s32 a2);
-extern s32 sndCmdC2(s32 a0, s32 a1, s32 a2, s32 a3);
-
-/** @brief Send SPU command @c 0x45 (no args). */
-extern void sndCmd45(void);
-
-/** @brief Reset SPU command bus (issued by the music-state reset opcode). */
-extern void sndCmdF1(void);
-
-/** @brief Set the global SPU master volume (0..0x7F). */
-extern void sndSetMasterVolume(s32 vol);
-
-/** @brief Set the global SEQ tempo (0x80 = normal). */
-extern void sndSeqSetTempo(s32 tempo);
-
-/** @brief Upload a staged sample bank to the SPU; returns -1 while busy. */
-extern s32 sndUploadSamples(s32 a0, s32 a1);
-
-/** @brief Query the sound engine's current busy state (0 = idle). */
-extern s32 sndGetEngineState(void);
-
 /** @brief Toggle the current sound-bank-selector flag and return a pointer to the new bank table. */
 extern u8 *toggleSoundBank(void);
 
@@ -365,5 +310,9 @@ extern u32 D_800772B8;
  *         @c a0 = mode (0 = standard), @c bank = sound-bank id,
  *         @c fileLba = staging buffer / file address. */
 extern s32 func_80037FB0(s32 a0, s8 bank, s32 fileLba);
+
+/* The sound-engine driver's own prototypes live in snd_init.h; include it
+   so existing `#include "sound.h"` callers still resolve them. */
+#include "snd_init.h"
 
 #endif /* SOUND_H */

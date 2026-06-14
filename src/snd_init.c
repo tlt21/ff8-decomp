@@ -1,5 +1,5 @@
 #include "common.h"
-#include "sound.h"
+#include "snd_init.h"
 
 extern u8 *D_80074ED0;
 extern u8 *D_80074ED8;
