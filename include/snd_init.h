@@ -72,7 +72,7 @@ extern s32 sndPlayBankSfx(s32 bank, s32 idx, s32 vol, s32 pan);
 extern void sndCmd21(s32 a0, s32 a1);
 
 /** @brief Query the current active-channel mask for SFX dispatch. */
-extern s32 func_800131A8(void);
+extern s32 sndGatherKeyOnMask(void);
 
 /**
  * @brief SPU command-bus wrappers. Each writes its args into the
@@ -119,10 +119,10 @@ extern s32 sndStopAll(void);
 extern s32 sndGetStatus(void);
 extern s32 sndGetMaxVolume(s32 a0);
 extern void sndCmd40(void);
-extern s32 func_80012FEC(void);
+extern s32 sndGetSeqPosition(void);
 extern void sndKeyOn(s32 a0);
 extern void sndStopPlayback(void);
-extern s32 func_80013210(s32 a0);
+extern s32 sndFindKeyOnMask(s32 a0);
 extern void sndSelectMode(s32 a0);
 extern void sndCmd90(s32 a0);
 extern void sndCmd92(s32 a0);
@@ -153,11 +153,11 @@ extern void sndCmdD8(s32 a0);
 extern void sndCmdD9(s32 a0, s32 a1);
 extern void sndCmdDA(s32 a0, s32 a1, s32 a2);
 extern void sndCmdF0(void);
-extern s32 func_80013AA8(SndBankDesc *a0, s32 *val1, s32 *val2);
+extern s32 sndSelectBankSlot(SndBankDesc *a0, s32 *val1, s32 *val2);
 extern s32 sndResetState(void);
-extern s32 func_80013CD4(s32 a0, u32 a1, s32 a2);
+extern s32 sndStreamBank(s32 a0, u32 a1, s32 a2);
 extern s32 sndProcessAudio(s32 a0, s32 a1);
-extern s32 func_80013F38(SndBankDesc *a0, s32 a1);
+extern s32 sndUploadBank(SndBankDesc *a0, s32 a1);
 extern void sndSetPlaybackAddr(s32 a0, s32 a1);
 extern void func_80014094(SndBankDesc *a0, s32 a1, s32 a2);
 extern void func_80014190(SndBankDesc *a0, s32 a1, s32 a2);
@@ -167,9 +167,9 @@ extern void sndCmdE2(void);
 extern void sndCmdE4(s32 a0);
 extern void sndCmdE5(s32 a0, s32 a1);
 extern void sndCmdE6(s32 a0);
-extern s32 func_80014400(s32 a0, s32 a1);
+extern s32 sndUploadSampleBank(s32 a0, s32 a1);
 extern void sndCmdED(s32 a0, s32 a1);
-extern void func_8001451C(s32 a0, s32 a1, s32 a2, s32 a3);
+extern void sndCmdEC(s32 a0, s32 a1, s32 a2, s32 a3);
 extern s32 sndInitIrq(s32 a0, s32 a1);
 extern s32 sndTickCounters(void);
 

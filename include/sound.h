@@ -125,7 +125,7 @@ typedef struct {
 
 /** @brief Sound-bank streaming/DMA state at @c D_80077358.
  *
- * Tracks an in-progress bank upload driven by @c func_80013CD4: the
+ * Tracks an in-progress bank upload driven by @c sndStreamBank: the
  * decode source pointer, the SPU destination address, and the two
  * remaining byte counts (one for the ADPCM decode pass, one for the SPU
  * DMA). All four are seeded on the first chunk and drained as the bank

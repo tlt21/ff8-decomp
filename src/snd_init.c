@@ -199,7 +199,7 @@ s32 sndCmd12(s32 a0, s32 a1) {
  *
  * @return Packed position value, or 0 if inactive.
  */
-s32 func_80012FEC(void) {
+s32 sndGetSeqPosition(void) {
     SoundSeqTrack *ptr = g_sndSeqState;
     s32 result = 0;
     if ((ptr->instParams | ptr->keyOnPending) != 0) {
@@ -293,7 +293,7 @@ void sndCmd45(void) {
  *
  * @return Combined key-on mask (24-bit), or 0 if D_80075028 is 0.
  */
-s32 func_800131A8(void) {
+s32 sndGatherKeyOnMask(void) {
     s32 mask = D_80075028[0];
     SoundSeqTrack *track;
     s32 bit;
@@ -326,7 +326,7 @@ s32 func_800131A8(void) {
  * @return 1 if a matching active track is found; 0 otherwise (including when
  *         @p a0 is 0 or no voices are active).
  */
-s32 func_80013210(s32 a0) {
+s32 sndFindKeyOnMask(s32 a0) {
     s32 mask;
     SoundSeqTrack *track;
     s32 bit;
@@ -789,7 +789,7 @@ s32 sndUploadSamples(s32 a0, s32 a1) {
  * @param val2 Out: chosen SPU transfer address (0x2B000 or 0x4B000).
  * @return Region index: 0 for the primary region, 1 for the alternate.
  */
-s32 func_80013AA8(SndBankDesc *a0, s32 *val1, s32 *val2) {
+s32 sndSelectBankSlot(SndBankDesc *a0, s32 *val1, s32 *val2) {
     s32 flag;
     s32 ctrl;
     SoundSeqTrack *seq;
@@ -856,7 +856,7 @@ s32 sndResetState(void) {
  *
  * Runs only while streaming is active (@c D_80077288 bit 0). On the first chunk
  * (when @c D_80077358 has no pending transfer) it validates the bank, derives
- * the SPU level/address via @c func_80013AA8, parses the header into
+ * the SPU level/address via @c sndSelectBankSlot, parses the header into
  * @c D_80074FE8 via @c func_8001A57C, and seeds the @c D_80077358 streaming
  * state (instrument table pointer, SPU address, and the decode/DMA byte
  * counts). It then decodes up to the remaining bank-decode bytes through
@@ -871,14 +871,14 @@ s32 sndResetState(void) {
  * @return @c D_80077360 (the active streaming handle, 0 when idle).
  *
  */
-s32 func_80013CD4(s32 a0, u32 a1, s32 a2) {
+s32 sndStreamBank(s32 a0, u32 a1, s32 a2) {
     s32 val1;
     s32 val2;
 
     if (D_80077288[0] & 1) {
         if (D_80077358.spuAddr == 0) {
             if (sndValidateBank((u32 *)a0) == 0) {
-                func_80013AA8(a0, &val1, &val2);
+                sndSelectBankSlot(a0, &val1, &val2);
                 func_8001A57C(a0, (s32)&D_80074FE8, 0x40);
                 a0 += 0x40;
                 D_80074FE8[4] = val2;
@@ -939,19 +939,19 @@ s32 func_80013CD4(s32 a0, u32 a1, s32 a2) {
 }
 
 /**
- * @brief Process audio parameters via func_80013AA8 and dispatch to func_800148B0.
+ * @brief Process audio parameters via sndSelectBankSlot and dispatch to func_800148B0.
  *
- * Calls func_80013AA8 to compute two intermediate values (stored on the stack),
+ * Calls sndSelectBankSlot to compute two intermediate values (stored on the stack),
  * then passes those along with the original parameters to func_800148B0.
- * Returns the result of func_80013AA8, not func_800148B0.
+ * Returns the result of sndSelectBankSlot, not func_800148B0.
  *
  * @param a0 First parameter (passed through to both calls).
  * @param a1 Second parameter (passed through to func_800148B0).
- * @return Result of func_80013AA8.
+ * @return Result of sndSelectBankSlot.
  */
 s32 sndProcessAudio(s32 a0, s32 a1) {
     s32 val1, val2;
-    s32 result = func_80013AA8(a0, &val1, &val2);
+    s32 result = sndSelectBankSlot(a0, &val1, &val2);
     func_800148B0(a0, a1, val1, val2);
     return result;
 }
@@ -961,7 +961,7 @@ s32 sndProcessAudio(s32 a0, s32 a1) {
  *        func_800148B0), choosing the transfer address from engine state.
  *
  * If a sequence is active (@c g_sndSeqState->field5E nonzero), defers the
- * address/level computation to @c func_80013AA8. Otherwise picks a fixed SPU
+ * address/level computation to @c sndSelectBankSlot. Otherwise picks a fixed SPU
  * region based on the current transfer address @c D_80074968:
  *   - @c 0x5D000  -> level 0x40, address 0x2B000, slot @c D_80073DE0[0]
  *   - otherwise   -> level 0x60, address 0x4B000, slot @c D_80073DE0[1]
@@ -971,16 +971,16 @@ s32 sndProcessAudio(s32 a0, s32 a1) {
  *
  * @param a0 Sound bank descriptor (@c SndBankDesc *).
  * @param a1 Passthrough parameter forwarded to @c func_800148B0.
- * @return @c func_80013AA8's result when a sequence is active; otherwise 0 for
+ * @return @c sndSelectBankSlot's result when a sequence is active; otherwise 0 for
  *         the 0x5D000 region or 1 for the alternate region.
  */
-s32 func_80013F38(SndBankDesc *a0, s32 a1) {
+s32 sndUploadBank(SndBankDesc *a0, s32 a1) {
     s32 level;
     s32 addr;
     s32 result;
 
     if (g_sndSeqState->field5E != 0) {
-        result = func_80013AA8((s32)a0, &level, &addr);
+        result = sndSelectBankSlot((s32)a0, &level, &addr);
     } else if (D_80074968 == 0x5D000) {
         result = 0;
         D_80073DE0[0] = a0->bankId;
@@ -1224,7 +1224,7 @@ void sndCmdE6(s32 a0) {
  * @param a1 Bank slot selector (0 = primary, nonzero = alternate).
  * @return 0 on success, nonzero error code on validation failure.
  */
-s32 func_80014400(s32 a0, s32 a1) {
+s32 sndUploadSampleBank(s32 a0, s32 a1) {
     s32 spuAddr;
     s32 result;
 
@@ -1292,7 +1292,7 @@ void sndCmdED(s32 a0, s32 a1) {
  * @param a2 Bank slot selector (0 = primary, nonzero = alternate).
  * @param a3 Additional parameter stored at D_80075058[3].
  */
-void func_8001451C(s32 a0, s32 a1, s32 a2, s32 a3) {
+void sndCmdEC(s32 a0, s32 a1, s32 a2, s32 a3) {
     s32 spuAddr;
     SoundSeqTrack *ptr;
 
