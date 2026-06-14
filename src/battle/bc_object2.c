@@ -529,7 +529,7 @@ s32 func_8009CD78(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         arg3 *= 2;
     }
     
-    if (D_800ED148.pad12FE[9] != 0) {
+    if (D_800ED148.unk1307   != 0) {
         arg3 *= 2;
     }
     
@@ -635,7 +635,68 @@ s32 func_8009D174(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D228);
+s32 func_8009D228(s32 arg0, s32 arg1, s32 arg2) {
+    s32 result1;
+    s32 result2;
+    s32 var1;
+    s32 var2;
+    s32 var3;
+    s32 var_v1;
+
+    
+    if (D_800ED148.unk1292 != D_800ED148.unk1290) {
+        D_800ED148.unk1300 = 1;
+        D_800EE4C4 = 255;
+    } 
+    
+    else if (D_800ED148.unk1303 != 0) {
+        D_800ED148.unk1300 = 1;
+        D_800ED148.unk1303 = 0;
+        D_800EE4C4 = 255;
+    } 
+    
+    else {
+        D_800ED148.unk1300 = 0;
+        if (D_800EE4C0.unk1 == 0xFB) {
+            if (!(D_800ED148.entities[arg1].status & 1)) {
+                D_800EE4C0.unk4 = 0xFF;
+            }
+                
+            else{
+                D_800EE4C0.unk4 = 4;
+            }
+        }
+    }
+    
+    if (func_8009BD60(arg1) == 0) {
+        D_800ED148.unk1307 = 0;
+        result1 = func_8009C300(arg1, 0);
+        result2 = func_8009CF18();
+        
+        var_v1 = D_800ED148.entities[arg0].fieldCD * D_800ED148.entities[arg0].fieldCD;
+        if (var_v1 < 0) {
+            var_v1 += 0xF;
+        }
+        
+        var2 = ((var_v1 >> 4) + D_800ED148.entities[arg0].fieldCD) * (0x109 - result1);
+        if (var2 < 0) {
+            var2 += 0xFF;
+        }
+        
+        var1 = (var2 >> 8) * arg2;
+        if (var1 < 0) {
+            var1 += 0x1F;
+        }
+        
+        var3 = (var1 >> 5) * ((D_800ED148.unk1294 / 20) + 2) * result2;
+        if (var3 < 0) {
+            var3 += 0xFF;
+        }
+        
+        return func_8009CD78(arg0, arg1, arg2, var3 >> 8);
+    }
+    return 0;
+}
 
 /**
  * @brief Check if entity at index a1 has ability flag bit 2 set.
