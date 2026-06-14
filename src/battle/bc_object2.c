@@ -860,7 +860,27 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E418);
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E528);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E5C0);
+void func_8009E5C0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    u8 sp10;
+    s32 var_s1;
+    s32 temp_s0_2;
+    s32 temp_s1;
+    s32 var_s2;
+    
+    if (arg2 == 0) {
+        var_s2 = arg1 - arg0;    
+        var_s1 = 0x5F;
+    }
+        
+    else {
+        var_s2 = arg0 - arg1;
+        var_s1 = 0x59;
+    }
+    
+    temp_s0_2 = func_800B0248(func_800B0074(arg3), 7U, getMenuString(0x58));
+    temp_s1 = func_800B0248(temp_s0_2, 7U, getMenuString(var_s1));
+    func_800A4320(func_800B02AC(func_800B0248(temp_s1, *getMenuString(0xB), func_800B04A0(var_s2, &sp10))));
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E684);
 
