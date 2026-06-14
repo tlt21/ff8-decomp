@@ -1183,12 +1183,10 @@ s32 sndSetCdMixVolume(s32 a0) {
  */
 void sndCmdE0(s32 a0, s32 a1, s32 a2) {
     if (sndValidateBank((u32 *)a0) == 0) {
-        register s32 cmd asm("$4") = 0xE0; // FIXME: register+barrier forces li into bne delay slot
-        REGALLOC_BARRIER(cmd);
         g_sndCmdArgs[0] = a0;
         g_sndCmdArgs[1] = (a1 & 0xFF) << 8;
         g_sndCmdArgs[2] = a2;
-        func_8001A1E8(cmd);
+        func_8001A1E8(0xE0);
     }
 }
 
