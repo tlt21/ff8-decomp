@@ -311,8 +311,4 @@ extern u32 D_800772B8;
  *         @c fileLba = staging buffer / file address. */
 extern s32 func_80037FB0(s32 a0, s8 bank, s32 fileLba);
 
-/* The sound-engine driver's own prototypes live in snd_init.h; include it
-   so existing `#include "sound.h"` callers still resolve them. */
-#include "snd_init.h"
-
 #endif /* SOUND_H */

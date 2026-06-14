@@ -15,6 +15,44 @@
 
 #include "sound.h"
 
+/* ---- Data symbols referenced by snd_init.c ------------------------- *
+ * Declared with snd_init.c's view of each global. Several of these are
+ * shared sound-engine state that other snd_* modules access through their
+ * own (sometimes differently-typed) declarations; they are kept here as
+ * snd_init's interface to that state. */
+
+extern s32  D_8005169C;
+extern u8   D_800516B8[];
+extern u8   D_80073C30[];
+extern u8   D_80073C38[];
+extern s32  D_80073C58;
+extern s32 *D_80073CA8;
+extern s32  D_80073DE0[];
+extern s16  D_80073E60;
+extern s16  D_80073E62;
+extern SndInstrument D_80073E68[];
+extern s32  D_80074968;
+extern s32  D_80074EB8[];
+extern s32  D_80074EBC;          /* bank-ID slot for mode 1 (D_80074EB8[1]) */
+extern s32  D_80074EC0;          /* bank-ID slot for mode 2 (D_80074EB8[2]) */
+extern s32  D_80074EC4;          /* func_80014190: bank-ID slot, default mode */
+extern s32  D_80074EC8;          /* func_80014190: bank-ID slot, mode 1 */
+extern s32  D_80074ECC;          /* func_80014190: bank-ID slot, mode 2 */
+extern u8  *D_80074ED0;
+extern s32  D_80074ED4;
+extern u8  *D_80074ED8;
+extern u8  *D_80074EDC;
+extern s32  D_80074FE8[];        /* parsed bank header (level/addr/counts) */
+extern s32  D_80074FF8;          /* decode work buffer / scratch pointer */
+extern s32  D_80075028[];
+extern s32  D_80075058[];
+extern s32  D_80077288[];
+extern s32  D_8007728C;
+extern s32  D_80077298[];
+extern s32  D_800772CC;
+extern s32  D_8007735C;
+extern s32  D_80077360;          /* active streaming handle (0 = idle) */
+
 /* ---- Documented public entry points -------------------------------- */
 
 /**
