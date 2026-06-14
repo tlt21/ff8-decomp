@@ -241,6 +241,7 @@ typedef enum {
     CTRL_ACTIVE     = 0x01,
     CTRL_FLAG_02    = 0x02,
     CTRL_FLAG_10    = 0x10,
+    CTRL_FLAG_20    = 0x20,
     CTRL_FLAG_40    = 0x40,
     CTRL_FLAG_80    = 0x80,
     CTRL_FLAG_100   = 0x100
@@ -317,8 +318,11 @@ typedef struct {
     s32 field28;
     s32 field2C;
     u8 pad30[0x24];     
-    s16 unk54[1];  /* used in  func_8009C598 */
-    u8 pad58[0x0C];
+    u16 unk54[1];  /* used in  func_8009C598 */
+    u8 unk56;
+    u8 unk57;
+    u16 unk58;
+    u8 pad59[0x0A];
     /* 0x64: byte-bit-slot view (14 halfwords, indexed by lowest set bit
        of a flag mask). The trailing 4 bytes (@c 0x7C-0x7F) are also
        read/written as a 4-byte slot flag word during init. */
@@ -824,8 +828,8 @@ extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
 extern u8 D_800EE4C1[];     /**< 0x800EE4C1: misc state byte. */
 extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
 extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */
-extern u8 D_800EEBB8[];     /**< 0x800EEBB8: misc state byte. */
-extern u8 D_800EEBB9[];     /**< 0x800EEBB9: misc state byte. */
+extern u8 D_800EEBB8;     /**< 0x800EEBB8: misc state byte. */
+extern u8 D_800EEBB9;     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA;     /**< 0x800EEBBA: misc state byte. */
 extern u8 D_800EEBBB;     /**< 0x800EEBBB: misc state byte. */
 extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
