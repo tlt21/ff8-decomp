@@ -1,5 +1,6 @@
 #include "common.h"
 #include "sound.h"
+#include "snd_dma.h"
 
 extern volatile s32 D_80074ED4;
 extern s32 D_80074E88;

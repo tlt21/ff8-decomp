@@ -141,7 +141,7 @@ s32 opHandler_SEPOSTRANS(Eline *eline) {
 /**
  * Peek the top stack value as an SFX target; if the entity is the active
  * script slot, dispatch @c sndCmd21(0, top). If the SPU is still busy
- * with a matching channel (queried via @c func_800131A8), keep the stack
+ * with a matching channel (queried via @c sndGatherKeyOnMask), keep the stack
  * intact and return 1 (wait). Otherwise pop the value and return 2.
  *
  * @param eline Pointer to the Eline event-script context.
@@ -152,7 +152,7 @@ s32 opHandler_SESTOP(Eline *eline) {
     if ((eline->activeMask >> eline->scriptGroup) & 1) {
         sndCmd21(0, top);
     }
-    if ((func_800131A8() & top) != 0) {
+    if ((sndGatherKeyOnMask() & top) != 0) {
         return 1;
     }
     eline->stackPtr--;
@@ -160,13 +160,13 @@ s32 opHandler_SESTOP(Eline *eline) {
 }
 
 /**
- * Pops a parameter, calls func_80013210, stores result at offset 0x140.
+ * Pops a parameter, calls sndFindKeyOnMask, stores result at offset 0x140.
  *
  * @param eline Pointer to the Eline event-script context.
  * @return 2 (continue processing).
  */
 s32 opHandler_COUNTERCLOCKWISETURN(Eline *eline) {
-    eline->resultSlots[0] = func_80013210(POP(eline));
+    eline->resultSlots[0] = sndFindKeyOnMask(POP(eline));
     return 2;
 }
 

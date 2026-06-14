@@ -1,3 +1,6 @@
+sndGetSeqPosition = 0x80012FEC;
+sndGatherKeyOnMask = 0x800131A8;
+sndFindKeyOnMask = 0x80013210;
 SetRotMatrix = 0x800406A4;
 SetTransMatrix = 0x80040734;
 SetGeomOffset = 0x800408C4;

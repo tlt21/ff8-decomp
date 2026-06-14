@@ -1,7 +1,6 @@
 #include "common.h"
 #include "sound.h"
 
-extern s32 *D_80074F08;
 extern s32 D_80075028;
 extern u16 D_80073E62;
 extern s32 D_80077284;
@@ -11,10 +10,8 @@ extern u8 D_80070D60[];
 extern s32 D_80073CA8;
 extern u8 *D_80073C34;
 extern s32 D_8007728C;
-extern u8 D_80072F70[];
 extern s32 D_800772A4;
 extern s32 D_800772F4;
-extern u8 D_80077298[];
 extern s32 D_8007507C;
 
 /**
@@ -48,11 +45,11 @@ INCLUDE_ASM("asm/nonmatchings/snd_param", func_80019A94);
 /**
  * @brief Transfers sound data for main and optional secondary sound sources.
  *
- * Calls func_80017410 for the primary sound source (D_80074F08 with D_80070D60),
+ * Calls func_80017410 for the primary sound source (g_sndSeqState with D_80070D60),
  * then conditionally for a secondary source (D_80073CA8 with D_80073C34) if set.
  */
 void sndTransferData(void) {
-    func_80017410(D_80074F08, D_80070D60, 0);
+    func_80017410(g_sndSeqState, D_80070D60, 0);
     if (D_80073CA8 != 0) {
         func_80017410(D_80073CA8, D_80073C34, 0);
     }
@@ -67,7 +64,7 @@ void sndTransferData(void) {
  * @param a0 Pointer to the transfer mode value.
  */
 void sndTransferDataWithMode(s32 *a0) {
-    func_80017410(D_80074F08, D_80070D60, *a0);
+    func_80017410(g_sndSeqState, D_80070D60, *a0);
     if (D_80073CA8 != 0 && *a0 != 0) {
         func_80017410(D_80073CA8, D_80073C34, *a0);
     }
@@ -88,12 +85,12 @@ INCLUDE_ASM("asm/nonmatchings/snd_param", func_80019BC0);
 /**
  * @brief Starts sound playback mode 1 for primary and optional secondary sources.
  *
- * Sets D_8007728C to 1, calls func_80017D14 for primary source (D_80074F08, D_80070D60),
+ * Sets D_8007728C to 1, calls func_80017D14 for primary source (g_sndSeqState, D_80070D60),
  * optionally for secondary source (D_80073CA8, D_80073C34), then calls func_80017D5C.
  */
 void sndStartPlaybackMode1(void) {
     D_8007728C = 1;
-    func_80017D14(D_80074F08, D_80070D60);
+    func_80017D14(g_sndSeqState, D_80070D60);
     if (D_80073CA8 != 0) {
         func_80017D14(D_80073CA8, D_80073C34);
     }
@@ -103,12 +100,12 @@ void sndStartPlaybackMode1(void) {
 /**
  * @brief Starts sound playback mode 2 for primary and optional secondary sources.
  *
- * Sets D_8007728C to 2, calls func_80017D14 for primary source (D_80074F08, D_80070D60),
+ * Sets D_8007728C to 2, calls func_80017D14 for primary source (g_sndSeqState, D_80070D60),
  * optionally for secondary source (D_80073CA8, D_80073C34), then calls func_80017D5C.
  */
 void sndStartPlaybackMode2(void) {
     D_8007728C = 2;
-    func_80017D14(D_80074F08, D_80070D60);
+    func_80017D14(g_sndSeqState, D_80070D60);
     if (D_80073CA8 != 0) {
         func_80017D14(D_80073CA8, D_80073C34);
     }
@@ -135,9 +132,9 @@ void sndSetTempoAllTracks(s32 *a0) {
     } while ((u32)i < 0x20);
 }
 
-/** @brief Copies halfword from a0 to offset 0x60 in struct pointed to by D_80074F08. */
+/** @brief Copies halfword from a0 to offset 0x60 in struct pointed to by g_sndSeqState. */
 void sndSetSequenceOffset(u16 *a0) {
-    ((SoundSeqTrack *)D_80074F08)->voiceActive = *a0;
+    g_sndSeqState->voiceActive = *a0;
 }
 
 /**
@@ -153,10 +150,10 @@ void func_80019DB0(void) {
     s32 unusedMask;
     s32 bit;
     s32 voice;
-    s32 *ptr;
+    SoundSeqTrack *ptr;
     s32 tmp;
 
-    if (*(s32 *)((s32)D_80074F08 + 4) != 0) {
+    if (g_sndSeqState->instParams != 0) {
         unusedMask = ~(D_80075028 | D_800772A4) & 0xFFFFFF;
         if (unusedMask != 0) {
             bit = 1;
@@ -173,10 +170,10 @@ void func_80019DB0(void) {
                 voice++;
             } while (unusedMask != 0);
         }
-        ptr = (s32 *)D_80074F08;
-        tmp = ptr[1];
-        ptr[1] = 0;
-        ptr[7] = tmp;
+        ptr = g_sndSeqState;
+        tmp = ptr->instParams;
+        ptr->instParams = 0;
+        ptr->keyOnPending = tmp;
     }
     D_800772F4 |= 1;
 }
@@ -184,7 +181,7 @@ void func_80019DB0(void) {
 /**
  * @brief Applies pending key-on mask to track update flags.
  *
- * Reads the pending key-on mask from D_80074F08+0x1C. For each set bit,
+ * Reads the pending key-on mask from g_sndSeqState+0x1C. For each set bit,
  * ORs 0x2B13 into the corresponding track's updateFlags field.
  * Moves the mask from field 0x1C to field 0x04 and sets the hardware
  * update flag. Clears bit 0 of D_800772F4.
@@ -257,7 +254,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_param", func_8001A058);
  * to 0 for the stream's voice and the next consecutive voice.
  */
 void sndMuteVoicePair(void) {
-    SoundStream *stream = (SoundStream *)D_80077298;
+    SoundStream *stream = &g_sndStream;
     if (stream->active != 0) {
         spuSetVoicePitch(stream->voiceIdx, 0);
         spuSetVoicePitch(stream->voiceIdx + 1, 0);
@@ -271,7 +268,7 @@ void sndMuteVoicePair(void) {
  * pitch for the stream's voice and the next consecutive voice.
  */
 void sndRestoreVoicePair(void) {
-    SoundStream *stream = (SoundStream *)D_80077298;
+    SoundStream *stream = &g_sndStream;
     if (stream->active != 0) {
         spuSetVoicePitch(stream->voiceIdx, stream->savedPitch);
         spuSetVoicePitch(stream->voiceIdx + 1, stream->savedPitch);
