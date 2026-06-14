@@ -529,7 +529,7 @@ s32 func_8009CD78(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
         arg3 *= 2;
     }
     
-    if (D_800ED148.unk1307   != 0) {
+    if (D_800ED148.unk1307 != 0) {
         arg3 *= 2;
     }
     
@@ -771,7 +771,18 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D6C4);
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D7D8);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009DCCC);
+s32 func_8009DCCC(s32 unused, s32 arg1, s32 arg2) {
+    if (D_800ED148.entities[arg1].status & 0x40) {
+        arg2 = -arg2;
+    }
+    
+    if (arg2 < 0) {
+        D_800EE4C0.flags6 &= 0xFE;
+        arg2 = ~arg2 + 1;
+    }
+    
+    return arg2;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009DD2C);
 
