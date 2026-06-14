@@ -42,7 +42,7 @@ extern s32  D_80074ED4;
 extern s32  D_80074FE8[];        /* parsed bank header (level/addr/counts) */
 extern s32  D_80074FF8;          /* decode work buffer / scratch pointer */
 extern s32  D_80075028[];
-extern s32  D_80075058[];
+extern s32  g_sndCmdArgs[4];    /* sound-command argument buffer (filled per command, read by the dispatcher) */
 extern s32  D_80077288[];
 extern s32  D_8007728C;
 extern s32  D_80077298[];
@@ -73,7 +73,7 @@ extern s32 sndGatherKeyOnMask(void);
 
 /**
  * @brief SPU command-bus wrappers. Each writes its args into the
- *        command buffer at @c D_80075058 and tail-calls
+ *        command buffer at @c g_sndCmdArgs and tail-calls
  *        @c func_8001A1E8 to dispatch the indicated opcode. The
  *        SPU-handle / dispatch result is left in @c $v0 by the inner
  *        @c jal, which is why callers can treat them as returning
