@@ -12,7 +12,6 @@ extern u8 *D_80073C34;
 extern s32 D_8007728C;
 extern s32 D_800772A4;
 extern s32 D_800772F4;
-extern u8 D_80077298[];
 extern s32 D_8007507C;
 
 /**
@@ -255,7 +254,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_param", func_8001A058);
  * to 0 for the stream's voice and the next consecutive voice.
  */
 void sndMuteVoicePair(void) {
-    SoundStream *stream = (SoundStream *)D_80077298;
+    SoundStream *stream = &g_sndStream;
     if (stream->active != 0) {
         spuSetVoicePitch(stream->voiceIdx, 0);
         spuSetVoicePitch(stream->voiceIdx + 1, 0);
@@ -269,7 +268,7 @@ void sndMuteVoicePair(void) {
  * pitch for the stream's voice and the next consecutive voice.
  */
 void sndRestoreVoicePair(void) {
-    SoundStream *stream = (SoundStream *)D_80077298;
+    SoundStream *stream = &g_sndStream;
     if (stream->active != 0) {
         spuSetVoicePitch(stream->voiceIdx, stream->savedPitch);
         spuSetVoicePitch(stream->voiceIdx + 1, stream->savedPitch);

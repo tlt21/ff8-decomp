@@ -1328,7 +1328,7 @@ void sndCmdEC(s32 a0, s32 a1, s32 a2, s32 a3) {
  *
  * If @p a1 is zero, returns -1. Otherwise disables SPU IRQ, clears the IRQ
  * address, stores both parameters into the SPU command buffer, initializes
- * several sound engine counters in D_80077298, sets the frame limit from
+ * several sound engine counters in g_sndStream, sets the frame limit from
  * @p a1 >> 12, and issues command 0xE8 via func_8001A1E8.
  *
  * @param a0 First SPU command parameter (stored at g_sndCmdArgs).
@@ -1343,12 +1343,12 @@ s32 sndInitIrq(s32 a0, s32 a1) {
     SpuSetIRQAddr(0);
     g_sndCmdArgs[0] = a0;
     g_sndCmdArgs[1] = a1;
-    D_80077298[13] = -1;
-    D_80077298[8] = 0;
-    D_80077298[9] = 0;
-    D_80077298[10] = 0;
-    D_80077298[14] = 0;
-    D_80077298[15] = (u32)a1 >> 12;
+    g_sndStream.unk34 = -1;
+    g_sndStream.unk20 = 0;
+    g_sndStream.tickCounter = 0;
+    g_sndStream.tickCount = 0;
+    g_sndStream.frameCounter = 0;
+    g_sndStream.loopLimit = (u32)a1 >> 12;
     func_8001A1E8(0xE8);
     return 0;
 }
@@ -1356,23 +1356,23 @@ s32 sndInitIrq(s32 a0, s32 a1) {
 /**
  * @brief Advance sound engine tick and frame counters; trigger IRQ callback if needed.
  *
- * Increments the tick counter (offset 0x24) and wraps the frame counter
- * (offset 0x38) at the limit (offset 0x3C). If bit 24 of the flags word
- * (offset 0x08) is set and the frame counter >= 3, calls func_8001F118.
+ * Increments @c tickCounter and wraps @c frameCounter back to 0 at
+ * @c loopLimit. If bit 24 of @c flags is set and @c frameCounter reaches 3,
+ * calls func_8001F118.
  *
  * @return The value of D_800772CC (current sound engine state word).
  */
 s32 sndTickCounters(void) {
-    s32 *ptr = D_80077298;
+    SoundStream *stream = &g_sndStream;
     s32 counter;
 
-    ptr[9]++;
-    counter = ptr[14] + 1;
-    ptr[14] = counter;
-    if ((u32)counter > (u32)(ptr[15] - 1)) {
-        ptr[14] = 0;
+    stream->tickCounter++;
+    counter = stream->frameCounter + 1;
+    stream->frameCounter = counter;
+    if ((u32)counter > (u32)(stream->loopLimit - 1)) {
+        stream->frameCounter = 0;
     }
-    if ((ptr[2] & 0x1000000) && (u32)ptr[14] >= 3) {
+    if ((stream->flags & 0x1000000) && (u32)stream->frameCounter >= 3) {
         func_8001F118();
     }
     return D_800772CC;

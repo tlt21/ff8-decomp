@@ -254,7 +254,7 @@ typedef struct {
 } SndBankDesc; /* 0x40 bytes */
 
 /**
- * @brief CD audio / streaming sound state (D_80077298).
+ * @brief CD audio / streaming sound state (@c g_sndStream).
  *
  * Controls SPU streaming playback, tracking voice indices, pitch,
  * volume/pan, loop counters and IRQ state.
@@ -262,16 +262,17 @@ typedef struct {
 typedef struct {
     /* 0x00 */ s32 spuBaseAddr;    /**< SPU base address for stream. */
     /* 0x04 */ s32 unk04;
-    /* 0x08 */ s32 unk08;
+    /* 0x08 */ s32 flags;          /**< Control flags (bit 24 gates the tick IRQ callback). */
     /* 0x0C */ s32 active;         /**< Active/IRQ voice bitmask (nonzero = playing). */
     /* 0x10 */ s32 voiceIdx;       /**< First SPU voice index for this stream. */
     /* 0x14 */ u8 pad14[0x0C];
     /* 0x20 */ s32 unk20;
     /* 0x24 */ s32 tickCounter;    /**< Tick counter (incremented each frame). */
     /* 0x28 */ s32 tickCount;      /**< Running tick accumulator. */
-    /* 0x2C */ u8 pad2C[0x08];
+    /* 0x2C */ s32 unk2C;          /**< Engine state set by sndStreamInitEngine. */
+    /* 0x30 */ s32 unk30;          /**< Engine state set by sndStreamInitEngine. */
     /* 0x34 */ s32 unk34;          /**< Set to -1 during init. */
-    /* 0x38 */ s32 unk38;
+    /* 0x38 */ s32 frameCounter;   /**< Frame counter; wraps back to 0 at loopLimit. */
     /* 0x3C */ s32 loopLimit;      /**< Loop/sector limit (sectorCount >> 12). */
     /* 0x40 */ s32 panVolume;      /**< Raw pan/volume value. */
     /* 0x44 */ u8 pad44[0x04];
@@ -280,6 +281,9 @@ typedef struct {
     /* 0x58 */ s32 savedPitch;     /**< Saved pitch value for voice restore. */
     /* 0x5C */ u8 pad5C[0x04];
 } SoundStream; /* 0x60 = 96 bytes */
+
+/** @brief CD audio / streaming sound state instance (at 0x80077298). */
+extern SoundStream g_sndStream;
 
 /**
  * @brief Sound sequence table entry (stride 20 bytes).

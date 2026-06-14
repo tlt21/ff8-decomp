@@ -3,7 +3,6 @@
 
 extern s32 D_80075028[];
 extern s32 D_80077288[];
-extern s32 D_80077298[];
 extern s32 D_80074EE8[];
 extern u8 D_80051824;
 
@@ -1155,20 +1154,20 @@ void sndTrackResetSequence(void) {
 /**
  * @brief Disables SPU IRQ and clears the IRQ voice mask from the engine state.
  *
- * If D_80077298[3] (the active IRQ voice bitmask) is non-zero, disables
+ * If g_sndStream.active (the IRQ voice bitmask) is non-zero, disables
  * SPU IRQ, clears the IRQ callback, resets the IRQ address to the stored
  * value, clears the corresponding bits in D_80075028[8], marks dirty flags,
  * and zeroes the IRQ voice mask.
  */
 void sndStreamDisableIrq(void) {
-    s32 *s0 = D_80077298;
-    if (s0[3] != 0) {
+    SoundStream *s0 = &g_sndStream;
+    if (s0->active != 0) {
         SpuSetIRQ(0);
         SpuSetIRQCallback(0);
-        spuSetIrqAddr(s0[3]);
-        D_80075028[8] &= ~s0[3];
+        spuSetIrqAddr(s0->active);
+        D_80075028[8] &= ~s0->active;
         D_80077288[2] |= 0x100;
-        s0[3] = 0;
+        s0->active = 0;
     }
 }
 
@@ -1179,7 +1178,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_track", func_8001DFF4);
  *        sndStreamSetupMono, and initiates DMA transfer of 0x800 bytes.
  */
 void sndStreamBeginTransfer(void) {
-    s32 addr = D_80077298[0] + 0x800;
+    s32 addr = g_sndStream.spuBaseAddr + 0x800;
     SpuSetTransferStartAddr(0x2100);
     func_8003E494(sndStreamSetupMono);
     func_8003E3A4(addr, 0x800);
@@ -1196,9 +1195,9 @@ INCLUDE_ASM("asm/nonmatchings/snd_track", func_8001E4C4);
  *        callback for 0x1000-byte streaming at addresses 0x1100/0x2100.
  */
 void sndStreamSetupMono(void) {
-    s32 *base = D_80077298;
-    func_8001E308(base[4], 0, 0x1100, 0x2100);
-    func_8001E308(base[4] + 1, 0, 0x1100, 0x2100);
+    SoundStream *base = &g_sndStream;
+    func_8001E308(base->voiceIdx, 0, 0x1100, 0x2100);
+    func_8001E308(base->voiceIdx + 1, 0, 0x1100, 0x2100);
     func_8001E4C4(0x1000, 0x2100, sndStreamCallbackMonoLow);
 }
 
@@ -1207,9 +1206,9 @@ void sndStreamSetupMono(void) {
  *        callback for 0x2000-byte streaming at addresses 0x1100-0x2900.
  */
 void sndStreamSetupStereo(void) {
-    s32 *base = D_80077298;
-    func_8001E308(base[4], 1, 0x1100, 0x2100);
-    func_8001E308(base[4] + 1, 2, 0x1900, 0x2900);
+    SoundStream *base = &g_sndStream;
+    func_8001E308(base->voiceIdx, 1, 0x1100, 0x2100);
+    func_8001E308(base->voiceIdx + 1, 2, 0x1900, 0x2900);
     func_8001E4C4(0x2000, 0x2100, sndStreamCallbackStereoLow);
 }
 
@@ -1246,7 +1245,7 @@ void sndStreamCallbackStereoHigh(void) {
  */
 void sndStreamStartPlayback(s32 *a0) {
     func_8001E0CC(a0[0], a0[1], a0[2]);
-    D_80075028[0] &= ~D_80077298[3];
+    D_80075028[0] &= ~g_sndStream.active;
 }
 
 /** @brief Calls sndStreamDisableIrq. */
@@ -1257,21 +1256,21 @@ void sndStreamStop(void) {
 /**
  * @brief Sets stereo panning volumes for two consecutive SPU voices.
  *
- * Dereferences @p a0 for the raw volume value, stores it at D_80077298+0x40,
- * clears D_80077298+0x48. If the active flag at D_80077298+0xC is set,
+ * Dereferences @p a0 for the raw volume value, stores it in g_sndStream.panVolume,
+ * clears g_sndStream.panTarget. If g_sndStream.active is set,
  * sets left volume on the first voice and right volume on the second.
  *
  * @param a0 Pointer to the raw volume/pan value.
  */
 void sndStreamSetPanVolume(s32 *a0) {
-    u8 *base = (u8 *)D_80077298;
+    SoundStream *base = &g_sndStream;
     s32 rawVal = *a0;
-    *(s32 *)(base + 0x48) = 0;
-    *(s32 *)(base + 0x40) = rawVal;
-    if (*(s32 *)(base + 0xC) != 0) {
+    base->panTarget = 0;
+    base->panVolume = rawVal;
+    if (base->active != 0) {
         s32 vol = (rawVal << 15) >> 16;
-        spuSetVoiceVolume(*(s32 *)(base + 0x10), vol, 0, 0);
-        spuSetVoiceVolume(*(s32 *)(base + 0x10) + 1, 0, (*(s32 *)(base + 0x40) << 15) >> 16, 0);
+        spuSetVoiceVolume(base->voiceIdx, vol, 0, 0);
+        spuSetVoiceVolume(base->voiceIdx + 1, 0, (base->panVolume << 15) >> 16, 0);
     }
 }
 
@@ -1298,7 +1297,7 @@ INCLUDE_ASM("asm/nonmatchings/snd_track", func_8001EDD4);
  */
 void sndStreamStartPlayback4(s32 *a0) {
     func_8001EC0C(a0[0], a0[1], a0[2], a0[3]);
-    D_80075028[0] &= ~D_80077298[3];
+    D_80075028[0] &= ~g_sndStream.active;
 }
 
 /**
@@ -1308,24 +1307,23 @@ void sndStreamStartPlayback4(s32 *a0) {
  */
 void sndStreamStartPlayback2(s32 *a0) {
     func_8001EDD4(a0[0], a0[1]);
-    D_80075028[0] &= ~D_80077298[3];
+    D_80075028[0] &= ~g_sndStream.active;
 }
 
 /**
  * @brief Advances a sequence loop/repeat counter with wraparound.
  *
- * Increments the global tick count at D_80077298 offset +0x28, then
- * increments @p counter. If @p counter exceeds the loop limit
- * (D_80077298[0x3C/4] - 1), wraps it back to 0.
+ * Increments g_sndStream.tickCount, then increments @p counter. If @p counter
+ * exceeds the loop limit (g_sndStream.loopLimit - 1), wraps it back to 0.
  *
  * @param counter Pointer to the current loop/repeat index.
  * @return The new value of @p counter after increment and possible wraparound.
  */
 s32 sndStreamAdvanceLoopCounter(s32 *counter) {
-    s32 base = (s32)D_80077298;
-    *(s32 *)(base + 0x28) += 1;
+    SoundStream *base = &g_sndStream;
+    base->tickCount++;
     (*counter)++;
-    if ((u32)(*(s32 *)(base + 0x3C) - 1) < (u32)*counter) {
+    if ((u32)(base->loopLimit - 1) < (u32)*counter) {
         *counter = 0;
     }
     return *counter;
@@ -1340,9 +1338,9 @@ INCLUDE_ASM("asm/nonmatchings/snd_track", func_8001F2A8);
  *        func_8001F2A8 with callback sndStreamCallbackStereoAltLow.
  */
 void sndStreamSetupStereoAlt(void) {
-    s32 *base = D_80077298;
-    func_8001E308(base[4], 1, 0x1100, 0x2100);
-    func_8001E308(base[4] + 1, 2, 0x1900, 0x2900);
+    SoundStream *base = &g_sndStream;
+    func_8001E308(base->voiceIdx, 1, 0x1100, 0x2100);
+    func_8001E308(base->voiceIdx + 1, 2, 0x1900, 0x2900);
     func_8001F2A8(0x2000, 0x2100, sndStreamCallbackStereoAltLow);
 }
 
@@ -1365,11 +1363,11 @@ void sndStreamCallbackStereoAltHigh(void) {
  * @param a0 Pointer to 2-word struct: [field_0x2C, field_0x30].
  */
 void sndStreamInitEngine(s32 *a0) {
-    s32 *base;
+    SoundStream *base;
     sndStreamDisableIrq();
-    base = D_80077298;
-    base[2] = 0x1000000;
-    base[11] = a0[0];
-    base[12] = a0[1];
+    base = &g_sndStream;
+    base->flags = 0x1000000;
+    base->unk2C = a0[0];
+    base->unk30 = a0[1];
 }
 
