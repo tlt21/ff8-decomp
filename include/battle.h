@@ -312,7 +312,7 @@ typedef struct {
     u8 entityRef;
     BattleEntityLinked *linkedPtr;
     u8 pad14[0x04];
-    s32 flags;
+    s32 flags; /* D_800ED160 */
     s32 flagsBackup;
     s32 field20;
     s32 field24;
@@ -482,7 +482,7 @@ typedef struct {
     /* 0x1327 */ u8 unk1327; 
     /* 0x1328 */ u8 unk1328; 
     /* 0x1329 */ u8 unk1329;
-} BattleSystem; /* 0x1330 */
+} BattleSystem; /* 0x132A */
 
 /** @brief 5-byte slot in @c BattleAnimTable.animSlots. */
 typedef struct {
@@ -771,8 +771,6 @@ extern BattleConfig g_battleConfig;
 
 /** @brief The battle system block at @c 0x800ED148. */
 extern BattleSystem D_800ED148;
-
-extern BattleSystem D_800ED160;     /**< 0x800ED160: misc battle state. Used in func_8009C390 */
 
 /** @brief Battle slot data block at @c D_800ED158 (alias for D_800ED148+0x10). */
 typedef struct {
