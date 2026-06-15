@@ -107,7 +107,7 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BCE4);
 
 s32 func_8009BD60(s32 arg0) {
     if ((D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26) == 0) {
-        if ((D_800ED148.entities[arg0].status & 4) || (D_800ED148.entities[arg0].flags & 0x180800)) {
+        if ((D_800ED148.entities[arg0].status & 4) || (D_800ED148.entities[arg0].flags & (BATTLE_ENTITY_FLAG_BIT_11 | BATTLE_ENTITY_FLAG_BIT_19 | BATTLE_ENTITY_FLAG_BIT_20))) {
             return 1;
         }
     }
