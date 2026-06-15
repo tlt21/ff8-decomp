@@ -124,7 +124,7 @@ s32 func_8009BDD0(s32 arg0, s32 arg1) {
  *
  * @param a0 Entity index (stride 0xD0).
  */
-void func_8009BE24(s32 a0, s32 a1) {
+void func_8009BE24(s32 a0, s32 unused) {
     volatile u8 *base = (volatile u8 *)&D_800ED148;
     u8 *entity = (u8 *)base + a0 * 0xD0;
     s32 val = *(u8 *)(entity + 0xD2) + *(u8 *)D_800EEBBC;
