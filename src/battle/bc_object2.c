@@ -767,7 +767,27 @@ void func_8009D68C(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D6C4);
+s32 func_8009D6C4(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    if (!(D_800ED148.entities[arg1].status & 4) && !(D_800ED148.entities[arg1].flags & 0x800)) {
+        switch (arg3) {
+            case 11:
+                arg0 = (arg2 * 100) - D_800EEBBB;
+                break;
+            case 12:
+                arg0 = D_800ED148.entities[arg1].field28 - 1;
+                break;
+            case 13:
+                arg0 = ((D_800EEBBF * arg2 / 1000) + 1) * 1000;
+                break;
+            case 18:
+                arg0 = 1;
+                break; 
+        } 
+        return arg0;
+    }
+
+    return 0;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D7D8);
 
