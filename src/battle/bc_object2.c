@@ -772,7 +772,7 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D6C4);
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D7D8);
 
 s32 func_8009DCCC(s32 unused, s32 arg1, s32 arg2) {
-    if (D_800ED148.entities[arg1].status & 0x40) {
+    if (D_800ED148.entities[arg1].status & CTRL_FLAG_40) {
         arg2 = -arg2;
     }
     
@@ -854,7 +854,29 @@ s32 func_8009DEF0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E110);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E33C);
+s32 func_8009E33C(s32 arg0, s32 arg1, s32 arg2) {
+    D_800ED148.unk1329 = 1;
+    if (D_800ED148.entities[arg1].status & CTRL_FLAG_40) {
+        return func_8009D7D8(arg0, arg1, arg2, 0);
+    }
+    
+    D_800EE4C0.flags6 |= 1;
+    
+    if (!(D_800ED148.entities[arg1].status & 1)) {
+        D_800EE4C0.flags6 |= 5;
+        return 0;
+    }
+    
+    if (D_80082C10 & CTRL_FLAG_40) {
+        D_800EE4C0.flags6 |= 5;
+    }
+    else {
+        D_800ED148.entities[arg1].status &= 0xFFFE;
+    }
+    
+    D_800EE4C0.flags5 |= 4;
+    return -100000;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E418);
 
