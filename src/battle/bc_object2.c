@@ -9,6 +9,15 @@
 #include "battle.h"
 #include "gamestate.h"
 
+#define BATTLE_ENTITY_FLAG_BIT_11  (1 << 11) /* 0x800     */
+#define BATTLE_ENTITY_FLAG_BIT_13  (1 << 13) /* 0x2000    */
+#define BATTLE_ENTITY_FLAG_BIT_17  (1 << 17) /* 0x20000   */
+#define BATTLE_ENTITY_FLAG_BIT_19  (1 << 19) /* 0x80000   */
+#define BATTLE_ENTITY_FLAG_BIT_20  (1 << 20) /* 0x100000  */
+#define BATTLE_ENTITY_FLAG_BIT_21  (1 << 21) /* 0x200000  */
+#define BATTLE_ENTITY_FLAG_BIT_26  (1 << 26) /* 0x4000000 */
+
+
 extern u8 D_800786D9[];
 
 extern u8 *getMenuString(s32 id);
@@ -97,7 +106,7 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BC28);
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BCE4);
 
 s32 func_8009BD60(s32 arg0) {
-    if ((D_800EEBC4 & 0x04000000) == 0) {
+    if ((D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26) == 0) {
         if ((D_800ED148.entities[arg0].status & 4) || (D_800ED148.entities[arg0].flags & 0x180800)) {
             return 1;
         }
@@ -750,7 +759,7 @@ s32 func_8009D228(s32 arg0, s32 arg1, s32 arg2) {
 s32 func_8009D420(s32 a0, s32 a1) {
     s32 base;
     s32 flags;
-    if (!(D_800EEBC4 & 0x4000000)) {
+    if (!(D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26)) {
         base = (s32)&D_800ED148;
         flags = *(u16 *)(base + a1 * 0xD0 + 0x90);
         if (flags & 0x4) {
@@ -761,11 +770,11 @@ s32 func_8009D420(s32 a0, s32 a1) {
 }
 
 s32 func_8009D474(s32 arg0, s32 arg1) {
-    if ((D_800EEBC4 & 0x04000000) == 0) {
-        if ((D_800ED148.entities[arg1].flags & 0x200800) || (D_800ED148.entities[arg1].status & 1)) {
+    if ((D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26) == 0) {
+        if ((D_800ED148.entities[arg1].flags & (BATTLE_ENTITY_FLAG_BIT_21 | BATTLE_ENTITY_FLAG_BIT_11)) || (D_800ED148.entities[arg1].status & 1)) {
             return 1;
         }
-        if ((D_800EEBB9 & 8) && (((D_800ED148.entities[arg1].flags & 0x2000) != 0))) {
+        if ((D_800EEBB9 & 8) && (((D_800ED148.entities[arg1].flags & BATTLE_ENTITY_FLAG_BIT_13) != 0))) {
             return 1;
         }
     }
@@ -774,8 +783,8 @@ s32 func_8009D474(s32 arg0, s32 arg1) {
 }
 
 s32 func_8009D508(s32 arg0, s32 arg1) {
-    if (!(D_800EEBC4 & 0x04000000)) { 
-        if (D_800ED148.entities[arg1].flags & 0x200000) {
+    if (!(D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26)) { 
+        if (D_800ED148.entities[arg1].flags & BATTLE_ENTITY_FLAG_BIT_21) {
             return 1;
         }
     
@@ -783,7 +792,7 @@ s32 func_8009D508(s32 arg0, s32 arg1) {
             return 1;
         }
 
-        if (D_800ED148.entities[arg1].status & 1 || ((D_800EEBB9 & 8) && (D_800ED148.entities[arg1].flags & 0x2000))) {
+        if (D_800ED148.entities[arg1].status & 1 || ((D_800EEBB9 & 8) && (D_800ED148.entities[arg1].flags & BATTLE_ENTITY_FLAG_BIT_13))) {
             return 1;
         }
     }
@@ -995,7 +1004,7 @@ void func_8009EAEC(s32 charIdx) {
     s32 count, i, j;
     s32 id, amount;
 
-    if (!(D_800ED148.entities[charIdx].controlFlags & 0x20000)) {
+    if (!(D_800ED148.entities[charIdx].controlFlags & BATTLE_ENTITY_FLAG_BIT_17)) {
         return;
     }
 
@@ -1022,8 +1031,10 @@ void func_8009EAEC(s32 charIdx) {
             D_800ED148.entities[charIdx].hpDisplay = g_battleChars.chars[charIdx].currentHp;
         }
     }
-    D_800ED148.entities[charIdx].controlFlags &= ~0x20000;
+    D_800ED148.entities[charIdx].controlFlags &= ~BATTLE_ENTITY_FLAG_BIT_17;
 }
+
+
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009ED2C);
 
