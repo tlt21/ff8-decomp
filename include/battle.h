@@ -858,6 +858,7 @@ extern u8 D_800EEBB9;     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA;     /**< 0x800EEBBA: misc state byte. */
 extern u8 D_800EEBBB;     /**< 0x800EEBBB: misc state byte. */
 extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
+extern u8 D_800EEBBF;
 extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
 extern u8  D_800EE471;
