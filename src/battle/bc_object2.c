@@ -160,13 +160,13 @@ s32 func_8009BF50(s32 newFlags, s32 *flagsPtr, s32 mask) {
     return current;
 }
 
-void func_8009BF70(s32 newFlags, BattleEntity* entity) {
-    if (entity->unk0 != newFlags) {
-        s32 maskedFlag = entity->unk0 & ~(0xE | 0x300); 
-        
-        entity->unk0 = maskedFlag
-                     | func_8009BF50(newFlags, entity, 0xE)
-                     | func_8009BF50(newFlags, entity, 0x300);
+void func_8009BF70(s32 newFlags, s32 *flagsPtr) {
+    s32 current = *flagsPtr;
+    if (current != newFlags) {
+        s32 masked = current & ~(0xE | 0x300);
+        *flagsPtr = masked
+                  | func_8009BF50(newFlags, flagsPtr, 0xE)
+                  | func_8009BF50(newFlags, flagsPtr, 0x300);
     }
 }
 
@@ -285,7 +285,7 @@ u8 func_8009C390(s32 arg0, s32 arg1, s32 arg2) {
             }
         }
         
-        func_8009BF70(sp20, &D_800ED160.entities[arg1]);
+        func_8009BF70(sp20, &D_800ED148.entities[arg1].flags);
     }
     
     return var_s2;
