@@ -475,7 +475,13 @@ typedef struct {
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
     /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
-} BattleSystem; /* 0x1324 */
+    /* 0x1324 */ u8 unk1324; 
+    /* 0x1325 */ u8 unk1325; 
+    /* 0x1326 */ u8 unk1326; 
+    /* 0x1327 */ u8 unk1327; 
+    /* 0x1328 */ u8 unk1328; 
+    /* 0x1329 */ u8 unk1329;
+} BattleSystem; /* 0x1330 */
 
 /** @brief 5-byte slot in @c BattleAnimTable.animSlots. */
 typedef struct {
