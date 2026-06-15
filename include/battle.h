@@ -300,8 +300,9 @@ typedef struct {
        animation/render flag word written by @c func_800A7518. */
     union {
         struct {
-            u8 trigKey;       /* 0x08 */
-            u8 pad09[3];
+            u8 trigKey;     /* 0x08 */
+            u8 unk09;       /* 0x09 */
+            u8 pad10[2];
         } byteView;
         s32 initFlags;        /* 0x08-0x0B as a single word. */
     } slot8;
@@ -771,6 +772,8 @@ extern BattleConfig g_battleConfig;
 /** @brief The battle system block at @c 0x800ED148. */
 extern BattleSystem D_800ED148;
 
+extern BattleSystem D_800ED160;     /**< 0x800ED160: misc battle state. Used in func_8009C390 */
+
 /** @brief Battle slot data block at @c D_800ED158 (alias for D_800ED148+0x10). */
 typedef struct {
     BattleEntity slots[7];
@@ -798,7 +801,6 @@ extern s16 D_8005F11C;      /**< 0x8005F11C: misc sound state (used by bc_object
 extern u16 D_80082C0A;      /**< 0x80082C0A: input/effect flag word; bit 1 gates timed sound, bit 2 gates vibrate. */
 extern u8  D_80082C0F;      /**< 0x80082C0F: deferred trigger gate byte (non-zero suppresses processing). */
 extern u8 D_800ED157[];     /**< 0x800ED157: misc battle state. */
-extern u8 D_800ED160[];     /**< 0x800ED160: misc battle state. */
 extern u8 D_800ED1D8[];     /**< 0x800ED1D8: misc battle state. */
 extern BattleEntry D_800ED70C[];     /**< 0x800ED70C: entity status table (stride 20). */
 extern s32 D_800E19BC[];    /**< 0x800E19BC: CdRead (sector,length) pair table. */
@@ -818,6 +820,7 @@ extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456[];     /**< 0x800EE456: status flags byte. */
 extern u8 D_800EE476;     /**< 0x800EE476: entity index latch. */
+
 /**
  * @brief Battle command queue / scratch buffer at @c 0x800EE4C0.
  *

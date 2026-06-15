@@ -160,13 +160,13 @@ s32 func_8009BF50(s32 newFlags, s32 *flagsPtr, s32 mask) {
     return current;
 }
 
-void func_8009BF70(s32 newFlags, s32 *flagsPtr) {
-    s32 current = *flagsPtr;
-    if (current != newFlags) {
-        s32 masked = current & ~(0xE | 0x300);
-        *flagsPtr = masked
-                  | func_8009BF50(newFlags, flagsPtr, 0xE)
-                  | func_8009BF50(newFlags, flagsPtr, 0x300);
+void func_8009BF70(s32 newFlags, BattleEntity* entity) {
+    if (entity->unk0 != newFlags) {
+        s32 maskedFlag = entity->unk0 & ~(0xE | 0x300); 
+        
+        entity->unk0 = maskedFlag
+                     | func_8009BF50(newFlags, entity, 0xE)
+                     | func_8009BF50(newFlags, entity, 0x300);
     }
 }
 
@@ -247,7 +247,49 @@ s32 func_8009C300(s32 arg0, s32 arg1) {
     return result;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009C390);
+u8 func_8009C390(s32 arg0, s32 arg1, s32 arg2) {
+    s32 temp_s3;
+    s32 var_s0;
+    s32 var_s1;
+    s32 var_s2;
+    s32 var_s5;
+    s32 sp20;
+    BattleEntity* entities;
+    
+    var_s2 = 0;
+    entities = D_800ED148.entities;
+    if (entities[arg1 + 1].slot8.byteView.unk09 == 0) { 
+        sp20 = entities[arg1].flags;
+        
+        if (arg2 == 0) {
+            var_s5 = entities[arg0].fieldCD;
+            temp_s3 = func_8009C300(arg1, 0);
+        } 
+        
+        else {
+            var_s5 = entities[arg0].fieldCF;
+            temp_s3 = func_8009C300(arg1, 1);
+        }
+        
+        var_s1 = 1;
+        for (var_s0 = 0; var_s0 < 7; var_s0++, var_s1 *= 2) {
+            if (D_800EEBC2 & var_s1) {
+                var_s2 += func_8009C104(arg0, arg1, var_s0, var_s1, 0, var_s5, temp_s3, D_800EEBBA);
+            }
+        }
+
+        var_s1 = 1;
+        for (var_s0 = 8; var_s0 < 40; var_s0++, var_s1 *= 2) {
+            if (D_800EEBC4 & var_s1) {
+                var_s2 += func_8009C104(arg0, arg1, var_s0, var_s1, 1, var_s5, temp_s3, D_800EEBBA);
+            }
+        }
+        
+        func_8009BF70(sp20, &D_800ED160.entities[arg1]);
+    }
+    
+    return var_s2;
+}
 
 /**
  * @brief Look up entity type byte from a battle table.
