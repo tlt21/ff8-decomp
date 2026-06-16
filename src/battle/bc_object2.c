@@ -11,6 +11,7 @@
 
 #define BATTLE_ENTITY_FLAG_BIT_11  (1 << 11) /* 0x800     */
 #define BATTLE_ENTITY_FLAG_BIT_13  (1 << 13) /* 0x2000    */
+#define BATTLE_ENTITY_FLAG_BIT_14  (1 << 14) /* 0x4000    */
 #define BATTLE_ENTITY_FLAG_BIT_17  (1 << 17) /* 0x20000   */
 #define BATTLE_ENTITY_FLAG_BIT_19  (1 << 19) /* 0x80000   */
 #define BATTLE_ENTITY_FLAG_BIT_20  (1 << 20) /* 0x100000  */
@@ -23,7 +24,7 @@ extern u8 D_800786D9[];
 extern u8 *getMenuString(s32 id);
 extern u8 *getStatName(s32 statId);
 
-s32 func_8009D594(void);
+s32 func_8009D594(s32 unused, s32 arg1);
 s32 func_8009D508(s32 a0, s32 a1);
 s32 func_8009DCCC(s32 a0, s32 a1, s32 a2);
 void func_8009DD2C(s32 a0, s32 a1, u16 a2, s32 a3);
@@ -225,7 +226,7 @@ s32 func_8009C090(s32 arg0, s32 arg1, s32* arg2, u32 arg3) {
     
     }
     
-    if ((*arg2 & 0x02000000) && (arg3 & 0x4000)) {
+    if ((*arg2 & 0x02000000) && (arg3 & BATTLE_ENTITY_FLAG_BIT_14)) {
         return 0;
     }
     
@@ -800,7 +801,25 @@ s32 func_8009D508(s32 arg0, s32 arg1) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009D594);
+s32 func_8009D594(s32 unused, s32 arg1) {
+    UnknownStruct* temp_v0;
+    
+    if ((D_800EE4C0.unk1 != 247) && (D_800ED148.unk130E & CTRL_FLAG_10)) {
+        if (D_800ED148.entities[arg1].flags & CTRL_FLAG_80) {
+            temp_v0 = &D_800ED148.array[D_800ED148.unk130B];
+            temp_v0->unk0 = D_800EE4C0.unk1;
+            temp_v0->unk1 = D_800EE4C0.statusCode;
+            temp_v0->unk2 = arg1;
+            D_800ED148.unk130B += 1;
+            D_800ED148.entities[arg1].controlFlags |= BATTLE_ENTITY_FLAG_BIT_14;
+            D_800EE4C0.flags6 |= 4;
+            D_800EE4C0.flags5 |= 49;
+            return 1;
+        }
+    }
+    D_800ED148.entities[arg1].controlFlags &= ~BATTLE_ENTITY_FLAG_BIT_14;
+    return 0;
+}
 
 /**
  * @brief Conditionally set control flag bit 0x10 in D_800EE4C0.
@@ -855,7 +874,53 @@ s32 func_8009DCCC(s32 unused, s32 arg1, s32 arg2) {
     return arg2;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009DD2C);
+void func_8009DD2C(s32 arg0, s32 arg1, u16 sp10, s32 arg3) {
+    s32 i;
+    BattleEntity* entities;
+    BattleEntity* entity;
+    s32 var_s0;
+    s32 var_s2;
+
+
+    entities = D_800ED148.entities;
+    if (entities[arg0 + 1].slot8.byteView.unk09 == 0) {
+        func_8009B878(arg0, &sp10, &D_800EEBC4, 0);
+        var_s2 = 0;
+        
+        var_s0 = 1;
+        for(i = 0; i < 7; i++) {
+            if ((sp10 & var_s0) && (entities[arg0].status & var_s0)) {
+                var_s2 = 1;
+            }
+            
+            var_s0 *= 2;
+        }
+
+        var_s0 = 1;
+        for(i = 8; i < 40; i++) {
+            if ((arg3 & var_s0) && (D_800ED148.entities[arg0].flags & var_s0) && (func_800B0668(arg0, var_s0) == 0)) {
+                var_s2 = 1;
+            }
+            
+            var_s0 *= 2;
+        }
+
+        
+        if ((sp10 == 0) && (arg3 == 0)) {
+            var_s2 = 1;
+        }
+
+        
+        if (var_s2 == 0) {
+            if (arg1 == 0) {
+                D_800EE4C0.flags6 |= 4;
+            }
+        } else if (arg1 == 0) {
+            D_800EE4C0.flags5 |= 1;
+        }
+        func_8009B924(arg0, sp10, arg3);
+    }
+}
 
 /**
  * @brief Compute and dispatch a battle-action effect value.
@@ -889,7 +954,7 @@ s32 func_8009DEF0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     s32 t;
     s32 cf;
 
-    if (func_8009D594() != 0) {
+    if (func_8009D594(arg0, arg1) != 0) {
         return 0;
     }
     D_800EE4C0.flags6 |= 1;
