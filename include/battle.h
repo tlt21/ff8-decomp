@@ -12,6 +12,12 @@
 #define BATTLE_RESULT_ESCAPED       2
 #define BATTLE_RESULT_WIN           4
 
+typedef struct {
+    u8 unk0;
+    u8 unk1;
+    u8 unk2;
+} UnknownStruct;/* used in func_8009D594 */
+
 /** @brief Battle command config (g_battleConfig). */
 typedef struct {
     u16 battleSceneId;
@@ -431,7 +437,9 @@ typedef struct {
     /* 0x1290 */ s16 unk1290;
     /* 0x1292 */ s16 unk1292;
     /* 0x1294 */ s16 unk1294;
-    /* 0x1296 */ u8 pad1296[0x42];  
+    /* 0x1296 */ u8 pad1296[0x36];
+    /* 0x12CC */ UnknownStruct array[1];        /* used in func_8009D594 */
+    /* 0x12CF */ u8 pad12CF[0x9];
     /* 0x12D8 */ s32 unk12D8;                   /**< Cached length argument for callback. */
     /* 0x12DC */ u8 pad12DC[0x4];               /**< Misc state. */
     /* 0x12E0 */ s16 unk12E0;                   /**< Low 13 bits of a packed s16 field. */
