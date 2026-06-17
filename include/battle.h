@@ -12,11 +12,7 @@
 #define BATTLE_RESULT_ESCAPED       2
 #define BATTLE_RESULT_WIN           4
 
-typedef struct {
-    u8 unk0;
-    u8 unk1;
-    u8 unk2;
-} UnknownStruct;/* used in func_8009D594 */
+
 
 /** @brief Battle command config (g_battleConfig). */
 typedef struct {
@@ -415,6 +411,12 @@ typedef struct {
 } TaskEntry; /* 0x10 */
 
 typedef struct {
+    u8 unk0;
+    u8 unk1;
+    u8 unk2;
+} UnknownStruct;/* used in func_8009D594 */
+
+typedef struct {
     /* 0x0000 */ BattleEntity entities[7];      /**< 7 × 0xD0 = 0x5B0. Index 0 is also the header proxy. */
     /* 0x05B0 */ u8 pad5B0[0x10];               /**< Pre-control padding. */
     /* 0x05C0 */ u8 unk5C0;                     /**< Action queue head index (used by func_800B06DC). */
@@ -604,7 +606,7 @@ typedef struct {
     /* 0x02E */ u8 pad02E[0x54];
     /* 0x082 */ BattleMagicSlot magicSlots[32];
     /* 0x122 */ BattleItemSlot itemSlots[16];
-    /* 0x172 */ u16 field172;          /**< Mirrored HP cap (set with hpRegenCap when battle HP is reduced). */
+    /* 0x172 */ s16 field172;          /**< Mirrored HP cap (set with hpRegenCap when battle HP is reduced). */
     /* 0x174 */ s16 hpRegenCap;        /**< HP regen cap (field-walk tick stops when currentHp reaches this). */
     /* 0x176 */ u8 pad176[0x06];
     /* 0x17C */ s32 xpToNext;          /**< XP needed to reach next level. */
@@ -824,7 +826,7 @@ extern u8 D_800EDE24[];     /**< 0x800EDE24: misc state. */
 extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
 extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
-extern u8 D_800EE456[];     /**< 0x800EE456: status flags byte. */
+extern u8 D_800EE456;     /**< 0x800EE456: status flags byte. */
 extern u8 D_800EE476;     /**< 0x800EE476: entity index latch. */
 
 /**

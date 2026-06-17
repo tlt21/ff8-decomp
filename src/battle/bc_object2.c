@@ -550,7 +550,7 @@ void func_8009CAD8(s32 srcIdx, s32 dstIdx) {
  * @param a0 Entity slot index.
  */
 void func_8009CD10(s32 a0) {
-    if ((*(u8 *)D_800EE456 & 3) == 0) {
+    if ((D_800EE456 & 3) == 0) {
         func_8009B924(a0, 0, 0x4001);
     }
 }
@@ -564,7 +564,7 @@ void func_8009CD10(s32 a0) {
  * @param a0 Entity slot index.
  */
 void func_8009CD44(s32 a0) {
-    if ((*(u8 *)D_800EE456 & 3) == 0) {
+    if ((D_800EE456 & 3) == 0) {
         func_8009B924(a0, 0, 0x800000);
     }
 }
@@ -988,7 +988,41 @@ s32 func_8009DEF0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     return s1;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E110);
+s32 func_8009E110(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    s32 var_s1;
+    u8 temp_s0;
+    u8 temp_s0_2;
+
+    D_800EE4C0.flags6 |= 1;
+    temp_s0 = D_800EEBBB;
+    if (func_8009B7BC(100) < temp_s0) {
+        switch (arg3) {
+        case 14:
+            var_s1 = arg2 * 50;
+            break;
+        case 15:
+            var_s1 = (D_800ED148.entities[arg1].field2C * arg2) / 16;
+            break;
+        case 9:
+            var_s1 = D_800ED148.entities[arg0].field2C - g_battleChars.chars[arg0].field172;
+            break;
+        }
+        if (((D_800EE456 & 3) == 2) && (arg0 < 3)) {
+            if (g_battleChars.chars[arg0].statusFlags & 2) {
+                var_s1 *= 2;
+            }
+        }
+        
+        var_s1 = func_8009DCCC(arg0, arg1, var_s1);
+        temp_s0_2 = D_800EEBBA;
+        if (func_8009B7BC(100) < temp_s0_2) {
+            func_8009DD2C(arg1, arg2, D_800EEBC2, D_800EEBC4);
+        }
+        return var_s1;
+    }
+    D_800EE4C0.flags6 |= 4;
+    return 0;
+}
 
 s32 func_8009E33C(s32 arg0, s32 arg1, s32 arg2) {
     D_800ED148.unk1329 = 1;
@@ -1086,7 +1120,18 @@ s32 func_8009E7B0(void) {
     return func_8009B15C() % 7 + 33;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E95C);
+s32 func_8009E95C(void) {
+    s32 temp_s0;
+
+    D_800ED148.actionType = 1;
+    D_800ED148.actionByte0 = func_8009E7B0();
+    D_800ED148.actionByte1 = 1;
+    D_800EE4C0.flags5 |= 1;
+
+    temp_s0 = func_800B0248(getMenuString(0x47), 7, getStatName(D_800ED148.actionByte0));
+    func_800A4320(func_800B02AC(func_800B0248(temp_s0, 7, getMenuString(0x40))));
+    return 0;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EA08);
 
