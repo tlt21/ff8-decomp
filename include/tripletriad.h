@@ -53,6 +53,11 @@ typedef struct {
 #define TT_CELL_SAME_MATCHED  0x0080  /**< Matched in Same-rule pass 1, or "Same fired here" on the placer. */
 #define TT_CELL_PLUS_COMBO    0x0100  /**< Involved in a Plus-rule combo this turn. */
 
+/* applyCardRules() return flags: which combo rule captured cards this turn. */
+#define TT_RESULT_SAME_FIRED  0x04   /**< Same rule fired. */
+#define TT_RESULT_PLUS_FIRED  0x08   /**< Plus rule fired. */
+#define TT_RESULT_COMBO_MASK  0x0C   /**< Same | Plus — a combo fired (run the capture sweep). */
+
 /**
  * @brief Per-card stat block (8 bytes) — one entry of @c g_tripleTriadCardStats.
  *
@@ -144,8 +149,7 @@ typedef struct {
     /* 0x04 */ u16 flags;        /**< Bit 0x2 = rotating CW (consumed by handler). */
     /* 0x06 */ s16 angle;        /**< Current animation angle (clamped to 0..0x1000). */
     /* 0x08 */ s32 initFlags;    /**< Init-time flag word; bit 0 (@c TT_OWNER_MASK) = owning seat. */
-    /* 0x0C */ u8  groupId;      /**< Group/category for the priority-cancel sweep
-                                       (also doubles as a sub-state code: 0/2 in handler). */
+    /* 0x0C */ u8  groupId;      // 0 = in cpu hand, 1 = in player hand, 2 = on board, 3 = left of board
     /* 0x0D */ u8  fieldD;       /**< Secondary index (e.g. board column). */
     /* 0x0E */ u8  priority;     /**< Slot priority within its group / hand slot 0..4
                                        (also doubles as a row index in some handlers). */
@@ -165,6 +169,14 @@ typedef struct {
 
 /** @brief The two players' hands as card objects (5 each, 10 total). */
 extern TripleTriadCardObject g_tripleTriadCardHands[10];
+
+/** @brief The two players' 5-card hands as raw card ids (match-state region @ 0x801A2C40). */
+extern u8 D_801A2C48[2][5];
+
+/** @brief PRNG used throughout the Triple Triad code; returns a fresh random word. */
+extern s32 func_80023D04(void);
+/** @brief Add @p delta to the owned quantity of card/item @p itemId; returns the new count. */
+extern s32 modifyItemQuantity(s32 itemId, s32 delta);
 
 /**
  * @brief One slot of a player's working hand for the AI search (8 bytes).
@@ -263,13 +275,18 @@ typedef enum {
 /** @brief Low bit of @c TripleTriadCardObject.initFlags / a card's owner: the owning
  *         seat (player 0 or 1). This is the seat index only — whether a seat
  *         is human, AI, or demo is the separate per-seat "player type". */
-#define TT_OWNER_MASK      0x01
+#define TT_OWNER_MASK            0x01 // Blue or pink
+#define TT_USE_STATS             0x02 // Stats don't show on card when this is set
+#define TT_SHOW_LIGHT_OVERLAY    0x04 // Card gets light purple/blue overlay depending on what bit 1 is set to
+#define TT_SHOW_DARK_OVERLAY     0x20 // Card turns dark blue
+
 
 /** @brief Bits in @c g_tripleTriadRules controlling which optional rules are active. */
 #define TT_RULE_SAME       0x02   /**< Same rule enabled. */
 #define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
 #define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */
 #define TT_RULE_ELEMENTAL  0x80   /**< FF8 Elemental rule (tile elements give +1/-1 edge modifiers). */
+#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
 
 extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats table (~110 cards). */
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */

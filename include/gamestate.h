@@ -234,6 +234,9 @@ typedef struct {
     /* 0x7C */ s32 rngState;           /**< PRNG state (LCG: seed * 69069 + 1). */
 } TripleTriadData; /* 0x80 = 128 bytes */
 
+/** @brief Returns a pointer to the Triple Triad save-data block (win/loss tallies, etc.). */
+extern TripleTriadData *getTripleTriadData(void);
+
 /* ======================================================================== */
 /* Chocobo World                                                            */
 /* ======================================================================== */

@@ -80,7 +80,7 @@ void drawMenuColorDefault(s32 a0, s32 a1, s32 a2, s32 a3) {
  * Loads the current frame's drawing-area GP0 commands from the scratchpad
  * @c ColorRenderScratch staged by @c func_80034DBC, packs them into the
  * @c DR_AREA primitive at @c prim, links @c prim into @c ot's slot chain
- * via the @c addPrimFastNoV0V1 variant, and returns the next packet cursor.
+ * via @c addPrimFast (temp $a3), and returns the next packet cursor.
  *
  * @param ot   OT slot pointer.
  * @param prim Storage for the new primitive (must have space for one DR_AREA).
@@ -93,7 +93,7 @@ DR_AREA *func_8003334C(P_TAG *ot, DR_AREA *prim) {
     setlen(prim, 2);
     prim->code[0] = c0;
     prim->code[1] = c1;
-    addPrimFastNoV0V1(ot, prim);
+    addPrimFast(ot, prim, a3);
     return prim + 1;
 }
 

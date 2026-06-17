@@ -15,7 +15,6 @@ extern u16 D_801C2EC4;
 extern u8  D_801C2DCA;
 
 /** @brief Game RNG — returns a pseudo-random value. */
-extern s32 func_80023D04(void);
 
 /**
  * @brief Per-ply state of the AI move search (one node of @ref searchBestMoveStack).
@@ -120,8 +119,8 @@ extern void drawMenuPrim(s32 mode, SubstateSlot *slot);
 extern void commitCardToBoard(TripleTriadBoard *board, s32 entityIdx, s32 col, s32 row);
 extern void func_800A26C8(void);
 
-/* Per-player Triple Triad match state (region starts at 0x801A2C40). */
-extern u8 D_801A2C48[2][5];  /* Two players' 5-card hands (card ids). */
+/* Per-player Triple Triad match state (region starts at 0x801A2C40).
+   D_801A2C48[2][5] (the two players' 5-card hands) now lives in tripletriad.h. */
 
 extern void  func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
 extern void *func_80098C44(u8 *list, s32 callback);
@@ -137,6 +136,11 @@ extern SVECTOR D_80182C50[4];   /* outer border quad corners */
 extern SVECTOR D_80182C70[4];   /* per-corner offsets used per rank digit */
 extern SVECTOR D_80182C90[4];   /* per-rank digit center positions */
 extern SVECTOR D_80182CD0[4];   /* element marker quad corners */
+
+/* GTE projection + backface helpers used by the card renderer. */
+extern void func_80040ED4(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *v3,
+                          s32 *sxy0, s32 *sxy1, s32 *sxy2, s32 *sxy3, s32 *p, s32 *flag);
+extern s32  func_80040EA4(s32 sxy0, s32 sxy1, s32 sxy2);
 extern SVECTOR D_80182CF0[4];   /* shadow quad corners (card drop-shadow) */
 
 /* Substate handlers dispatched from updateTriadMenu. Same names exist in
@@ -382,175 +386,196 @@ void setupTripleTriadHands(void) {
 }
 
 /**
- * @brief Render one Triple Triad card (up to 4 ranks + element marker +
- *        body shading + gradient border, or a single back-face quad).
+ * @brief Render one Triple Triad card to the primitive buffer.
  *
- * Allocates a 60-byte @c CardRenderWork buffer and projects the card
- * outline through the GTE via @c RotTransPers4. If the projected normal
- * is backfacing (@c NormalClip returns negative), emits a single
- * textured POLY_FT4 with the card-back UVs. Otherwise:
- *  - @c flags @c & @c 0x02 — emit 4 POLY_FT4s for the rank digits.
- *  - @c flags @c & @c 0x10 (and @c card->element @c != @c 0) — emit
- *    one POLY_FT4 for the element marker.
- *  - Always emit the card-body shading POLY_FT4 with per-card UVs and
- *    a POLY_G4 gradient border (palette picked by @c flags @c & @c 0x20
- *    / @c 0x01).
+ * Allocates a 0x3C-byte @c CardRenderWork scratch buffer, projects the card
+ * outline @c D_80182C30 via @c func_80040ED4 (RotTransPers4) and backface-tests
+ * it with @c func_80040EA4 (NormalClip). If the card faces the camera it emits,
+ * in order: the rank-digit quads (@c flags @c & @c 0x2; one @c POLY_FT4 per edge,
+ * projected from @c D_80182C90 centres + @c D_80182C70 corner offsets, UV from
+ * @c card->sides[i]); an element-marker FT4 (@c flags @c & @c 0x10 and a non-zero
+ * @c card->element, UV from the lowest set element bit); the id-derived body FT4;
+ * and a @c POLY_G4 gradient border (palette by @c flags @c & @c 0x20 / @c 0x1).
+ * A back-facing card emits a single mirrored card-back FT4. Returns the advanced
+ * @p out so the caller can chain further primitives.
  *
- * @verbatim
- * void *func_8009AE6C(u8 cardId, s32 flags, void *ot, void *out) {
- *     CardRenderWork *work;
- *     POLY_FT4 *ftPrim;
- *     POLY_G4  *gPrim;
- *     s32 baseColor;
- *     s32 transBit;
+ * @param cardId Index into @c g_tripleTriadCardStats.
+ * @param flags  Render flags: 0x2 = show ranks, 0x4 = translucent, 0x10 = show
+ *               element, 0x20 = dimmed palette, 0x1 = opponent border tint.
+ * @param ot     OT bucket pointer for @c func_8004D584 (AddPrim).
+ * @param out    Output primitive buffer (pre-allocated by the caller).
+ * @return       Pointer to the next free primitive slot in @p out.
  *
- *     work = func_80098B80(0x3C);
- *
- *     if (flags & 0x20) {
- *         baseColor = 0x2C404040;
- *     } else {
- *         baseColor = 0x2C808080;
- *     }
- *     if (flags & 0x4) {
- *         transBit = 0x02000000;
- *         baseColor |= transBit;
- *     } else {
- *         transBit = 0;
- *     }
- *
- *     RotTransPers4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
- *                   &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3],
- *                   &work->P, &work->flag);
- *
- *     if (NormalClip(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
- *         TripleTriadCard *card = &g_tripleTriadCardStats[cardId];
- *
- *         if (flags & 0x2) {
- *             s32 i, j;
- *             for (i = 0; i < 4; i++) {
- *                 for (j = 0; j < 4; j++) {
- *                     work->digitVerts[j].vx = D_80182C90[i].vx + D_80182C70[j].vx;
- *                     work->digitVerts[j].vy = D_80182C90[i].vy + D_80182C70[j].vy;
- *                     work->digitVerts[j].vz = D_80182C90[i].vz + D_80182C70[j].vz;
- *                 }
- *                 ftPrim = (POLY_FT4 *)out;
- *                 RotTransPers4(&work->digitVerts[0], &work->digitVerts[1],
- *                               &work->digitVerts[2], &work->digitVerts[3],
- *                               (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1,
- *                               (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
- *                               &work->P, &work->flag);
- *                 ftPrim->tag = 0x09000000;
- *                 *(s32 *)&ftPrim->r0 = transBit | 0x2C808080;
- *                 ftPrim->tpage = 0xC;
- *                 ftPrim->clut  = 0x3800;
- *                 {
- *                     u8 rank = card->sides[i];
- *                     ftPrim->u0 = rank * 16;        ftPrim->v0 = 0;
- *                     ftPrim->u1 = rank * 16 + 11;   ftPrim->v1 = 0;
- *                     ftPrim->u2 = rank * 16;        ftPrim->v2 = 0xB;
- *                     ftPrim->u3 = rank * 16 + 11;   ftPrim->v3 = 0xB;
- *                 }
- *                 func_8004D584(ot, ftPrim);
- *                 out = ftPrim + 1;
- *             }
- *         }
- *
- *         if ((flags & 0x10) && card->element != 0) {
- *             s32 bit = 0;
- *             while (((card->element >> bit) & 1) == 0 && bit < 8) {
- *                 bit++;
- *             }
- *             ftPrim = (POLY_FT4 *)out;
- *             RotTransPers4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
- *                           (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1,
- *                           (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
- *                           &work->P, &work->flag);
- *             ftPrim->tag = 0x09000000;
- *             *(s32 *)&ftPrim->r0 = 0x2C808080;
- *             ftPrim->tpage = 0xC;
- *             ftPrim->clut  = (bit + 0xE1) << 6;
- *             {
- *                 s32 uLeft = (bit % 4) * 64;
- *                 s32 vTop  = (bit / 4) * 16 + 16;
- *                 ftPrim->u0 = uLeft;       ftPrim->v0 = vTop;
- *                 ftPrim->u1 = uLeft + 15;  ftPrim->v1 = vTop;
- *                 ftPrim->u2 = uLeft;       ftPrim->v2 = vTop + 15;
- *                 ftPrim->u3 = uLeft + 15;  ftPrim->v3 = vTop + 15;
- *             }
- *             func_8004D584(ot, ftPrim);
- *             out = ftPrim + 1;
- *         }
- *
- *         ftPrim = (POLY_FT4 *)out;
- *         ftPrim->tag = 0x09000000;
- *         *(s32 *)&ftPrim->r0 = baseColor | 0x2C000000;
- *         *(s32 *)&ftPrim->x0 = work->outXY[0];
- *         *(s32 *)&ftPrim->x1 = work->outXY[1];
- *         *(s32 *)&ftPrim->x2 = work->outXY[2];
- *         *(s32 *)&ftPrim->x3 = work->outXY[3];
- *         {
- *             s32 uLeft = (cardId & 0x1) << 6;
- *             s32 vTop  = (cardId << 5) & 0xC0;
- *             ftPrim->u0 = uLeft;          ftPrim->v0 = vTop;
- *             ftPrim->u1 = uLeft + 0x3F;   ftPrim->v1 = vTop;
- *             ftPrim->u2 = uLeft;          ftPrim->v2 = vTop + 0x3F;
- *             ftPrim->u3 = uLeft + 0x3F;   ftPrim->v3 = vTop + 0x3F;
- *             ftPrim->tpage = (((cardId >> 1) + 0xC8) << 6) | ((((cardId & 0x1) << 7) + 0x300) >> 4);
- *             ftPrim->clut  = ((cardId >> 3) + 0x10) | 0x80;
- *         }
- *         func_8004D584(ot, ftPrim);
- *         out = ftPrim + 1;
- *
- *         {
- *             u32 color0, color1, color2;
- *             gPrim = (POLY_G4 *)out;
- *             RotTransPers4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
- *                           (s32 *)&gPrim->x0, (s32 *)&gPrim->x1,
- *                           (s32 *)&gPrim->x2, (s32 *)&gPrim->x3,
- *                           &work->P, &work->flag);
- *             gPrim->tag = 0x08000000;
- *             if (flags & 0x20) {
- *                 color0 = 0x38807060; color1 = 0x807060; color2 = 0x402018;
- *             } else if (flags & 0x1) {
- *                 color0 = 0x38FFE0C0; color1 = 0xFFE0C0; color2 = 0x804030;
- *             } else {
- *                 color0 = 0x38E0C0FF; color1 = 0xE0C0FF; color2 = 0x403080;
- *             }
- *             *(u32 *)&gPrim->r0 = color0;
- *             *(u32 *)&gPrim->r1 = color1;
- *             *(u32 *)&gPrim->r2 = color2;
- *             *(u32 *)&gPrim->r3 = color2;
- *             func_8004D584(ot, gPrim);
- *             out = gPrim + 1;
- *         }
- *     } else {
- *         ftPrim = (POLY_FT4 *)out;
- *         ftPrim->tag = 0x09000000;
- *         *(s32 *)&ftPrim->r0 = transBit | 0x2C808080;
- *         *(s32 *)&ftPrim->x0 = work->outXY[0];
- *         *(s32 *)&ftPrim->x1 = work->outXY[1];
- *         *(s32 *)&ftPrim->x2 = work->outXY[2];
- *         *(s32 *)&ftPrim->x3 = work->outXY[3];
- *         ftPrim->v0 = 0xC0;
- *         ftPrim->v1 = 0xC0;
- *         ftPrim->v2 = 0xFF;
- *         ftPrim->v3 = 0xFF;
- *         ftPrim->tpage = 0x9D;
- *         ftPrim->u0 = 0x3F;
- *         ftPrim->u1 = 0;
- *         ftPrim->u2 = 0x3F;
- *         ftPrim->u3 = 0;
- *         ftPrim->clut = 0x3FF0;
- *         func_8004D584(ot, ftPrim);
- *         out = ftPrim + 1;
- *     }
- *
- *     func_80098BA0(0x3C);
- *     return out;
- * }
- * @endverbatim
+ * @note Reaching 100% needs four gcc-2.7.2 scheduling/allocation devices (this
+ *       was be_object2's last function, matched over ~16 rounds; a clean rewrite
+ *       compiles to ~99.5%). They are decomp scaffolds — the original 1998 source
+ *       produced this codegen naturally; finding the natural equivalents is
+ *       permuter territory:
+ *       1. The rank-digit loop walks a SEPARATE @c anchor pointer (advanced at
+ *          the loop tail) for the rgb/tpage/clut/uv stores while @c out drives
+ *          the projection + tag store. This makes the store address an i-derived
+ *          induction variable, so its @c addiu lands in the back-edge delay slot
+ *          (a single @c out walker makes it out-derived and steps mid-block).
+ *       2. The two empty @c do/while(0) blocks bracketing the rgb store are
+ *          zero-instruction basic-block boundaries: the first keeps the rgb value
+ *          built inline, the second keeps the store ahead of the @c out advance.
+ *       3. The dead @c argP=gPrim in the inner loop amplifies @c gPrim's
+ *          reference count so the @c %hi temp for @c D_80182C70 is rematerialized
+ *          into @c v0 instead of fused into @c a0.
+ *       4. The triple-nested @c do/while(0) around @c eflag=flags&0x10 amplifies
+ *          @c flags so it out-ranks @c baseColor for register @c s7; the
+ *          @c do/while(0) around @c argP=gPrim before the border AddPrim blocks
+ *          the cross-jump that would merge the front and back AddPrim tails.
  */
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object2", func_8009AE6C);
+void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
+    CardRenderWork *work;
+    POLY_FT4 *ftPrim;
+    POLY_G4 *gPrim;
+    POLY_G4 *argP;
+    s32 baseColor;
+    s32 transBit;
+    s32 eflag;
+    TripleTriadCard *card;
+    u8 id;
+
+    id = cardId;
+    work = (CardRenderWork *)func_80098B80(sizeof(CardRenderWork));
+    baseColor = 0x2C404040;
+    if ((flags & 0x20) == 0) {
+        baseColor = 0x2C808080;
+    }
+    if (flags & 0x4) {
+        transBit = 0x2000000;
+        baseColor |= transBit;
+    } else {
+        transBit = 0;
+    }
+    card = &g_tripleTriadCardStats[id];
+    func_80040ED4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
+                  &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3], &work->P, &work->flag);
+    if (func_80040EA4(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
+        if (flags & 0x2) {
+            SVECTOR *rowAddr;
+            s32 i;
+            s32 j;
+            POLY_FT4 *anchor = (POLY_FT4 *)out;
+            for (i = 0; i < 4; i++) {
+                rowAddr = &D_80182C90[i];
+                for (j = 0; j < 4; j++) {
+                    argP = gPrim; /* dead read: amplifies gPrim refs to split the %hi temp (see note) */
+                    work->digitVerts[j].vx = rowAddr->vx + D_80182C70[j].vx;
+                    work->digitVerts[j].vy = rowAddr->vy + D_80182C70[j].vy;
+                    work->digitVerts[j].vz = rowAddr->vz + D_80182C70[j].vz;
+                }
+
+                func_80040ED4(&work->digitVerts[0], &work->digitVerts[1], &work->digitVerts[2], &work->digitVerts[3],
+                              (s32 *)&((POLY_FT4 *)out)->x0, (s32 *)&((POLY_FT4 *)out)->x1,
+                              (s32 *)&((POLY_FT4 *)out)->x2, (s32 *)&((POLY_FT4 *)out)->x3, &work->P, &work->flag);
+                ((POLY_FT4 *)out)->tag = 0x09000000;
+                do { } while (0); /* BB boundary: keep the rgb value built inline */
+                *(u32 *)&anchor->r0 = transBit | 0x2C808080;
+                do { } while (0); /* BB boundary: keep the rgb store ahead of the out advance */
+                ftPrim = (POLY_FT4 *)out;
+                out = ftPrim + 1;
+                anchor->tpage = 0xC;
+                anchor->clut = 0x3800;
+                {
+                    u8 rank = card->sides[i];
+                    setUVWH(anchor, rank * 16, 0, 11, 11);
+                }
+                func_8004D584(ot, ftPrim);
+                anchor++;
+            }
+        }
+        /* triple do/while(0): amplify flags' ref count so it wins s7 over baseColor */
+        do { do { do { eflag = flags & 0x10; } while (0); } while (0); } while (0);
+        if (eflag) {
+            s32 element = card->element;
+            if (element != 0) {
+                char bits = element;
+                s32 bit;
+                for (bit = 0; bit < 8; bit++) {
+                    if ((bits >> bit) & 1) {
+                        break;
+                    }
+                }
+
+                ftPrim = (POLY_FT4 *)out;
+                ftPrim->tag = 0x09000000;
+                *(u32 *)&ftPrim->r0 = 0x2C808080;
+                func_80040ED4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
+                              (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1, (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
+                              &work->P, &work->flag);
+                ftPrim->tpage = 0xC;
+                ftPrim->clut = (bit + 0xE1) << 6;
+                {
+                    s32 uLeft = (bit % 4) * 64;
+                    s32 vTop = ((bit / 4) * 16) + 16;
+                    setUVWH(ftPrim, uLeft, vTop, 15, 15);
+                }
+                func_8004D584(ot, ftPrim);
+                out = ftPrim + 1;
+            }
+        }
+        ftPrim = (POLY_FT4 *)out;
+        ftPrim->tag = 0x09000000;
+        *(u32 *)&ftPrim->r0 = baseColor | 0x2C000000;
+        *(s32 *)&ftPrim->x0 = work->outXY[0];
+        *(s32 *)&ftPrim->x1 = work->outXY[1];
+        *(s32 *)&ftPrim->x2 = work->outXY[2];
+        *(s32 *)&ftPrim->x3 = work->outXY[3];
+        setUVWH(ftPrim, (id & 0x1) << 6, ((u8)(id << 5)) & 0xC0, 0x3F, 0x3F);
+        ftPrim->clut = (((id >> 1) + 0xC8) << 6) | ((((id & 0x1) << 7) + 0x300) >> 4);
+        ftPrim->tpage = ((id >> 3) + 0x10) | 0x80;
+        func_8004D584(ot, ftPrim);
+        out = ftPrim + 1;
+        {
+            u32 color0;
+            u32 color1;
+            u32 color2;
+            func_80040ED4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
+                          (s32 *)&((POLY_G4 *)out)->x0, (s32 *)&((POLY_G4 *)out)->x1,
+                          (s32 *)&((POLY_G4 *)out)->x2, (s32 *)&((POLY_G4 *)out)->x3, &work->P, &work->flag);
+            ((POLY_G4 *)out)->tag = 0x08000000;
+            gPrim = (POLY_G4 *)out;
+            if (flags & 0x20) {
+                color0 = 0x38807060;
+                color1 = 0x807060;
+                color2 = 0x402018;
+            } else if ((flags & 0x1) == 0) {
+                color0 = 0x38E0C0FF;
+                color1 = 0xE0C0FF;
+                color2 = 0x403080;
+            } else {
+                color0 = 0x38FFE0C0;
+                color1 = 0xFFE0C0;
+                color2 = 0x804030;
+            }
+            *(u32 *)&((POLY_G4 *)out)->r0 = color0;
+            *(u32 *)&((POLY_G4 *)out)->r1 = color1;
+            *(u32 *)&((POLY_G4 *)out)->r2 = color2;
+            *(u32 *)&((POLY_G4 *)out)->r3 = color2;
+            do { argP = gPrim; } while (0); /* BB boundary: block the front/back AddPrim cross-jump */
+            func_8004D584(ot, argP);
+            out = gPrim + 1;
+        }
+    } else {
+        ftPrim = (POLY_FT4 *)out;
+        ftPrim->tag = 0x09000000;
+        *(u32 *)&ftPrim->r0 = transBit | 0x2C808080;
+        *(s32 *)&ftPrim->x0 = work->outXY[0];
+        *(s32 *)&ftPrim->x1 = work->outXY[1];
+        *(s32 *)&ftPrim->x2 = work->outXY[2];
+        *(s32 *)&ftPrim->x3 = work->outXY[3];
+        setUV4(ftPrim, 0x3F, 0xC0, 0, 0xC0, 0x3F, 0xFF, 0, 0xFF);
+        ftPrim->tpage = 0x9D;
+        ftPrim->clut = 0x3FF0;
+        func_8004D584(ot, ftPrim);
+        out = ftPrim + 1;
+    }
+    func_80098BA0(sizeof(CardRenderWork));
+    return out;
+}
 
 /**
  * @brief Emit a single semi-transparent black @c POLY_F4 quad — a "card shadow".

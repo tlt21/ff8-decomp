@@ -2,6 +2,17 @@
 #include "psxsdk/libgpu.h"
 #include "tripletriad/be_object4.h"
 
+/** @brief One 0x0C-byte entry of the D_80182E70 per-SFX configuration table. */
+typedef struct {
+    /* 0x00 */ u8 flags;   /**< Bit 0 selects the stop-vs-start fade (see func_800A2054). */
+    /* 0x01 */ u8 field2F; /**< Value written to each SFX entry's field 0x2F. */
+    /* 0x02 */ u8 pitch;   /**< Pitch value. */
+    /* 0x03 */ u8 pad03[9];
+} SfxConfig;
+
+extern DRAWENV *g_activeDrawEnv;
+extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
+extern void sendSpuCommand(s32 idx);
 extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
@@ -13,7 +24,7 @@ extern s32 D_801D4B28[];
 extern s32 D_801D4B30[];
 extern s32 g_menuColor[];
 extern u8 D_8012E66C[];
-extern u8 D_80182E70[];
+extern SfxConfig D_80182E70[];
 extern u8 D_80182EC8[];
 extern u8 D_801C2DCA;
 extern DRAWENV D_801C2DD0[2];
@@ -25,8 +36,29 @@ extern u8 D_801D49C8[];
 extern u8 D_801D49EC;
 extern s32 func_800A238C();
 extern s32 func_800A279C();
+extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1BE0);
+/**
+ * @brief Reset and reconfigure the seven battle SFX channels.
+ *
+ * Resets all sound effects, runs a (60, 32) init via @c func_800A4504, then for
+ * each of the seven channels applies the per-channel settings from the
+ * @c D_80182E70 config table: reverb mode = channel index, field 0x2F and pitch
+ * from the table entry, and zeroed entry params.
+ */
+void func_800A1BE0(void)
+{
+    s32 i;
+
+    resetAllSfx();
+    func_800A4504(0x3C, 0x20);
+    for (i = 0; i < 7; i++) {
+        setSfxReverbMode(i, i);
+        setSfxField2F(i, D_80182E70[i].field2F);
+        setSfxPitch(i, D_80182E70[i].pitch);
+        setSfxEntryParams(i, 0, 0);
+    }
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1C6C);
 
@@ -41,7 +73,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1D68);
  * @param a0 Object index.
  */
 void func_800A2054(s32 a0) {
-    u8 *base = D_80182E70;
+    u8 *base = (u8 *)D_80182E70;
     u8 *entry;
 
     entry = base + a0 * 12;
@@ -291,7 +323,27 @@ void func_800A31B8(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0, s32 stack1) {
     func_800A30C8(a0, a1, a2, a3, stack0, stack1, 1);
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A31EC);
+/**
+ * @brief Build a draw-area primitive from the active draw environment and link it.
+ *
+ * Packs the @c SetDrawArea GP0 command for @c g_activeDrawEnv's clip rectangle
+ * into the @c DR_AREA at @p prim, links @p prim into the ordering-table slot
+ * @p ot via @c addPrimFast (hand-picked temp @c $s2), and returns the next
+ * packet slot.
+ *
+ * @param ot   Ordering-table slot to link the primitive into.
+ * @param prim Storage for the @c DR_AREA primitive.
+ * @return Cursor for the next primitive (@c prim @c + @c 1).
+ *
+ * @note @c ++prim (advance-then-return), rather than @c prim @c + @c 1, is what
+ *       matches: reassigning @c prim splits its live range so it drops its
+ *       cross-call references and @c ot wins the lower saved register.
+ */
+DR_AREA *func_800A31EC(P_TAG *ot, DR_AREA *prim) {
+    SetDrawArea((u8 *)prim, &g_activeDrawEnv->clip);
+    addPrimFast(ot, prim, s2);
+    return ++prim;
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3248);
 
@@ -319,17 +371,134 @@ void func_800A3320(s32 a0, s32 a1, u8 *a2) {
     *(s32 *)(base + 4) = saved1;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3398);
+/**
+ * @brief Scale a RECT about its center by a fixed-point factor, into @p out.
+ *
+ * @p scale is a signed fixed-point multiplier where @c 0x1000 (4096) represents
+ * 1.0. When @c abs(scale) is exactly 1.0 the rectangle is copied verbatim.
+ * Otherwise each axis is recentered: the half-extent is @c (scale * dimension) /
+ * 8192 (unscale the Q12 product by 4096, then halve), the output origin is
+ * @c center - halfExtent, and the output dimension is @c halfExtent * 2.
+ *
+ * Written in the in-place register-reuse style shared by the other FF8 RECT
+ * helpers (cf. @c func_8002B080): each field is read once, then progressively
+ * transformed in the same variable (x → centerX, w → halfWidth) so gcc 2.7.2
+ * keeps it in one register rather than spilling copies.
+ *
+ * @param scale Fixed-point scale factor (@c 0x1000 == 1.0).
+ * @param in    Source rectangle.
+ * @param out   Destination rectangle.
+ */
+void func_800A3398(s32 scale, RECT *in, RECT *out) {
+    if (abs(scale) == 0x1000) {
+        *out = *in;
+    } else {
+        s32 x = in->x;
+        s32 y = in->y;
+        u32 w = in->w;
+        u32 h = in->h;
+        u32 prodW = scale * w;
+        u32 prodH = scale * h;
+
+        x = x + (w / 2);  /* x -> center x */
+        w = prodW / 8192; /* w -> half the scaled width */
+        out->x = x - w;
+        out->w = w * 2;
+
+        y = y + (h / 2);  /* y -> center y */
+        h = prodH / 8192; /* h -> half the scaled height */
+        out->y = y - h;
+        out->h = h * 2;
+    }
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A343C);
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3528);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3884);
+/**
+ * @brief Step a wrapping cursor by the D-pad input, playing a click per move.
+ *
+ * @param pad   Controller button word: @c 0x4000 (down) advances the cursor,
+ *              @c 0x1000 (up) retreats it. Each accepted press plays
+ *              @c sendSpuCommand(1).
+ * @param count Number of selectable entries (the cursor wraps over this range).
+ * @param index Current cursor index.
+ * @return The updated cursor index.
+ *
+ * @note @p pad must be a 16-bit type — with a 32-bit param gcc reads the saved
+ *       copy for the first mask test instead of the incoming argument register.
+ */
+s32 func_800A3884(u16 pad, s32 count, s32 index) {
+    if (pad & 0x4000) {
+        sendSpuCommand(1);
+        index++;
+        if (index >= count) {
+            index = 0;
+        }
+    }
+    if (pad & 0x1000) {
+        sendSpuCommand(1);
+        index--;
+        if (index < 0) {
+            index = count - 1;
+        }
+    }
+    return index;
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A390C);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3C7C);
+/**
+ * @brief Build a 12x12 font-glyph sprite and prepend it to the ordering table.
+ *
+ * Fills a free-size @c SPRT (code 0x64, carried in @c g_menuColor) for tile
+ * @p tileIdx of a 21-tile-per-row font texture: CLUT from @p palArg's low 3 bits,
+ * menu color chosen by its high bits, 12x12 size, position @p xy, and UV from the
+ * tile's column/row. Links the primitive at the head of the OT carried in @p ot
+ * (addr<<8 form) via @c swl and returns the new head.
+ *
+ * Hand-optimized in the FF8 sprite/RECT style (cf. @c func_8002B080): batched
+ * 32-bit stores, and in-place register reuse (the head register becomes the
+ * palette-page test; the palette register becomes the color) to steer gcc 2.7.2.
+ *
+ * @param ot      Current OT head (packed @c addr<<8).
+ * @param prim    Sprite primitive to fill.
+ * @param tileIdx Glyph/tile index into the 21-per-row font texture.
+ * @param palArg  Bits 2:0 = CLUT palette; bits 7:3 select the menu color.
+ * @param xy      Packed screen position (x | y<<16).
+ * @return The new OT head (@c prim<<8).
+ */
+u32 func_800A3C7C(u32 ot, SPRT *prim, s32 tileIdx, s32 palArg, u32 xy) {
+    u32 head;
+    s32 quo;
+    s32 rem;
+
+    ((u8 *)&prim->tag)[3] = 4; /* SPRT length = 4 words */
+    __asm__ __volatile__("" : : : "memory"); /* keep the head shift after the len store */
+    head = (u32)prim << 8;     /* new OT head */
+    __asm__ __volatile__("swl %0, 2(%1)" : : "r"(ot), "r"(prim) : "memory"); /* link */
+    ot = head;
+
+    head = (u32)palArg >> 3;   /* head register reused: now the palette page */
+    palArg = palArg & 7;
+    prim->clut = (palArg << 6) + 0x3812; /* getClut(288, 224 + palette) */
+    if (head) {
+        palArg = g_menuColor[1]; /* palette register reused: now the color */
+    } else {
+        palArg = g_menuColor[0];
+    }
+
+    *(u32 *)&prim->w = 0xC000C; /* 12 x 12 */
+    *(u32 *)&prim->r0 = palArg; /* r, g, b, code (0x64) */
+    *(u32 *)&prim->x0 = xy;
+
+    quo = tileIdx / 21;
+    rem = tileIdx % 21;
+    *(u16 *)&prim->u0 = (rem | (quo << 8)) * 12; /* tile UV, 21/row, 12px cells */
+
+    return ot;
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3D2C);
 
@@ -358,7 +527,32 @@ void func_800A4098(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0) {
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A40F0);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A4250);
+/** @brief Render context for @c func_800A4250 (fields named by offset — role inferred). */
+typedef struct {
+    /* 0x00 */ s16 unk00;     /**< Forwarded (−0x13) as @c func_8002FF34's @c yPos. */
+    /* 0x02 */ s16 unk02;     /**< Base for the @c w arg (+0xB, then +column*13). */
+    /* 0x04 */ u8  pad04[0xC];
+    /* 0x10 */ s32 unk10;     /**< Forwarded as @c func_8002FF34's @c col. */
+} func_800A4250_arg2;
+
+/**
+ * @brief Emit one glyph into the OT at a grid cell derived from a linear index.
+ *
+ * Forwards to the glyph emitter @c func_8002FF34 (glyph 0) with the position
+ * taken from @p ctx and the column @c a3 @c % @c 11 at a 13px pitch. Returns
+ * the advanced packet cursor.
+ *
+ * @note @c w (@c ctx->unk02 @c + @c 0xB) must be a separate local — inlining it
+ *       lets gcc reassociate the @c +0xB into the @c *13 term and reorder the
+ *       adds away from the target.
+ */
+void *func_800A4250(s32 *otBase, void *pkt, func_800A4250_arg2 *ctx, s32 a3) {
+    s32 w = ctx->unk02 + 0xB;
+    return func_8002FF34(otBase, pkt, 0,
+                         ctx->unk00 - 0x13,
+                         w + (a3 % 11) * 13,
+                         ctx->unk10);
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A42D0);
 
