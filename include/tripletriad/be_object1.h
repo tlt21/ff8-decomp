@@ -93,7 +93,9 @@ extern u32          *D_801D3008;        /**< Scratch buffer pointer for RotTrans
 
 /* ── Deferred VRAM transfer pool (func_800988E0) ──────────────────────────── */
 extern PoolEntry     D_801C2ED0[];
-extern ResHeader     D_800B71D8;        /**< Resource header registered by the draw-target setup. */
+extern ResHeader     D_800B71D8;               /**< Resource header registered by the draw-target setup. */
+extern ResHeader     g_tripleTriadCardFrames;  /**< Card frame/border graphics (4bpp TIM, uploaded to VRAM at init). */
+extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM, ~110 cards at 64x64, uploaded to VRAM at init). */
 
 /* ── Draw buffers / VRAM scratch ──────────────────────────────────────────── */
 extern DISPENV       D_801C2E88[2];
@@ -106,8 +108,6 @@ extern u8            D_801C2FE0[2][0x8000];
 extern u8           *D_801D2FE0;
 extern u8           *D_801D3000;
 extern u8           *D_801A2C40;
-extern u8            D_800A45B8[];
-extern u8            D_800B7638[];
 extern u8            D_80182B84[];
 extern u8            g_tripleTriadCardCounts[];
 

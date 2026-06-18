@@ -25,8 +25,8 @@ void initTripleTriad(void) {
     func_800A2208();
     func_80098DD4();
     func_8009EB98();
-    func_80098A6C(D_800B7638);
-    func_80098A6C(D_800A45B8);
+    func_80098A6C(&g_tripleTriadCardArt);
+    func_80098A6C(&g_tripleTriadCardFrames);
 
     g_tripleTriadInputFlags = 0;
     g_tripleTriadFrameCount = 0;
@@ -38,22 +38,15 @@ void initTripleTriad(void) {
 }
 
 /**
- * @brief Battle engine main loop — runs until the state machine sentinel (6) is reached.
+ * @brief Triple Triad main loop — drives the game until it signals exit.
  *
- * After initializing all subsystems via @c initTripleTriad, repeatedly:
- *  - If the disable-input flag is set in @c g_tripleTriadInputFlags (bit 2) and bits 4 or 5
- *    of @c D_801C2EC0[2] are set, calls @c func_800A271C and clears the
- *    3-element controller-input mask arrays (@c D_801C2EC0/EB8/EC8).
- *  - Dispatches via @c D_800A4588 (function-pointer table indexed 1..5 by
- *    @c g_tripleTriadState) until the state returns non-zero (storing it in
- *    @c D_801A2C40 and clearing state) or state becomes 6 (exit).
- *  - Drains the active list at @c D_801A2C40 via @c func_80098D28, then runs
- *    per-frame sub-tick callbacks and increments the frame counter @c g_tripleTriadFrameCount.
+ * Initializes the engine, then runs one iteration per frame: service input,
+ * advance the state-machine handlers, and tick the per-frame subsystems. On
+ * exit it fades out, runs two finalize frames, and restores the vsync rate.
  *
- * After the main loop, runs two frame-finalize iterations and stores 100 to
- * @c g_vsyncRate (D_8005F158) before returning.
+ * @return Always 0.
  */
-s32 func_80098304(void) {
+s32 tripleTriadMainLoop(void) {
     s32 i;
 
     initTripleTriad();
