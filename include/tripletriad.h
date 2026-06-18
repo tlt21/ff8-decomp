@@ -288,6 +288,23 @@ typedef enum {
 #define TT_RULE_ELEMENTAL  0x80   /**< FF8 Elemental rule (tile elements give +1/-1 edge modifiers). */
 #define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
 
+/** @brief Bits in @c g_tripleTriadInputFlags. */
+#define TT_INPUT_DISABLED   0x04  /**< Card input suspended while a modal sub-screen is active. */
+#define TT_INPUT_HAND_BUILD 0x08  /**< Hand-building input active. */
+
+/** @brief Values of @c g_tripleTriadState — selects the next per-phase handler in
+ *  @c g_tripleTriadStateHandlers. The dispatch loop calls the handler until it
+ *  returns non-zero (-> @c TT_STATE_IDLE) or reaches @c TT_STATE_EXIT. */
+typedef enum {
+    TT_STATE_IDLE       = 0,  /**< No pending handler. */
+    TT_STATE_INIT       = 1,  /**< Startup render-list init (set only by initTripleTriad). */
+    TT_STATE_SCRIPT     = 2,  /**< Script-handler phase; replay re-entry point. */
+    TT_STATE_PLAY       = 3,  /**< Match play (battle-update callbacks). */
+    TT_STATE_CARD_CLAIM = 4,  /**< Post-match card claim (set after the win/loss tally). */
+    TT_STATE_RESTART    = 5,  /**< Redirects to TT_STATE_SCRIPT; no decompiled setter found. */
+    TT_STATE_EXIT       = 6   /**< Terminate the main loop. */
+} TripleTriadState;
+
 extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats table (~110 cards). */
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
@@ -297,8 +314,8 @@ extern s32                  g_tripleTriadRules;                /**< Active rule 
  * are referenced across the be_objectN translation units. */
 extern s32           D_801D30F8;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
 extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame counter (volatile forces lw, not lbu). */
-extern s32           g_tripleTriadInputFlags;       /**< UI/input mode bitmask; bit 3 gates hand-building. */
-extern u8            g_tripleTriadState;        /**< Staged next battle-state result. */
+extern s32           g_tripleTriadInputFlags;       /**< Input-state flags (TT_INPUT_*). */
+extern u8            g_tripleTriadState;        /**< Current phase / next handler to dispatch (TripleTriadState). */
 extern u8            D_801C2DCA;        /**< Active double-buffer index. */
 extern DRAWENV       D_801C2DD0[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */

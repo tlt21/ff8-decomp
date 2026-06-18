@@ -218,7 +218,7 @@ void func_800A26C8(void) {
     u8 *base = D_801D4568;
     func_800A24B4(base);
     func_800A1D68(4, base, 0);
-    g_tripleTriadInputFlags |= 0x4;
+    g_tripleTriadInputFlags |= TT_INPUT_DISABLED;
 }
 
 /**
@@ -228,7 +228,7 @@ void func_800A26C8(void) {
  */
 void func_800A271C(void) {
     func_800A2054(4);
-    g_tripleTriadInputFlags &= ~0x4;
+    g_tripleTriadInputFlags &= ~TT_INPUT_DISABLED;
 }
 
 /**
@@ -257,7 +257,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A279C);
  *
  * @return Pointer to D_801D4968 list header.
  */
-u8 *func_800A2968(void) {
+u8 *initTripleTriadRenderList(void) {
     u8 *list = D_801D4968;
     u8 *node;
     func_80098BC0(list, D_801D4978, 0x10, 4);

@@ -1033,7 +1033,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
 s32 updateCardSelectCursor(SubstateMachineNode *p) {
     s32 s1;
 
-    if (!(g_tripleTriadInputFlags & 0x4) && (D_801C2EC4 & 0x20)) {
+    if (!(g_tripleTriadInputFlags & TT_INPUT_DISABLED) && (D_801C2EC4 & 0x20)) {
         func_800A26C8();
         return 0;
     }
@@ -2230,7 +2230,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
 s32 updateAiTurn(func_8009DBE8_arg0 *a) {
     TripleTriadBoard board;
 
-    if (g_tripleTriadInputFlags & 4) {
+    if (g_tripleTriadInputFlags & TT_INPUT_DISABLED) {
         return 0;
     }
 

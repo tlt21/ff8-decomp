@@ -8,7 +8,7 @@
 /**
  * @brief Script-action entry in the D_801D3EC0 2x5 table.
  *
- * Initialized in func_800A00EC. Used by func_8009FC90's state-2 sweep
+ * Initialized in initTripleTriadScripts. Used by func_8009FC90's state-2 sweep
  * to mark queued actions complete and by func_8009EF68 to scan for
  * pending actions.
  */
@@ -793,7 +793,7 @@ s32 func_8009F17C(ScriptCtx *node) {
             break;
         case 1:
             if (node->subState == 0) {
-                g_tripleTriadInputFlags |= 8;
+                g_tripleTriadInputFlags |= TT_INPUT_HAND_BUILD;
                 node->subState++;
                 goto ret0;
             }
@@ -824,7 +824,7 @@ s32 func_8009F17C(ScriptCtx *node) {
                         node->subState = 0;
                         break;
                     }
-                    g_tripleTriadInputFlags &= ~8;
+                    g_tripleTriadInputFlags &= ~TT_INPUT_HAND_BUILD;
                     node->state = 2;
                     node->subState = 0;
                     break;
@@ -1109,7 +1109,7 @@ extern void func_800A030C(s32 a0);
 /**
  * @brief Battle-script callback: 5-state machine driving an intro/setup sequence.
  *
- * Registered via func_800A00EC. Each invocation advances the state machine
+ * Registered via initTripleTriadScripts. Each invocation advances the state machine
  * one tick; returns 0 while running, returns from any case.
  *
  * State 0: warmup. Calls func_800A030C(0xF) once, ticks 15 frames.
@@ -1120,7 +1120,7 @@ extern void func_800A030C(s32 a0);
  *          D_801D3EC0[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
  * State 3: wait. Calls func_8009EF68 once, idles 0x1E frames.
- * State 4: done. Sets g_tripleTriadState = 3 and exits.
+ * State 4: done. Sets g_tripleTriadState = TT_STATE_PLAY and exits.
  *
  * @param ctx Callback context (state at +0x10, subState at +0x11).
  * @return 0 while progressing, 0 on completion.
@@ -1199,7 +1199,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
             break;
 
         case 4:
-            g_tripleTriadState = 3;
+            g_tripleTriadState = TT_STATE_PLAY;
             return 0;
         }
     }
@@ -1299,7 +1299,7 @@ s32 func_8009FED0(void) {
  *
  * @return The initialised pool (@c D_801D3FA0).
  */
-u8 *func_800A00EC(void) {
+u8 *initTripleTriadScripts(void) {
     ScriptCtx *node;
     ScriptEntry *e;
     u8 *base;

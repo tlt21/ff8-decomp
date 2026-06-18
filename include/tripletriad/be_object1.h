@@ -61,7 +61,7 @@ typedef struct {
 
 typedef struct { u8 r, g, b; } RGB;
 
-/** @brief Battle-state handler signature (entries of @c D_800A4588). */
+/** @brief Battle-state handler signature (entries of @c g_tripleTriadStateHandlers). */
 typedef u8 *(*BattleStateFn)(void);
 
 /** @brief Battle-state handler node: sub-state selector, frame counter, and
@@ -107,7 +107,7 @@ extern u8            D_801D2FF0[2][8];
 extern u8            D_801C2FE0[2][0x8000];
 extern u8           *D_801D2FE0;
 extern u8           *D_801D3000;
-extern u8           *D_801A2C40;
+extern u8           *g_tripleTriadActiveList;
 extern u8            D_80182B84[];
 extern u8            g_tripleTriadCardCounts[];
 
@@ -123,7 +123,7 @@ extern s8            D_801C2DC9;
 extern volatile u16  D_8005F158;
 extern RGB           D_80182B5C;        /**< Debug-text rgb color. */
 extern u32           D_80182AA0[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
-extern BattleStateFn D_800A4588[];      /**< Battle-state handler table. */
+extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handler table. */
 
 /* ── Entry points defined in be_object1.c (forward-declared for earlier callers) ── */
 extern void func_800988D4(void);

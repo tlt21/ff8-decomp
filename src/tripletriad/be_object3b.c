@@ -213,7 +213,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
  *
  * @return 0 on the no-claim path, otherwise the @c D_801D42F8 pool pointer.
  */
-s32 func_800A18D0(void)
+s32 setupTripleTriadCardClaim(void)
 {
     s32 i;
     s32 col;
@@ -262,7 +262,7 @@ s32 func_800A18D0(void)
         for (i = 0; i < 5; i++) {
             markItemPresent(D_801A2C48[D_801D4450][i]);
         }
-        g_tripleTriadState = 6;
+        g_tripleTriadState = TT_STATE_EXIT;
         return 0;
     }
     func_80098BC0(D_801D42F8, D_801D42A8, 0x14, 4);
@@ -304,7 +304,7 @@ s32 func_800A18D0(void)
 /**
  * @brief Unconditional hang.
  *
- * @note Not referenced by the @c D_800A4588 battle-state table or any caller —
+ * @note Not referenced by the @c g_tripleTriadStateHandlers battle-state table or any caller —
  *       appears to be an unused/stub state that simply spins forever.
  */
 void hangForever(void) {
@@ -312,12 +312,12 @@ void hangForever(void) {
 }
 
 /**
- * @brief Battle state-5 handler (@c D_800A4588[5]).
+ * @brief Battle state-5 handler (@c g_tripleTriadStateHandlers[5]).
  *
- * Sets the next state to 2 (@c g_tripleTriadState = 2) and returns 0 so the
+ * Sets the next state to @c TT_STATE_SCRIPT and returns 0 so the
  * state-dispatch loop keeps running.
  */
-s32 battleState5Handler(void) {
-    g_tripleTriadState = 2;
+s32 tripleTriadRestartScript(void) {
+    g_tripleTriadState = TT_STATE_SCRIPT;
     return 0;
 }

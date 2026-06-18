@@ -19,7 +19,7 @@ void initTripleTriad(void) {
     func_80098B70();
     initTriadTaskPool();
     func_80098B68();
-    func_800984DC();
+    initGraphics();
     resetTriadMenuState();
     func_800A1BE0();
     func_800A2208();
@@ -30,7 +30,7 @@ void initTripleTriad(void) {
 
     g_tripleTriadInputFlags = 0;
     g_tripleTriadFrameCount = 0;
-    g_tripleTriadState = 1;
+    g_tripleTriadState = TT_STATE_INIT;
 
     for (i = 0; i < 110; i++) {
         g_tripleTriadCardCounts[i] = func_80023B14(i);
@@ -52,7 +52,7 @@ s32 tripleTriadMainLoop(void) {
     initTripleTriad();
 
     do {
-        if (g_tripleTriadInputFlags & 0x4) {
+        if (g_tripleTriadInputFlags & TT_INPUT_DISABLED) {
             if (D_801C2EC0[2] & 0x30) {
                 func_800A271C();
             }
@@ -62,14 +62,14 @@ s32 tripleTriadMainLoop(void) {
             }
         }
 
-        while (g_tripleTriadState != 0 && g_tripleTriadState != 6) {
-            D_801A2C40 = D_800A4588[g_tripleTriadState]();
-            if (D_801A2C40 != 0) {
-                g_tripleTriadState = 0;
+        while (g_tripleTriadState != TT_STATE_IDLE && g_tripleTriadState != TT_STATE_EXIT) {
+            g_tripleTriadActiveList = g_tripleTriadStateHandlers[g_tripleTriadState]();
+            if (g_tripleTriadActiveList != 0) {
+                g_tripleTriadState = TT_STATE_IDLE;
             }
         }
 
-        if (D_801A2C40 != 0) func_80098D28(D_801A2C40);
+        if (g_tripleTriadActiveList != 0) func_80098D28(g_tripleTriadActiveList);
         processTriadTasks();
         func_8009EBCC();
         updateTriadMenu();
@@ -78,7 +78,7 @@ s32 tripleTriadMainLoop(void) {
         func_80098828();
         func_800A2214();
         g_tripleTriadFrameCount++;
-    } while (g_tripleTriadState != 6);
+    } while (g_tripleTriadState != TT_STATE_EXIT);
 
     D_801C2DC9 = -1;
     for (i = 0; i < 2; i++) {
@@ -91,39 +91,37 @@ s32 tripleTriadMainLoop(void) {
 }
 
 /**
- * @brief Initialize the battle engine's GPU and GTE subsystems.
+ * @brief Initialize the GPU draw/display environments and the GTE.
  *
- * Sets up double-buffered draw/display environments for a 384x224 screen
- * with the visible area at 256x224 offset by (0, 8), clears the two
- * framebuffer regions to black plus a 256x256 texture region to white,
- * primes the reverse-order primitive table and pool tail, then initializes
- * the GTE with screen offset (192, 112), projection distance 512, and
- * masks the display while finishing setup.
+ * Sets up the two double-buffered draw/display environments, clears the
+ * framebuffer and texture VRAM, primes the ordering table and primitive
+ * pool, then initializes the GTE and masks the display. Called once during
+ * engine startup.
  */
-void func_800984DC(void) {
+void initGraphics(void) {
     DISPENV *disp;
     RECT *screen0;
     RECT *screen1;
 
-    SetDefDrawEnv(&D_801C2DD0[0], 0, 0, 0x180, 0xE0);
+    SetDefDrawEnv(&D_801C2DD0[0], 0, 0, 384, 224);
     disp = D_801C2E88;
-    SetDefDispEnv(&disp[0], 0x180, 0, 0x180, 0xE0);
+    SetDefDispEnv(&disp[0], 384, 0, 384, 224);
     screen0 = &disp[0].screen;
     screen0->x = 0;
     screen0->y = 8;
-    screen0->w = 0x100;
-    screen0->h = 0xE0;
+    screen0->w = 256;
+    screen0->h = 224;
 
-    SetDefDrawEnv(&D_801C2DD0[1], 0x180, 0, 0x180, 0xE0);
-    SetDefDispEnv(&disp[1], 0, 0, 0x180, 0xE0);
+    SetDefDrawEnv(&D_801C2DD0[1], 384, 0, 384, 224);
+    SetDefDispEnv(&disp[1], 0, 0, 384, 224);
     disp[1].screen.x = 0;
     screen1 = &disp[1].screen;
     screen1->y = 8;
-    screen1->w = 0x100;
-    screen1->h = 0xE0;
+    screen1->w = 256;
+    screen1->h = 224;
 
     ClearImage(&D_800A45A8, 0, 0, 0);
-    D_800A45A8.x = 0x180;
+    D_800A45A8.x = 384;
     D_800A45A8.y = 0;
     ClearImage(&D_800A45A8, 0, 0, 0);
 
@@ -135,8 +133,8 @@ void func_800984DC(void) {
     D_801C2EB4 = &D_801A2DC8[D_801C2DCA][0];
 
     InitGeom();
-    SetGeomOffset(0xC0, 0x70);
-    SetGeomScreen(0x200);
+    SetGeomOffset(192, 112);
+    SetGeomScreen(512);
     SetDispMask(0);
 
     D_801C2DC9 = 2;
@@ -986,7 +984,7 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
 }
 
 /**
- * @brief Triple Triad card-flip animation handler (battle-state table @c D_800A4588).
+ * @brief Triple Triad card-flip animation handler (battle-state table @c g_tripleTriadStateHandlers).
  *
  * Allocates a per-frame ::TransformBuf (@c D_801D3010) and advances the card's
  * flip animation by @c node->state, then composes the GTE transform and emits

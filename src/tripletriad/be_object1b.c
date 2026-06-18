@@ -288,7 +288,7 @@ s32 func_80099C78(HandlerNode *ctl) {
                         D_80082C9C = 0;
                         TT_TALLY(inv->victories);
                     }
-                    g_tripleTriadState = 4;
+                    g_tripleTriadState = TT_STATE_CARD_CLAIM;
                 }
                 return 0;
             }
@@ -496,7 +496,7 @@ s32 func_8009A508(void) {
  *
  * @return Pointer to D_801D3028 list header.
  */
-u8 *func_8009A650(void) {
+u8 *initTripleTriadUpdateList(void) {
     u8 *list;
     u8 *node;
     resetTriadBoard();
