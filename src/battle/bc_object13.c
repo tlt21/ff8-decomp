@@ -627,7 +627,7 @@ s32 func_800C4968(s32 a0) {
 /**
  * @brief Start sound effect and register completion callback.
  *
- * Calls sndCmdE2 to set up the request, func_80014400 to start
+ * Calls sndCmdE2 to set up the request, sndUploadSampleBank to start
  * the sound with D_800F1B7C as volume, then allocates a handler via
  * func_800B2C58 with func_800C4968 as callback, storing the completion
  * flag pointer.
@@ -638,7 +638,7 @@ s32 func_800C4968(s32 a0) {
 void func_800C49A8(s32 a0, u8 *a1) {
     s32 result;
     sndCmdE2(a0);
-    func_80014400(a0, *(u8 *)D_800F1B7C);
+    sndUploadSampleBank(a0, *(u8 *)D_800F1B7C);
     result = func_800B2C58(func_800C4968);
     *(s32 *)(result + 0x14) = (s32)a1;
     *a1 = 0;
