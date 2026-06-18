@@ -8,17 +8,13 @@
 
 
 /**
- * @brief Initialize the battle engine subsystems and build the object lookup table.
- *
- * Calls initialization routines for various battle subsystems (rendering, objects,
- * input, etc.), then populates D_801A2C78 with object type mappings by querying
- * func_80023B14 for each of the 110 (0x6E) object indices.
+ * @brief Initialize the Triple Triad engine: run the subsystem initializers,
+ *        reset match state, and build the object-type table.
  */
-void func_8009822C(void) {
+void initTripleTriad(void) {
     s32 i;
 
     func_800A2D34();
-    i = 0;
     func_800981BC();
     func_80098B70();
     initTriadTaskPool();
@@ -36,16 +32,15 @@ void func_8009822C(void) {
     D_801A2C6C = 0;
     D_801A2CE6 = 1;
 
-    do {
+    for (i = 0; i < 110; i++) {
         D_801A2C78[i] = func_80023B14(i);
-        i++;
-    } while (i < 0x6E);
+    }
 }
 
 /**
  * @brief Battle engine main loop — runs until the state machine sentinel (6) is reached.
  *
- * After initializing all subsystems via @c func_8009822C, repeatedly:
+ * After initializing all subsystems via @c initTripleTriad, repeatedly:
  *  - If the disable-input flag is set in @c D_801A2C74 (bit 2) and bits 4 or 5
  *    of @c D_801C2EC0[2] are set, calls @c func_800A271C and clears the
  *    3-element controller-input mask arrays (@c D_801C2EC0/EB8/EC8).
@@ -61,7 +56,7 @@ void func_8009822C(void) {
 s32 func_80098304(void) {
     s32 i;
 
-    func_8009822C();
+    initTripleTriad();
 
     do {
         if (D_801A2C74 & 0x4) {
