@@ -10,6 +10,32 @@ typedef struct {
     /* 0x03 */ u8 pad03[9];
 } SfxConfig;
 
+/** @brief The Triple Triad board view + cursor state at D_801D49C8.
+ *
+ * func_800A4504 initializes the whole block; func_800A4478 sets the color
+ * fields; func_800A44CC resets the cursor; func_800A390C runs the per-frame
+ * cursor/timer state machine. */
+typedef struct {
+    /* 0x00 */ s16 x;            /**< View X position. */
+    /* 0x02 */ s16 y;            /**< View Y position. */
+    /* 0x04 */ s16 w;            /**< View width. */
+    /* 0x06 */ s16 h;            /**< View height. */
+    u8 pad08[8];
+    /* 0x10 */ s32 packedColor;  /**< Packed RGB+0x64 brightness (see func_800A4478). */
+    /* 0x14 */ s16 slideOffset;  /**< Fixed-point row-slide animation offset. */
+    /* 0x16 */ u8 row;           /**< Current cursor row. */
+    /* 0x17 */ u8 prevRow;       /**< Previous cursor row (saved on a move). */
+    /* 0x18 */ s16 timer;        /**< Fixed-point step timer; fires at 0x1000. */
+    /* 0x1A */ s16 timerStep;    /**< Amount added to @ref timer each frame. */
+    /* 0x1C */ s16 brightness;   /**< Raw brightness (scaled by 32; see func_800A4478). */
+    /* 0x1E */ s16 cursorPos;    /**< Grid position, row*11 + column. */
+    /* 0x20 */ u8 unk20;
+    /* 0x21 */ u8 unk21;
+    /* 0x22 */ u8 state;         /**< State-machine state (0..5). */
+    /* 0x23 */ u8 frameCounter;  /**< Incremented every frame. */
+    /* 0x24 */ u8 unk24;
+} CursorState;
+
 extern DRAWENV *g_activeDrawEnv;
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void sendSpuCommand(s32 idx);
@@ -32,8 +58,10 @@ extern u8 D_801D4500[];
 extern u8 D_801D4568[];
 extern u8 D_801D4968[];
 extern u8 D_801D4978[];
-extern u8 D_801D49C8[];
+extern CursorState D_801D49C8;
 extern u8 D_801D49EC;
+extern u8 D_801D4A88[]; /**< Per-cell lookup value, indexed by cursor grid position. */
+extern u8 D_801D4AF6;   /**< Total cell count of the cursor grid (rows of 11). */
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
@@ -447,7 +475,141 @@ s32 func_800A3884(u16 pad, s32 count, s32 index) {
     return index;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A390C);
+/** @brief Per-frame cursor/timer state machine for the Triple Triad grid cursor.
+ *
+ * Bumps a frame counter and advances a fixed-point timer; the cursor only acts
+ * on the frame the timer reaches 0x1000 (1.0). The grid is laid out in rows of
+ * 11 cells and the 6-state machine drives it:
+ *   - state 0: falls through to state 1.
+ *   - state 1: idle. With at least 0xC cells, a 0x8000/0x2000 bit in @p flags0
+ *     begins a vertical move (-> state 2/4); otherwise the column is stepped via
+ *     func_800A3884 and the cursor position rewritten.
+ *   - state 2/4: begin moving up/down one row (wrapping), seed the slide offset
+ *     to -/+0xE67, and advance to state 3/5.
+ *   - state 3/5: ease the slide offset by +/-0x199 until it reaches 0 (back to
+ *     state 1); a 0x8000/0x2000 bit in @p flags1 re-triggers a move.
+ *
+ * @param flags0 Input flags sampled while idle (state 1).
+ * @param flags1 Input flags sampled while sliding (state 3/5).
+ * @return D_801D4A88[cursorPos] (with bit 0x100 set while sliding), -1 if the
+ *         timer has not fired, or -2 if the cursor position is out of range.
+ */
+s32 func_800A390C(s32 flags0, s32 flags1) {
+    CursorState *p = &D_801D49C8;
+    u8 *statePtr;
+    s16 acc;
+    s16 pos;
+    s32 result;
+
+    p->frameCounter++;
+    p->timer += p->timerStep;
+    acc = (s16)p->timer;
+    if (acc <= 0) {
+        p->timer = 0;
+        return -1;
+    }
+    if (acc < 0x1000) {
+        return -1;
+    }
+    statePtr = &p->state;
+    p->timer = 0x1000;
+
+    switch (p->state) {
+    case 0:
+        *statePtr = 1;
+        /* fall through */
+    case 1:
+        if (D_801D4AF6 >= 0xC) {
+            if (flags0 & 0x8000) {
+                *statePtr = 2;
+                break;
+            }
+            if (flags0 & 0x2000) {
+                *statePtr = 4;
+                break;
+            }
+        }
+        {
+            s16 idx = (s16)p->cursorPos;
+            s32 row = idx / 11;
+            s32 col = func_800A3884(flags0 & 0xFFFF, 11, idx % 11);
+            p->cursorPos = row * 11 + col;
+        }
+        break;
+    case 2: {
+        s16 idx;
+        s32 row, col;
+        sendSpuCommand(1);
+        p->prevRow = p->row;
+        idx = (s16)p->cursorPos;
+        row = idx / 11;
+        row = row - 1;
+        col = idx % 11;
+        if (row < 0) {
+            row = (D_801D4AF6 + 0xA) / 11 - 1;
+        }
+        p->cursorPos = row * 11 + col;
+        p->row = row;
+        p->slideOffset = -0xE67;
+        *statePtr = 3;
+        break;
+    }
+    case 3:
+        p->slideOffset += 0x199;
+        if ((s16)p->slideOffset >= 0) {
+            p->slideOffset = 0;
+            *statePtr = 1;
+        }
+        if (flags1 & 0x8000) {
+            *statePtr = 2;
+        }
+        if (flags1 & 0x2000) {
+            *statePtr = 4;
+        }
+        break;
+    case 4: {
+        s16 idx;
+        s32 row, col;
+        sendSpuCommand(1);
+        p->prevRow = p->row;
+        idx = (s16)p->cursorPos;
+        row = idx / 11;
+        row = row + 1;
+        col = idx % 11;
+        if (row >= (D_801D4AF6 + 0xA) / 11) {
+            row = 0;
+        }
+        p->cursorPos = row * 11 + col;
+        p->row = row;
+        p->slideOffset = 0xE67;
+        *statePtr = 5;
+        break;
+    }
+    case 5:
+        p->slideOffset -= 0x199;
+        if ((s16)p->slideOffset <= 0) {
+            p->slideOffset = 0;
+            *statePtr = 1;
+        }
+        if (flags1 & 0x8000) {
+            *statePtr = 2;
+        }
+        if (flags1 & 0x2000) {
+            *statePtr = 4;
+        }
+        break;
+    }
+
+    pos = p->cursorPos;
+    if (pos < D_801D4AF6) {
+        result = D_801D4A88[pos];
+        if (p->slideOffset != 0) {
+            result |= 0x100;
+        }
+        return result;
+    }
+    return -2;
+}
 
 /**
  * @brief Build a 12x12 font-glyph sprite and prepend it to the ordering table.
@@ -572,24 +734,23 @@ s32 func_800A443C(s32 a0) {
 /**
  * @brief Compute and store a packed color/brightness value for the battle camera.
  *
- * Stores a0 to D_801D49C8+0x1C as a halfword. Then computes a packed 32-bit
- * value by dividing a0 by 32 (rounding toward zero) and replicating the
- * result into bytes 0-2, with byte 3 set to 0x64. Stores the result at
- * D_801D49C8+0x10.
+ * Stores @p a0 to @ref CursorState::brightness, then computes a packed 32-bit
+ * value by dividing a0 by 32 (rounding toward zero) and replicating the result
+ * into bytes 0-2 with byte 3 set to 0x64, storing it to
+ * @ref CursorState::packedColor.
  *
  * @param a0 Brightness value (scaled by 32).
  */
 void func_800A4478(s32 a0) {
-    u8 *base = D_801D49C8;
     s32 val;
-    *(s16 *)(base + 0x1C) = a0;
+    D_801D49C8.brightness = a0;
     if (a0 < 0) {
         a0 += 0x1F;
     }
     val = a0 >> 5;
     {
         s32 hi = (val << 8) | (val << 16);
-        *(s32 *)(base + 0x10) = (val | hi) | 0x64000000;
+        D_801D49C8.packedColor = (val | hi) | 0x64000000;
     }
 }
 
@@ -612,15 +773,15 @@ void func_800A44BC(void) {
 /**
  * @brief Reset D_801D49C8 fields and call func_800A2E44.
  *
- * Initializes field +0x1A to 0x100, clears +0x22, +0x1E, and +0x16,
- * then calls func_800A2E44 for further reset.
+ * Sets @ref CursorState::timerStep to 0x100 and clears @ref CursorState::state,
+ * @ref CursorState::cursorPos and @ref CursorState::row, then calls func_800A2E44
+ * for further reset.
  */
 void func_800A44CC(void) {
-    u8 *base = D_801D49C8;
-    *(s16 *)(base + 0x1A) = 0x100;
-    base[0x22] = 0;
-    *(s16 *)(base + 0x1E) = 0;
-    base[0x16] = 0;
+    D_801D49C8.timerStep = 0x100;
+    D_801D49C8.state = 0;
+    D_801D49C8.cursorPos = 0;
+    D_801D49C8.row = 0;
     func_800A2E44();
 }
 
@@ -631,26 +792,24 @@ void func_800A44CC(void) {
  * then calls func_800A4478 and func_800A2F78 for further init.
  * Also initializes D_801D4B18 to 0 and D_801D4B1A to 0x180.
  *
- * @param a0 X position (stored at offset 0).
- * @param a1 Y position (stored at offset 2).
+ * @param a0 View X position.
+ * @param a1 View Y position.
  */
 void func_800A4504(s32 a0, s32 a1) {
-    u8 *base;
-    *(s16 *)D_801D49C8 = a0;
-    base = D_801D49C8;
-    *(s16 *)(base + 0x4) = 0xA1;
-    *(s16 *)(base + 0x6) = 0x9F;
-    base[0x21] = 0xB;
-    *(s16 *)(base + 0x2) = a1;
-    *(s16 *)(base + 0x1A) = 0;
-    *(s16 *)(base + 0x18) = 0;
-    *(s16 *)(base + 0x1E) = 0;
-    *(s16 *)(base + 0x14) = 0;
-    base[0x20] = 0;
-    base[0x16] = 0;
-    base[0x17] = 0;
-    base[0x23] = 0;
-    base[0x24] = 1;
+    D_801D49C8.x = a0;
+    D_801D49C8.w = 0xA1;
+    D_801D49C8.h = 0x9F;
+    D_801D49C8.unk21 = 0xB;
+    D_801D49C8.y = a1;
+    D_801D49C8.timerStep = 0;
+    D_801D49C8.timer = 0;
+    D_801D49C8.cursorPos = 0;
+    D_801D49C8.slideOffset = 0;
+    D_801D49C8.unk20 = 0;
+    D_801D49C8.row = 0;
+    D_801D49C8.prevRow = 0;
+    D_801D49C8.frameCounter = 0;
+    D_801D49C8.unk24 = 1;
     func_800A4478(0x1000);
     func_800A2F78();
     D_801D4B18 = 0;
