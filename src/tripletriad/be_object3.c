@@ -78,12 +78,7 @@ extern s32 D_801D4448;   /**< Target object count; sweep completes when D_801D42
 extern u8 D_801D444C;
 extern s32 D_801D3D08;
 extern s32 D_80182E4C[];
-extern u8 D_801C2DCA;
-extern DRAWENV D_801C2DD0[2];
-extern u8 D_8012E66C[];
 extern u8 D_80158680[];
-extern u8 D_801A2CE6;
-extern s32 g_tripleTriadRules;
 extern u8 D_80182E68[]; /**< Staged fade color (RGB); the start color for the next fade. */
 extern u8  D_801D444D;   /**< Set to 1 when func_800A1374's capture/cleanup sweep finishes. */
 extern s32 D_801D4450;   /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
@@ -110,7 +105,6 @@ extern u16 D_801D3E74;   /**< Edge flag A: 0x10 == remove-card request. */
 extern u16 D_801D3E76;   /**< Edge flag B: 0x40/0x80 == add-card request. */
 extern s32 D_801D3E78;   /**< Number of cards built into the active hand (0..5). */
 extern u16 D_801C2EBC;   /**< Source value copied into D_801D3E74 each frame. */
-extern s32 D_801A2C74;   /**< UI/input mode bitmask; bit 3 gates hand-building. */
 
 /**
  * @brief Full-screen color-fade effect object.
@@ -164,7 +158,6 @@ extern void func_800A1D68(s32 a0, u8 *a1, s32 a2);        /**< Show a banner/mes
 extern void func_800A2054(s32 a0);                        /**< Acknowledge/advance a message gate. */
 extern s32  func_800A20F4(s32 a0);                        /**< Poll a message gate (>0 = result, <0 = pending). */
 extern void func_800A2114(s32 a0);                        /**< Trigger the card-detail popup for a card id. */
-extern void func_800A233C(s32 a0);                        /**< Queue a capture/flip sound or action effect. */
 extern void activateMenuSubstate(s32 a0, s32 a1, s32 a2, s32 a3); /**< Enter an interactive selection substate. */
 extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new claim sequence. */
 extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */

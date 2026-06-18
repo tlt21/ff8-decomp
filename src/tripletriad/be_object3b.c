@@ -9,7 +9,6 @@ extern u8  D_801D444D;   /**< Set when the phase-2 cleanup handler finishes. */
 extern u8  D_801A2C44;   /**< Rule/mode selector for the post-game card-claim flow. */
 extern u8  D_801D30FC;   /**< Seat whose claim is being resolved (2 = none). */
 extern s32 D_801D4450;   /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
-extern u8  D_801A2CE6;   /**< Staged next battle-state result. */
 extern u8  D_801D42F8[]; /**< Card-claim handler object pool. */
 extern u8  D_801D42A8[]; /**< Backing element storage for the D_801D42F8 pool. */
 extern s32 D_801D4454;   /**< Cleared at the start of each card-claim setup. */

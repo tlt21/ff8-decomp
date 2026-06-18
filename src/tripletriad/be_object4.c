@@ -36,24 +36,19 @@ typedef struct {
     /* 0x24 */ u8 unk24;
 } CursorState;
 
-extern DRAWENV *g_activeDrawEnv;
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void sendSpuCommand(s32 idx);
 extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
 extern s16 D_801D4B1A;
-extern s32 D_801A2C74;
 extern s32 D_801D4560;
 extern s32 D_801D4B20[];
 extern s32 D_801D4B28[];
 extern s32 D_801D4B30[];
 extern s32 g_menuColor[];
-extern u8 D_8012E66C[];
 extern SfxConfig D_80182E70[];
 extern u8 D_80182EC8[];
-extern u8 D_801C2DCA;
-extern DRAWENV D_801C2DD0[2];
 extern u8 D_801D4500[];
 extern u8 D_801D4568[];
 extern u8 D_801D4968[];

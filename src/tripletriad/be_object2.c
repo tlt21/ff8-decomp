@@ -10,9 +10,7 @@ extern u8 D_801D3380[];
 extern u8 D_801D3798[];
 extern u8 D_801D3C58[];
 extern s32 D_801D3328;
-extern s32 D_801A2C74;
 extern u16 D_801C2EC4;
-extern u8  D_801C2DCA;
 
 /** @brief Game RNG — returns a pseudo-random value. */
 
@@ -127,7 +125,6 @@ extern void *func_80098C44(u8 *list, s32 callback);
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern s32   func_8009A7A4(s32 a, s32 b, s32 c);
 extern void  func_8009A878(s32 a, s32 b);
-extern void  func_800A233C(s32 a);
 extern void  func_800A2114(u8 entityType);
 
 /* SVECTOR tables used by the card render path (func_8009AE6C). */

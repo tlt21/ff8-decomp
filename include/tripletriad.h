@@ -292,4 +292,28 @@ extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats t
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
 
+/* ── Shared battle/render globals ───────────────────────────────────────────
+ * Triple Triad runs inside the battle overlay's address space; these symbols
+ * are referenced across the be_objectN translation units. */
+extern s32           D_801D30F8;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
+extern volatile s32  D_801A2C6C;       /**< Free-running frame counter (volatile forces lw, not lbu). */
+extern s32           D_801A2C74;       /**< UI/input mode bitmask; bit 3 gates hand-building. */
+extern u8            D_801A2CE6;        /**< Staged next battle-state result. */
+extern u8            D_801C2DCA;        /**< Active double-buffer index. */
+extern DRAWENV       D_801C2DD0[2];     /**< Per-buffer draw environments. */
+extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
+extern u8            D_801D3028[];      /**< Battle-update callback list header. */
+extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
+extern u8            D_8012E66C[];      /**< Vblank flip callback. */
+
+/* ── Cross-TU entry points (defined in sibling be_objectN TUs) ─────────────── */
+extern void func_800A233C(s32 a);
+extern void func_800A271C(void);
+extern void processTriadTasks(void);
+extern void func_8009EBCC(void);
+extern void updateTriadMenu(void);
+extern void func_800A1C6C(void);
+extern void func_800A2214(void);
+extern void func_800A21C4(void);
+
 #endif /* TRIPLETRIAD_H */

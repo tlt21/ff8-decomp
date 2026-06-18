@@ -35,19 +35,11 @@
  */
 #define TT_TALLY(counter) do { (counter)++; } while (0)
 
-/* Data shared with be_object1.c / other tripletriad TUs. */
-extern s32 D_801D30F8;              /* current seat (0/1); -1 = match not started */
-extern volatile s32 D_801A2C6C;     /* frame counter (volatile: forces lw not lbu) */
-extern u8  D_801A2CE6;              /* staged next battle-state result */
-extern u8  D_801D3028[];            /* battle-update callback list header */
-extern u8  D_801D3038[];            /* backing node pool for D_801D3028 */
-extern u8  D_8012E66C[];            /* vblank flip callback */
+/* Match-result / result-screen state (be_object1b-local). */
 extern u8  D_80082C9C;              /* match-result category byte */
 extern u16 D_801C2EC4;              /* result-screen pad input */
 extern s32 D_801D3018;              /* result-screen SFX handle */
 extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
-extern DRAWENV D_801C2DD0[2];       /* per-buffer draw environments */
-extern u8  D_801C2DCA;              /* active double-buffer index */
 
 /* Functions defined in be_object1.c. */
 extern u8  *func_80098A1C(u8 *drawEnv, u8 *cb);
@@ -55,7 +47,6 @@ extern void func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
 extern s32  func_80098D28(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
 extern void func_8009953C(void);
-extern void func_800A233C(s32 frames);
 
 /* Functions defined in other tripletriad TUs. */
 extern void processCardObjects(s32 a0);
