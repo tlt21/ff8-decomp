@@ -209,26 +209,26 @@ void func_800A247C(void) {
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A24B4);
 
 /**
- * @brief Initialize D_801D4568 and set flag bit 2 in D_801A2C74.
+ * @brief Initialize D_801D4568 and set flag bit 2 in g_tripleTriadInputFlags.
  *
  * Calls func_800A24B4 to initialize D_801D4568, then func_800A1D68
- * with mode 4. Finally sets bit 2 (0x4) in D_801A2C74.
+ * with mode 4. Finally sets bit 2 (0x4) in g_tripleTriadInputFlags.
  */
 void func_800A26C8(void) {
     u8 *base = D_801D4568;
     func_800A24B4(base);
     func_800A1D68(4, base, 0);
-    D_801A2C74 |= 0x4;
+    g_tripleTriadInputFlags |= 0x4;
 }
 
 /**
- * @brief Tear down D_801D4568 and clear flag bit 2 in D_801A2C74.
+ * @brief Tear down D_801D4568 and clear flag bit 2 in g_tripleTriadInputFlags.
  *
- * Calls func_800A2054 with mode 4, then clears bit 2 (0x4) in D_801A2C74.
+ * Calls func_800A2054 with mode 4, then clears bit 2 (0x4) in g_tripleTriadInputFlags.
  */
 void func_800A271C(void) {
     func_800A2054(4);
-    D_801A2C74 &= ~0x4;
+    g_tripleTriadInputFlags &= ~0x4;
 }
 
 /**

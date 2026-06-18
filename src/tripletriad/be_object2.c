@@ -1022,7 +1022,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
  *                          reset to state 0.
  *
  * Bails out at the very top if the global "battle paused" flag
- * (@c D_801A2C74 bit @c 0x4) is clear AND @c D_801C2EC4 has bit @c 0x20
+ * (@c g_tripleTriadInputFlags bit @c 0x4) is clear AND @c D_801C2EC4 has bit @c 0x20
  * set — calls @ref func_800A26C8 (the "open battle menu" handler) and
  * returns 0 immediately.
  *
@@ -1033,7 +1033,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
 s32 updateCardSelectCursor(SubstateMachineNode *p) {
     s32 s1;
 
-    if (!(D_801A2C74 & 0x4) && (D_801C2EC4 & 0x20)) {
+    if (!(g_tripleTriadInputFlags & 0x4) && (D_801C2EC4 & 0x20)) {
         func_800A26C8();
         return 0;
     }
@@ -2204,7 +2204,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
  *        selection animation, then commit the chosen card to the board.
  *
  * Runs a small state machine over @p a (re-entered once per frame) and is a
- * no-op while card input is globally disabled (@c D_801A2C74 bit @c 0x4).
+ * no-op while card input is globally disabled (@c g_tripleTriadInputFlags bit @c 0x4).
  *
  *  - @b State @b 0 — reset the 9-entry move workspace @c D_801D3460, enter state 1.
  *  - @b State @b 1 — three sub-steps:
@@ -2230,7 +2230,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
 s32 updateAiTurn(func_8009DBE8_arg0 *a) {
     TripleTriadBoard board;
 
-    if (D_801A2C74 & 4) {
+    if (g_tripleTriadInputFlags & 4) {
         return 0;
     }
 

@@ -793,7 +793,7 @@ s32 func_8009F17C(ScriptCtx *node) {
             break;
         case 1:
             if (node->subState == 0) {
-                D_801A2C74 |= 8;
+                g_tripleTriadInputFlags |= 8;
                 node->subState++;
                 goto ret0;
             }
@@ -824,7 +824,7 @@ s32 func_8009F17C(ScriptCtx *node) {
                         node->subState = 0;
                         break;
                     }
-                    D_801A2C74 &= ~8;
+                    g_tripleTriadInputFlags &= ~8;
                     node->state = 2;
                     node->subState = 0;
                     break;
@@ -1120,7 +1120,7 @@ extern void func_800A030C(s32 a0);
  *          D_801D3EC0[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
  * State 3: wait. Calls func_8009EF68 once, idles 0x1E frames.
- * State 4: done. Sets D_801A2CE6 = 3 and exits.
+ * State 4: done. Sets g_tripleTriadState = 3 and exits.
  *
  * @param ctx Callback context (state at +0x10, subState at +0x11).
  * @return 0 while progressing, 0 on completion.
@@ -1199,7 +1199,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
             break;
 
         case 4:
-            D_801A2CE6 = 3;
+            g_tripleTriadState = 3;
             return 0;
         }
     }

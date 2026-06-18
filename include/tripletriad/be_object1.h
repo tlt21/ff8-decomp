@@ -109,7 +109,7 @@ extern u8           *D_801A2C40;
 extern u8            D_800A45B8[];
 extern u8            D_800B7638[];
 extern u8            D_80182B84[];
-extern u8            D_801A2C78[];
+extern u8            g_tripleTriadCardCounts[];
 
 /* ── Debug text / misc state ──────────────────────────────────────────────── */
 extern s32           D_801C2FD0;

@@ -34,7 +34,7 @@ extern void func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
  * @brief Per-frame state node for the card-claim transition controller (@c func_800A15C8).
  *
  * Allocated from a @c func_80098C44 pool. @c state at 0x0C selects the phase and
- * @c result at 0x10 carries the outcome code (2 or 6) staged into @c D_801A2CE6
+ * @c result at 0x10 carries the outcome code (2 or 6) staged into @c g_tripleTriadState
  * when the whole claim sequence finishes.
  */
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
     /* 0x0C */ u8  state;     /**< Phase: 0 warmup, 1/2 spawn handlers, 3 poll gate, 4 fade-out. */
     /* 0x0D */ u8  subState;  /**< Per-phase frame counter / sub-step. */
     /* 0x0E */ u8  pad0E[2];
-    /* 0x10 */ s32 result;    /**< Outcome code (2 or 6) staged into D_801A2CE6 on completion. */
+    /* 0x10 */ s32 result;    /**< Outcome code (2 or 6) staged into g_tripleTriadState on completion. */
 } ClaimCtrlNode;
 
 /**
@@ -61,7 +61,7 @@ typedef struct {
  *  - 3: poll the message gate @c func_800A20F4(6); stage result 6 (init / accept)
  *       or 2 (gate result 0), or keep waiting (gate < 0). Advance to phase 4.
  *  - 4: fade to white (@c func_800A0370), wait 0xF frames, stage @c result into
- *       @c D_801A2CE6 and return 2.
+ *       @c g_tripleTriadState and return 2.
  *
  * @param node Controller state node.
  * @return 0 while the sequence is still running, 2 once it has finished.
@@ -188,7 +188,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
             if (ss < 0xF) {
                 return 0;
             }
-            D_801A2CE6 = node->result;
+            g_tripleTriadState = node->result;
             return 2;
         }
     }
@@ -205,7 +205,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
  *       1 → claim one card; 2 → claim 2 per owned card on the board (offset from -10);
  *       3 → claim none (0); 4 → claim five. Seat 2 (none) leaves it at -1.
  *  3. If @c D_801D4448 < 0, returns every card in the acting seat's hand to its owner
- *     (@c markItemPresent), stages result 6 into @c D_801A2CE6, and returns 0.
+ *     (@c markItemPresent), stages result 6 into @c g_tripleTriadState, and returns 0.
  *  4. Otherwise initializes the @c D_801D42F8 handler pool, spawns the claim controller
  *     @c func_800A15C8, fills the @c D_801D4308 display-object array with both five-card
  *     hands (positions/sort keys mirrored per seat), spawns the board renderer
@@ -262,7 +262,7 @@ s32 func_800A18D0(void)
         for (i = 0; i < 5; i++) {
             markItemPresent(D_801A2C48[D_801D4450][i]);
         }
-        D_801A2CE6 = 6;
+        g_tripleTriadState = 6;
         return 0;
     }
     func_80098BC0(D_801D42F8, D_801D42A8, 0x14, 4);
@@ -314,10 +314,10 @@ void hangForever(void) {
 /**
  * @brief Battle state-5 handler (@c D_800A4588[5]).
  *
- * Sets the next state to 2 (@c D_801A2CE6 = 2) and returns 0 so the
+ * Sets the next state to 2 (@c g_tripleTriadState = 2) and returns 0 so the
  * state-dispatch loop keeps running.
  */
 s32 battleState5Handler(void) {
-    D_801A2CE6 = 2;
+    g_tripleTriadState = 2;
     return 0;
 }

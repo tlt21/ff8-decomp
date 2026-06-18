@@ -100,7 +100,7 @@ extern void setupTripleTriadHands(void);
  *   - **9** (fade out): call @c func_800A0370 once, wait 15 frames, then
  *     stop the result SFX, update the Triple Triad win/loss/draw counters
  *     in @c TripleTriadData, set @c D_80082C9C category byte, and trigger
- *     battle exit via @c D_801A2CE6 = @c 4.
+ *     battle exit via @c g_tripleTriadState = @c 4.
  *
  * @param ctl  Battle-object handler context (state at +0x10, counter at
  *             +0x11, sub-handler pointer at +0x0C, rule flags at +0x13,
@@ -288,7 +288,7 @@ s32 func_80099C78(HandlerNode *ctl) {
                         D_80082C9C = 0;
                         TT_TALLY(inv->victories);
                     }
-                    D_801A2CE6 = 4;
+                    g_tripleTriadState = 4;
                 }
                 return 0;
             }
@@ -322,7 +322,7 @@ s32 func_8009A2F4(s32 a0) {
  * via @c D_801C2EB4, and links it into the OT at @c D_801C2EB0[0x1B] (the
  * 0x6C byte slot in the sort tree) using @c AddPrim. The U/V coordinates are
  * computed from the bit position: @c U = ((bit&3)<<6) + ((frameTick<<2)&0x30)
- * (animated by @c D_801A2C6C frame counter modulo 4), @c V = (bit>>2)<<4 + 0x10.
+ * (animated by @c g_tripleTriadFrameCount frame counter modulo 4), @c V = (bit>>2)<<4 + 0x10.
  * Cell pixel positions step by 0x40 in both axes (cell size).
  *
  * After all visible cells emit, @c D_801C2EB4 is bumped to the new tail and
@@ -340,7 +340,7 @@ s32 func_8009A2F4(s32 a0) {
  *       @c v0. (3) @c v = saved >> bit at the top of the while-loop body
  *       AND in the tail (line 76 below is redundant after the bottom-of-body
  *       shift, but the compiler emits a srav for it in the back-edge delay
- *       slot for the next iter's check). (4) @c volatile s32 D_801A2C6C
+ *       slot for the next iter's check). (4) @c volatile s32 g_tripleTriadFrameCount
  *       prevents gcc from narrowing the global load to @c lbu — the target
  *       uses a 32-bit @c lw. (5) @c i[arr] form @c colByteOffset[boardBase+5]
  *       forces the @c addu operand order @c (s2, s8) matching target.
@@ -393,7 +393,7 @@ s32 func_8009A314(void) {
                 prim->sprtCmd  = 0x66808080;
                 prim->x0       = pixelX;
                 prim->y0       = pixelY;
-                prim->u0       = ((bit % 4) << 6) + ((D_801A2C6C << 2) & 0x30);
+                prim->u0       = ((bit % 4) << 6) + ((g_tripleTriadFrameCount << 2) & 0x30);
                 prim->v0       = ((bit / 4) << 4) + 0x10;
                 prim->h        = 0xF;
                 prim->w        = 0xF;

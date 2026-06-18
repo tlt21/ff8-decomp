@@ -28,12 +28,12 @@ void initTripleTriad(void) {
     func_80098A6C(D_800B7638);
     func_80098A6C(D_800A45B8);
 
-    D_801A2C74 = 0;
-    D_801A2C6C = 0;
-    D_801A2CE6 = 1;
+    g_tripleTriadInputFlags = 0;
+    g_tripleTriadFrameCount = 0;
+    g_tripleTriadState = 1;
 
     for (i = 0; i < 110; i++) {
-        D_801A2C78[i] = func_80023B14(i);
+        g_tripleTriadCardCounts[i] = func_80023B14(i);
     }
 }
 
@@ -41,14 +41,14 @@ void initTripleTriad(void) {
  * @brief Battle engine main loop — runs until the state machine sentinel (6) is reached.
  *
  * After initializing all subsystems via @c initTripleTriad, repeatedly:
- *  - If the disable-input flag is set in @c D_801A2C74 (bit 2) and bits 4 or 5
+ *  - If the disable-input flag is set in @c g_tripleTriadInputFlags (bit 2) and bits 4 or 5
  *    of @c D_801C2EC0[2] are set, calls @c func_800A271C and clears the
  *    3-element controller-input mask arrays (@c D_801C2EC0/EB8/EC8).
  *  - Dispatches via @c D_800A4588 (function-pointer table indexed 1..5 by
- *    @c D_801A2CE6) until the state returns non-zero (storing it in
+ *    @c g_tripleTriadState) until the state returns non-zero (storing it in
  *    @c D_801A2C40 and clearing state) or state becomes 6 (exit).
  *  - Drains the active list at @c D_801A2C40 via @c func_80098D28, then runs
- *    per-frame sub-tick callbacks and increments the frame counter @c D_801A2C6C.
+ *    per-frame sub-tick callbacks and increments the frame counter @c g_tripleTriadFrameCount.
  *
  * After the main loop, runs two frame-finalize iterations and stores 100 to
  * @c g_vsyncRate (D_8005F158) before returning.
@@ -59,7 +59,7 @@ s32 func_80098304(void) {
     initTripleTriad();
 
     do {
-        if (D_801A2C74 & 0x4) {
+        if (g_tripleTriadInputFlags & 0x4) {
             if (D_801C2EC0[2] & 0x30) {
                 func_800A271C();
             }
@@ -69,10 +69,10 @@ s32 func_80098304(void) {
             }
         }
 
-        while (D_801A2CE6 != 0 && D_801A2CE6 != 6) {
-            D_801A2C40 = D_800A4588[D_801A2CE6]();
+        while (g_tripleTriadState != 0 && g_tripleTriadState != 6) {
+            D_801A2C40 = D_800A4588[g_tripleTriadState]();
             if (D_801A2C40 != 0) {
-                D_801A2CE6 = 0;
+                g_tripleTriadState = 0;
             }
         }
 
@@ -84,8 +84,8 @@ s32 func_80098304(void) {
         func_80098690();
         func_80098828();
         func_800A2214();
-        D_801A2C6C++;
-    } while (D_801A2CE6 != 6);
+        g_tripleTriadFrameCount++;
+    } while (g_tripleTriadState != 6);
 
     D_801C2DC9 = -1;
     for (i = 0; i < 2; i++) {

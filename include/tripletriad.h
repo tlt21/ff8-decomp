@@ -296,9 +296,9 @@ extern s32                  g_tripleTriadRules;                /**< Active rule 
  * Triple Triad runs inside the battle overlay's address space; these symbols
  * are referenced across the be_objectN translation units. */
 extern s32           D_801D30F8;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
-extern volatile s32  D_801A2C6C;       /**< Free-running frame counter (volatile forces lw, not lbu). */
-extern s32           D_801A2C74;       /**< UI/input mode bitmask; bit 3 gates hand-building. */
-extern u8            D_801A2CE6;        /**< Staged next battle-state result. */
+extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame counter (volatile forces lw, not lbu). */
+extern s32           g_tripleTriadInputFlags;       /**< UI/input mode bitmask; bit 3 gates hand-building. */
+extern u8            g_tripleTriadState;        /**< Staged next battle-state result. */
 extern u8            D_801C2DCA;        /**< Active double-buffer index. */
 extern DRAWENV       D_801C2DD0[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
