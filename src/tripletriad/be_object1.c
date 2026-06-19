@@ -8,8 +8,9 @@
 
 
 /**
- * @brief Initialize the Triple Triad engine: run the subsystem initializers,
- *        reset match state, and build the object-type table.
+ * @brief Initialize the Triple Triad engine for a session: run the subsystem
+ *        initializers, reset match state, and tally the player's owned count
+ *        for each card.
  */
 void initTripleTriad(void) {
     s32 i;
@@ -143,14 +144,11 @@ void initGraphics(void) {
 }
 
 /**
- * @brief Flip the double-buffered draw/display environments — the per-frame present.
+ * @brief Present the frame: wait for vsync, step the fade, and swap the double buffer.
  *
- * Waits for vsync and the previous draw to finish, advances the fade counter
- * @c g_fadeCounter (toggling the display mask as it crosses zero), then flips the
- * active buffer index @c g_drawBufferIndex: the new buffer's draw/disp envs are pushed
- * to the GPU, the just-completed buffer's ordering table is drawn, and the new
- * buffer's OT and primitive pool are reset so the next frame accumulates into
- * it. @c g_activeDrawEnv tracks the buffer now being built.
+ * Advances @c g_fadeCounter (toggling the display mask as it reaches zero),
+ * swaps @c g_drawBufferIndex, draws the just-finished buffer's ordering table,
+ * and resets the new buffer's OT and primitive pool for the next frame.
  */
 void flipBuffers(void) {
     flipTextBuffer();
@@ -207,19 +205,18 @@ void sampleInput(void) {
 }
 
 /**
- * @brief Clear g_vramQueueCount to zero.
+ * @brief Empty the deferred VRAM-transfer queue.
  */
 void resetVramQueue(void) {
     g_vramQueueCount = 0;
 }
 
 /**
- * @brief Dispatch all pending entries in the @c g_vramQueue GPU-transfer pool.
+ * @brief Run every queued VRAM transfer, then empty the queue.
  *
- * Walks @c g_vramQueueCount entries and performs the requested operation on each
- * (LoadImage / LoadImage TIM / StoreImage / MoveImage), then resets the pool
- * count to zero. Entries are typically queued by @c flushVramTransfers's siblings
- * during a frame and flushed here once vsync has elapsed.
+ * Each entry performs its requested GPU transfer (LoadImage, TIM upload,
+ * StoreImage, or MoveImage). The queue is filled during the frame by the
+ * @c queue* helpers and drained here after vsync.
  */
 void flushVramTransfers(void) {
     s32 i;
@@ -252,13 +249,9 @@ void flushVramTransfers(void) {
 }
 
 /**
- * @brief Enqueue a LoadImage transfer (@c active=0).
+ * @brief Queue a LoadImage (copy @p src pixels into VRAM @p rect) for the next flush.
  *
- * Takes the next g_vramQueue slot, marks it as a LoadImage, copies the 8-byte
- * @p rect into the slot (unaligned-safe), and stores @p src as the source
- * pixel pointer.
- *
- * @param rect Destination RECT (8 bytes, may be unaligned).
+ * @param rect Destination VRAM rectangle.
  * @param src  Source pixel data.
  */
 void queueLoadImage(RECT *rect, void *src) {
@@ -269,14 +262,13 @@ void queueLoadImage(RECT *rect, void *src) {
 }
 
 /**
- * @brief Enqueue a TIM upload (@c active=1) and return its resolved data address.
+ * @brief Queue a TIM (CLUT + image) upload for the next flush and return the
+ *        resource's payload address.
  *
- * Takes the next g_vramQueue slot, marks it as a TIM upload, and stores @p res
- * as the source. Then walks @p res's two-step @c offset chain (each step adds a
- * relative @c s32 offset) to compute the resource's payload address.
+ * The return value follows @p res's offset chain to the start of its data.
  *
- * @param res Resource header whose @c offset field chains to its payload.
- * @return The resolved payload address at the end of the offset chain.
+ * @param res Resource header for the TIM.
+ * @return The resource's resolved payload address.
  */
 u8 *queueTimUpload(ResHeader *res) {
     PoolEntry *entry;
@@ -292,13 +284,10 @@ u8 *queueTimUpload(ResHeader *res) {
 }
 
 /**
- * @brief Enqueue a StoreImage transfer (@c active=2).
+ * @brief Queue a StoreImage (read VRAM @p rect back into @p dst) for the next flush.
  *
- * Variant of @c queueLoadImage that marks the slot as a StoreImage: copies the
- * 8-byte @p rect into the slot and stores @p dst as the destination buffer.
- *
- * @param rect Source RECT (8 bytes, may be unaligned).
- * @param dst  Destination buffer.
+ * @param rect Source VRAM rectangle.
+ * @param dst  Destination buffer in main RAM.
  */
 void queueStoreImage(RECT *rect, void *dst) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
@@ -308,14 +297,12 @@ void queueStoreImage(RECT *rect, void *dst) {
 }
 
 /**
- * @brief Enqueue a MoveImage transfer (@c active=3).
+ * @brief Queue a MoveImage (VRAM-to-VRAM copy of @p rect to @p dstX, @p dstY)
+ *        for the next flush.
  *
- * Same pattern as @c queueLoadImage / @c queueStoreImage, but packs the
- * destination coordinates into the source field as @c dstY<<16 | dstX.
- *
- * @param rect Source RECT (8 bytes, may be unaligned).
- * @param dstX Destination X (lower 16 bits).
- * @param dstY Destination Y (upper 16 bits).
+ * @param rect Source VRAM rectangle.
+ * @param dstX Destination X in VRAM.
+ * @param dstY Destination Y in VRAM.
  */
 void queueMoveImage(RECT *rect, s16 dstX, u16 dstY) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
@@ -324,24 +311,22 @@ void queueMoveImage(RECT *rect, s16 dstX, u16 dstY) {
     entry->src = (void *)(((s32)dstY << 16) | dstX);
 }
 
+/** @brief Empty stub (no-op). */
 void func_80098B68(void) {
 }
 
 /**
- * @brief Set g_scratchPtr to 0x1F800000 (scratchpad RAM base address).
+ * @brief Reset the scratchpad allocator to the base of scratchpad RAM.
  */
 void initScratchHeap(void) {
     g_scratchPtr = 0x1F800000;
 }
 
 /**
- * @brief Allocate aligned memory from the scratchpad heap and return the new pointer.
+ * @brief Allocate @p size bytes from the scratchpad (4-byte-aligned bump allocator).
  *
- * Rounds @p size up to the next multiple of 4, then advances g_scratchPtr
- * by that amount. This is the counterpart of scratchFree (which subtracts).
- *
- * @param size Size to allocate (will be aligned up to 4).
- * @return The previous value of g_scratchPtr (start of allocated block).
+ * @param size Bytes to allocate (rounded up to a multiple of 4).
+ * @return Start of the allocated block.
  */
 s32 scratchAlloc(s32 size) {
     s32 old = g_scratchPtr;
@@ -350,11 +335,9 @@ s32 scratchAlloc(s32 size) {
 }
 
 /**
- * @brief Align a size up to 4 bytes and subtract from the allocation pointer.
+ * @brief Release the most recent scratchpad allocation (bump-allocator pop).
  *
- * Rounds @p size up to the next multiple of 4 and decrements g_scratchPtr by that amount.
- *
- * @param size Size to free (will be aligned up to 4).
+ * @param size Bytes to release (rounded up to 4); must match the paired @ref scratchAlloc.
  */
 void scratchFree(s32 size) {
     g_scratchPtr -= (size + 3) & ~3;
@@ -412,17 +395,11 @@ void *findFreeNode(u8 *listMem) {
 }
 
 /**
- * @brief Allocate a node and append it to the list tail.
- *
- * Allocates a free node, marks it active, stores @p callback, and links it
- * onto the tail (or sets @c head if the list was empty).
+ * @brief Allocate a node from the pool and append it to the list tail.
  *
  * @param listMem  List header.
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
- *
- * @note The header is reached via @c (ObjList *)listMem rather than a cached
- *       local so gcc keeps it in the saved arg register across the alloc call.
  */
 void *allocObjNode(u8 *listMem, s32 callback) {
     ObjListNode *node = findFreeNode(listMem);
@@ -502,13 +479,11 @@ s32 updateObjectList(u8 *listMem) {
 }
 
 /**
- * @brief Register @c g_textBufferRes and set up the current frame's draw targets.
+ * @brief Set up the debug-text overlay's buffers for the first frame.
  *
- * Registers the @c g_textBufferRes resource into the g_vramQueue pool via
- * @c queueTimUpload, kicks off @c ClearOTag for the current buffer's
- * drawenv slot, then rebases the framebuffer (@c g_textFbPtr) and drawenv
- * (@c g_textOtPtr) pointers to the slot indexed by @c g_textBufferIndex. Unlike
- * @c flipTextBuffer, this does not flip the buffer index first.
+ * Queues the text-font TIM upload, clears the current text ordering table, and
+ * points the framebuffer/OT cursors at the active buffer. Like @ref
+ * flipTextBuffer but without flipping the buffer index first.
  */
 void initTextBuffer(void) {
     queueTimUpload(&g_textBufferRes);
@@ -518,13 +493,10 @@ void initTextBuffer(void) {
 }
 
 /**
- * @brief Set the debug-text cursor origin (each axis only if non-negative).
+ * @brief Set the debug-text cursor origin; each axis is updated only if >= 0.
  *
- * Stores @p x to g_textLineX and g_textCursorX if @p x >= 0.
- * Stores @p y to g_textCursorY if @p y >= 0.
- *
- * @param x Cursor origin X (stored if >= 0).
- * @param y Cursor origin Y (stored if >= 0).
+ * @param x New line/cursor X (ignored if negative).
+ * @param y New cursor Y (ignored if negative).
  */
 void setTextOrigin(s32 x, s32 y) {
     if (x >= 0) {
@@ -537,17 +509,13 @@ void setTextOrigin(s32 x, s32 y) {
 }
 
 /**
- * @brief Append one debug-text character as a 5x5 textured sprite primitive.
+ * @brief Emit one debug-text glyph as a 5x5 textured sprite and advance the cursor.
  *
- * Renders @p ch (uppercased on the fly) from the debug font atlas into a
- * fresh @c SPRT at the current packet-buffer tail (@c g_textFbPtr), then
- * advances the cursor and the buffer pointer. Newline resets the cursor
- * to the line origin and steps down 7 px; any non-printable byte (below
- * space) just advances the cursor without emitting a glyph.
+ * @p ch is folded to uppercase and drawn from the font atlas. Newline returns
+ * to the line origin and steps down 7 px; space and control bytes advance the
+ * cursor without emitting a glyph.
  *
- * The U/V atlas math packs 8 glyphs per row across 64 px; biases by
- * @c -0x80 / @c -0x20 wrap the indices into the texture-page coordinate
- * space. Odd/even character codes alternate between two CLUTs.
+ * @param ch Character to render.
  */
 void drawTextChar(u8 ch) {
     SPRT *prim;
@@ -609,17 +577,13 @@ void drawTextChar(u8 ch) {
 }
 
 /**
- * @brief Render a null-terminated text string, with @c '#<digit>' color escapes.
+ * @brief Render a debug-text string, honoring @c '#<digit>' color escapes.
  *
- * Walks @p str byte by byte. Characters are passed to @c drawTextChar for
- * sprite rendering. A @c '#' begins an escape: if the next byte is an ASCII
- * digit @c '0'..'8', it indexes the palette table @c g_textPalette and the
- * matching 4-byte RGB entry is copied into the live @c g_textColor color;
- * any other byte after @c '#' is rendered as a plain character (the @c '#'
- * is consumed silently).
+ * Each character is drawn via @ref drawTextChar. A @c '#' followed by a digit
+ * @c '0'..'8' switches the text color to that @c g_textPalette entry; any other
+ * byte after @c '#' is drawn literally.
  *
- * @note The @c escape_marker variable holds @c '#' across iterations to
- * anchor the constant in a callee-saved register (matches target codegen).
+ * @param str Null-terminated string to render.
  */
 void drawText(u8 *str) {
     u8 ch;
@@ -646,11 +610,11 @@ void drawText(u8 *str) {
 }
 
 /**
- * Converts an integer to a decimal string representation.
+ * @brief Format @p value as a signed decimal string into @p out.
  *
- * @param value The integer value to convert.
- * @param out   Pointer to the output buffer.
- * @return Pointer to the end of the written string.
+ * @param value Value to convert.
+ * @param out   Output buffer.
+ * @return Pointer to the written string's terminating null.
  */
 u8 *intToDecStr(s32 value, u8 *out) {
     u8 buf[36];
@@ -677,11 +641,11 @@ u8 *intToDecStr(s32 value, u8 *out) {
 }
 
 /**
- * Converts an integer to a hexadecimal string representation.
+ * @brief Format @p value as a signed hexadecimal string into @p out.
  *
- * @param value The integer value to convert.
- * @param out   Pointer to the output buffer.
- * @return Pointer to the end of the written string.
+ * @param value Value to convert.
+ * @param out   Output buffer.
+ * @return Pointer to the written string's terminating null.
  */
 u8 *intToHexStr(s32 value, u8 *out) {
     u8 buf[20];
@@ -710,14 +674,11 @@ u8 *intToHexStr(s32 value, u8 *out) {
 }
 
 /**
- * @brief Convert an integer to a binary string representation.
+ * @brief Format @p value as a binary-digit string into @p out.
  *
- * Writes the binary digits of @p value into the buffer at @p out,
- * then returns a pointer to the end of the written string.
- *
- * @param value The integer value to convert.
- * @param out   Pointer to the output buffer.
- * @return Pointer to the end of the written string.
+ * @param value Value whose bits are written (no sign handling).
+ * @param out   Output buffer.
+ * @return Pointer to the written string's terminating null.
  */
 u8 *intToBinStr(s32 value, u8 *out) {
     u8 buf[36];
@@ -738,28 +699,20 @@ u8 *intToBinStr(s32 value, u8 *out) {
 }
 
 /**
- * @brief printf-style format-into-buffer.
+ * @brief printf-style formatter: render @p args into @p dst.
  *
- * Walks the format string given as @c args[0] and writes the formatted
- * output into @p dst. The remaining @c args[1..] are the values referenced
- * by format specifiers. Supported specifiers:
+ * @c args[0] is the format string; @c args[1..] supply the values. Supported
+ * specifiers (lower or upper case):
+ *   - @c %d / @c %x / @c %b : signed decimal / hexadecimal / binary
+ *   - @c %c : one character
+ *   - @c %s : null-terminated string
  *
- *   - @c %d, @c %D : signed decimal (via @c intToDecStr)
- *   - @c %x, @c %X : hexadecimal    (via @c intToHexStr)
- *   - @c %b, @c %B : binary         (via @c intToBinStr)
- *   - @c %c, @c %C : single character byte
- *   - @c %s, @c %S : null-terminated string
+ * A @c % may carry an optional @c '0' (zero-pad, default space) and a decimal
+ * field width.
  *
- * Each @c % may be followed by an optional @c '0' to select zero-padding
- * (default is space-padding), then a decimal field width parsed by
- * @c strtol (strtol). Plain characters are copied verbatim. The
- * @c escape_marker local anchors the @c '%' constant in a callee-saved
- * register, matching the target's register allocation.
- *
- * @param dst   Output buffer; receives a null-terminated formatted string.
- * @param args  Variadic argument array: @c args[0] is the format string,
- *              subsequent words are pulled in order by format specifiers.
- * @return Length of the produced string (excluding null terminator).
+ * @param dst  Output buffer; receives the null-terminated result.
+ * @param args Argument array: the format string followed by its values.
+ * @return Length of the result, excluding the null terminator.
  */
 s32 formatString(char *dst, s32 *args) {
     char *fmt = (char *)*args++;
@@ -827,30 +780,20 @@ end:
 }
 
 /**
- * @brief Variadic forwarder: passes @p dst and a pointer to the variadic
- *        args to @c formatString.
- *
- * The `...` is load-bearing — it triggers gcc's varargs prologue that saves
- * the a1-a3 argument registers to the caller's shadow area, letting @c &fmt
- * act as the start of a variadic argument list.
+ * @brief printf-style: format the variadic args into @p dst via @ref formatString.
  *
  * @param dst Output buffer.
- * @param fmt Format string (first variadic word).
+ * @param fmt Format string, followed by its values.
+ * @return Length of the result, excluding the null terminator.
  */
 s32 btlSprintf(s32 dst, s32 fmt, ...) {
     return formatString((char *)dst, &fmt);
 }
 
 /**
- * @brief Printf-style wrapper: formats variadic args into a 256-byte stack
- *        buffer via @c formatString, then outputs the result via
- *        @c drawText.
+ * @brief printf-style debug print: format the args and render them via @ref drawText.
  *
- * The `...` triggers gcc's varargs prologue, saving the a1-a3 argument
- * registers to the caller's shadow save area so @c &fmt can act as the start
- * of a variadic arg list.
- *
- * @param fmt Format string (followed by variadic args).
+ * @param fmt Format string, followed by its values.
  */
 void drawTextf(s32 fmt, ...) {
     s8 buf[0x100];
@@ -859,12 +802,11 @@ void drawTextf(s32 fmt, ...) {
 }
 
 /**
- * @brief Flip the secondary text/overlay double-buffer and reset its draw state.
+ * @brief Present and flip the debug-text overlay's double buffer.
  *
- * Separate from the main @c flipBuffers double-buffer: finalizes the current
- * text/overlay framebuffer, toggles its own buffer index @c g_textBufferIndex (0 <-> 1),
- * resets the text cursor/viewport, and rebases the framebuffer (32 KB per buffer)
- * and OT pointers to the new slot.
+ * Draws the current text ordering table, swaps @c g_textBufferIndex, resets the
+ * text cursor to the origin, and rebases the framebuffer/OT cursors to the new
+ * buffer. Independent of the main @ref flipBuffers double buffer.
  */
 void flipTextBuffer(void) {
     u8 *fb = g_textFbPtr;
@@ -885,23 +827,12 @@ void flipTextBuffer(void) {
 }
 
 /**
- * @brief Initialize the 10 Triple Triad battle-object slots for a new match.
+ * @brief Set up the 10 Triple Triad card objects for a new match.
  *
- * Calls @c resetTriadBoard for one-shot setup, then assigns each of the 10
- * @c g_tripleTriadCardHands slots to a player by tagging it with that player's index
- * (low bit of @c initFlags) and a sequence number (0..N) within that
- * player's hand. The @c fieldD reset clears any stale sub-state.
- *
- * For the "offset hand" layout (@c D_801A2C70[player] @c == @c 3) with
- * the corresponding rule bit clear, @c posData[1] is biased to @c 0x800
- * so the card draws shifted; otherwise it stays at zero.
- *
- * Finally, slots 1 and 2 of the substate parameter table @c D_801D3340
- * have their @c field2 halfword zeroed (idle substate state).
- *
- * @note The reversed @c cnt initialization order matches the compiler's
- *       scheduling for the original source — natural order produces the
- *       wrong store sequence.
+ * Resets the board, then assigns each @c g_tripleTriadCardHands slot to a player
+ * (the low bit of its @c initFlags) and a sequence index within that player's
+ * hand. When a player uses the offset hand layout (@c D_801A2C70[player] @c == @c 3)
+ * and the matching rule is off, the card is shifted sideways so it draws offset.
  */
 void initCardHands(void) {
     s32 cnt[2];
@@ -933,22 +864,15 @@ void initCardHands(void) {
 }
 
 /**
- * @brief Emit @c POLY_G3 primitives for a 4-vertex tetrahedral icon model.
+ * @brief Project the tetrahedral icon model and emit a @c POLY_G3 per visible face.
  *
- * Allocates a 24-byte scratch buffer (6 words: 4 packed sxy + p + flag),
- * batches the 4 model vertices through @c RotTransPers4 to project them
- * into screen space, then walks the 4 face descriptors in @c g_triadIconFaces.
- * For each face it picks 3 of the 4 transformed vertices, runs
- * @c NormalClip to drop back-facing triangles, and (if visible) writes a
- * @c POLY_G3 with the face's pre-packed colors + projected screen
- * positions, links it into @p ot via @c AddPrim, and advances @p prims.
+ * Transforms the 4 model vertices through the GTE, then for each of the 4 faces
+ * in @c g_triadIconFaces back-face culls it and, if visible, writes a @c POLY_G3
+ * with the face's colors and projected vertices and links it into @p ot.
  *
- * The packed @c color0/1/2Word fields are copied into the primitive via
- * @c sw-equivalent word stores to match the source's u32 copy pattern.
- *
- * @param ot     Display-list OT head this batch is chained into.
- * @param prims  Output buffer for @c POLY_G3 primitives (up to 4 emitted).
- * @return Pointer to the next free slot after the last emitted primitive.
+ * @param ot    Ordering table the primitives are chained into.
+ * @param prims Output buffer for the primitives (up to 4 emitted).
+ * @return The next free primitive slot after the last one emitted.
  */
 POLY_G3 *drawTriadIcon(void *ot, POLY_G3 *prims) {
     POLY_G3 *out;
@@ -983,37 +907,16 @@ POLY_G3 *drawTriadIcon(void *ot, POLY_G3 *prims) {
 }
 
 /**
- * @brief Triple Triad card-flip animation handler (battle-state table @c g_tripleTriadStateHandlers).
+ * @brief Per-frame card-flip animation handler (a @c g_tripleTriadStateHandlers entry).
  *
- * Allocates a per-frame ::TransformBuf (@c g_cardFlipXform) and advances the card's
- * flip animation by @c node->state, then composes the GTE transform and emits
- * the card's @c POLY_G3 batch:
- *  - **State 0** (init): pick a random flip phase (0/1) via @c func_80023D04,
- *    set the spin delta @c g_cardFlipSpin (+/-0x400) and @c g_cardFlipTarget.vx (+/-0x8C)
- *    from the phase, seed the scratch vector from the +Z unit @c g_cardFlipUpVec,
- *    call @c func_800A233C(0x70), advance to state 1.
- *  - **State 1** (entry arc): counter 0..59 = sine-driven X spin / Y dip,
- *    60..69 = hold, 70..84 = ease back toward @c g_cardFlipTarget (a short-vector
- *    lerp via @c func_8003F884 with an oscillating Y dip); at >=85 latch the
- *    phase into @c g_cardFlipPhase and go to state 2.
- *  - **State 2** (idle): nudge @c g_cardFlipAngles.vy each frame and write the static
- *    pose; transition to state 3 when @c g_cardFlipPhase disagrees with the phase.
- *  - **State 3** (re-flip): a 10-frame sine swing, then toggle the phase bit
- *    and return to state 2.
+ * Drives the card's flip animation through four states — init, entry arc, idle,
+ * and re-flip — animating a YXZ rotation and a morphing position vector. Each
+ * frame it composes the GTE transform and emits the card's icon via @ref
+ * drawTriadIcon into the active ordering table. The card re-flips whenever
+ * @c g_cardFlipPhase disagrees with the node's current phase.
  *
- * The common tail builds a YXZ rotation from @c g_cardFlipAngles, copies the scratch
- * vector into the matrix translation, applies a fixed +0x100 X tilt, loads the
- * GTE rotation/translation matrices, and emits one @c POLY_G3 batch via
- * @c drawTriadIcon into the active OT.
- *
- * @param node Battle-state handler node (state/counter/phase at 0x10..0x12).
+ * @param node Handler node (state/counter/phase at 0x10..0x12).
  * @return Always 0 (the handler keeps running).
- *
- * @note Two locals pin the original build's register allocation: @c tmp is a
- *       single scratch reused for the state-1 lerp weight and the state-2
- *       transition test (two separate locals do not match), and the OT slot
- *       pointer is cached in @c ot before the emit call (inlining it reorders
- *       the @c %hi loads).
  */
 s32 cardFlipHandler(HandlerNode *node) {
     s32 tmp;
@@ -1021,16 +924,16 @@ s32 cardFlipHandler(HandlerNode *node) {
 
     g_cardFlipXform = (TransformBuf *)scratchAlloc(0x28);
     switch (node->state) {
-    case 0:
+    case CARD_FLIP_INIT:
         node->phase = func_80023D04() % 2;
         g_cardFlipSpin = !node->phase ? -0x400 : 0x400;
         g_cardFlipTarget.vx = !node->phase ? -0x8C : 0x8C;
         g_cardFlipXform->vec = g_cardFlipUpVec;
         func_800A233C(0x70);
-        node->state = 1;
+        node->state = CARD_FLIP_ENTER;
         node->counter = 0;
         break;
-    case 1: {
+    case CARD_FLIP_ENTER: {
         s32 frame = node->counter;
         if (frame < 60) {
             s32 t = (frame << 12) / 60;
@@ -1052,13 +955,13 @@ s32 cardFlipHandler(HandlerNode *node) {
             g_cardFlipAngles.vx = 0;
             g_cardFlipXform->vec = g_cardFlipTarget;
             g_cardFlipPhase = node->phase;
-            node->state = 2;
+            node->state = CARD_FLIP_IDLE;
             node->counter = 0;
         }
         node->counter++;
         break;
     }
-    case 2: {
+    case CARD_FLIP_IDLE: {
         s32 xPos = 0x8C;
         g_cardFlipAngles.vy += 0x10;
         xPos = !node->phase ? -0x8C : xPos;
@@ -1067,12 +970,12 @@ s32 cardFlipHandler(HandlerNode *node) {
         g_cardFlipXform->vec.vx = xPos;
         tmp = g_cardFlipPhase != node->phase;
         if (tmp) {
-            node->state = 3;
+            node->state = CARD_FLIP_REFLIP;
             node->counter = 0;
         }
         break;
     }
-    case 3: {
+    case CARD_FLIP_REFLIP: {
         s32 t = (node->counter << 12) / 10;
         s32 sine = func_8003ED64(t / 4);
         if (node->phase) {
@@ -1083,7 +986,7 @@ s32 cardFlipHandler(HandlerNode *node) {
         g_cardFlipXform->vec.vz = (-(func_8003ED64(t / 2) << 6) >> 12) + 0x200;
         node->counter++;
         if (node->counter >= 10) {
-            node->state = 2;
+            node->state = CARD_FLIP_IDLE;
             node->counter = 0;
             node->phase ^= 1;
         }

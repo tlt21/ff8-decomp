@@ -127,7 +127,7 @@ s32 func_80099C78(HandlerNode *ctl) {
             case 0: {
                 if (ctl->counter == 0) {
                     HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (s32)cardFlipHandler);
-                    sub->state = 0;
+                    sub->state = CARD_FLIP_INIT;
                     sub->counter = 0;
                     g_cardFlipPhase = -1;
                     D_801D3340[1].field2 = 0;

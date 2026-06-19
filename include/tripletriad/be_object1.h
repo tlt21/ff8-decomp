@@ -111,6 +111,14 @@ typedef struct {
     u8    pad16[2];    /* 0x16 */
 } HandlerNode;
 
+/** @brief @c HandlerNode.state values for the card-flip handler (@ref cardFlipHandler). */
+typedef enum {
+    CARD_FLIP_INIT   = 0,  /**< Pick the flip phase and seed the transform.   */
+    CARD_FLIP_ENTER  = 1,  /**< Entry arc: spin and dip the card into place.  */
+    CARD_FLIP_IDLE   = 2,  /**< Settled pose; waits for a phase change.       */
+    CARD_FLIP_REFLIP = 3,  /**< Swing to show the other face.                 */
+} CardFlipState;
+
 /* ── Card-flip transform scratch ──────────────────────────────────────────── */
 extern SVECTOR       g_cardFlipUpVec;        /* +Z unit scratch vector (morph source)   */
 extern SVECTOR       g_cardFlipTarget;        /* scratch target vector                   */
