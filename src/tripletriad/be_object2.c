@@ -12,7 +12,6 @@ extern u8 D_801D3380[];
 extern u8 D_801D3798[];
 extern u8 D_801D3C58[];
 extern s32 D_801D3328;
-extern u16 D_801C2EC4;
 
 /** @brief Game RNG — returns a pseudo-random value. */
 
@@ -317,7 +316,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
 /**
  * @brief Call updateObjectList with D_801D3110.
  */
-void processCardObjects(void) {
+void processCardObjects(s32 arg) {
     updateObjectList(D_801D3110);
 }
 

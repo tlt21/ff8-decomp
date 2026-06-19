@@ -182,4 +182,8 @@ extern void *allocObjNode(u8 *listMem, s32 callback);
 extern void *allocObjNodeFront(u8 *listMem, s32 callback);
 extern s32   updateObjectList(u8 *listMem);
 
+/* Card-flip animation handler + per-match card setup. */
+extern s32  cardFlipHandler(HandlerNode *node);
+extern void initCardHands(void);
+
 #endif /* TRIPLETRIAD_BE_OBJECT1_H */

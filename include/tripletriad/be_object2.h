@@ -31,4 +31,9 @@ extern void setCardEntityType(s32 entityIdx, s32 type);
  *         and clear its captured-from bits. */
 extern void resolveCaptures(TripleTriadBoard *board);
 
+/* Card-object processing + per-match board/hand setup. */
+extern void processCardObjects(s32 arg);
+extern void resetTriadBoard(void);
+extern void setupTripleTriadHands(void);
+
 #endif /* TRIPLETRIAD_BE_OBJECT2_H */

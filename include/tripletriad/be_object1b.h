@@ -6,6 +6,12 @@
 /* Declarations for be_object1b.c (Triple Triad match-flow controller, the
    per-frame update-list callbacks, and battle-object search helpers). */
 
+/* matchFlowHandler hold-frame durations + result-screen cancel bit. */
+#define TT_HOLD_FRAMES_RULE  0x1E    /**< Hold after a combo capture (MATCH_FLOW_RULES). */
+#define TT_HOLD_FRAMES_TALLY 0x0C    /**< Hold on the card-count tally (MATCH_FLOW_TALLY). */
+#define TT_HOLD_FRAMES_FADE  0x0F    /**< Hold during the result fade (MATCH_FLOW_FADE). */
+#define PAD_UP               0x4000  /**< Result-screen cancel bit (D_801C2EC4). */
+
 /** @brief Six-word combined DR_TPAGE + SPRT primitive (24 bytes) used by the
  *  cell-marker and score-tally renderers. */
 typedef struct {
@@ -44,5 +50,9 @@ extern s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority);
 
 /** @brief Flag the matching card object (sets bit 1 of its @c flags). */
 extern void highlightCardSlot(s32 groupId, s32 priority);
+
+/* Result-screen state. */
+extern u8  D_80082C9C;  /**< Match-result category byte. */
+extern s32 D_801D3018;  /**< Result-screen SFX handle. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT1B_H */

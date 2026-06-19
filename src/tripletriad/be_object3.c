@@ -87,7 +87,6 @@ extern s32 D_801D4450;   /**< Acting seat index (0 or 1) for the capture/cleanup
 extern s32 D_801D4454;
 extern s32 D_801D4178;   /**< Running captured-card counter (func_800A0B24). */
 extern u8  D_801D4188[]; /**< 256-byte global scratch buffer for the built banner string. */
-extern u16 D_801C2EC4;
 extern u16 D_80182686;   /**< Relative-pointer string-table offsets (pool base 0x80182680). */
 extern u16 D_8018268A;
 extern u16 D_8018268E;

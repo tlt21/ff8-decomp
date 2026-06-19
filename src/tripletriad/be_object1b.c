@@ -5,121 +5,23 @@
 #include "psxsdk/libgpu.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object1b.h"
+#include "tripletriad/be_object2.h"
 #include "gamestate.h"
 
-/*
- * be_object1b.c — tail of be_object1 (matchFlowHandler onward), split into its own
- * translation unit so matchFlowHandler's jump table is the FIRST .rodata in this
- * object. gcc emits each jtbl in a fresh ".section .rodata / .align 3" block;
- * when two jtbls share one object the second is 8-aligned, inserting a 4-byte
- * pad. The original places matchFlowHandler's table at 0xDC (4-aligned, no pad)
- * directly after formatString's 55-entry table that fills 0x00..0xDC. Keeping
- * this table first in its own object (placed by the linker's SUBALIGN(2)) lands
- * it at 0xDC with no pad. See [[func_80099C78_state]] / the be_object3b split.
- */
-
-/* matchFlowHandler (Triple Triad match flow) hold-frame durations + result-screen input bit. */
-#define TT_HOLD_FRAMES_RULE  0x1E  /**< Frames to hold after a combo capture (case 4). */
-#define TT_HOLD_FRAMES_TALLY 0x0C  /**< Frames to hold on the card-count tally (case 7). */
-#define TT_HOLD_FRAMES_FADE  0x0F  /**< Frames to hold during the result fade (case 9). */
-#define PAD_UP               0x4000 /**< D_801C2EC4 result-screen cancel bit. */
-
-/**
- * @brief Bump a win/loss/draw counter in the Triple Triad save record (case 9).
- *
- * The @c do/while(0) wrapper is a scheduling barrier: it keeps the counter's
- * read-modify-write (@c lhu / @c addiu / @c sh) in its own basic block so
- * gcc 2.7.2 cannot hoist the @c lhu ahead of the preceding @c D_80082C9C
- * store. That reproduces the original's store-then-tally order (one extra
- * load-delay @c nop per branch); writing @c counter++ inline lets gcc hoist
- * the load and drops 3 instructions.
- */
+/** @brief Bump a Triple Triad save-record counter. The do/while is a scheduling
+ *  barrier the original needs — plain @c counter++ lets gcc reorder the load. */
 #define TT_TALLY(counter) do { (counter)++; } while (0)
 
-/* Match-result / result-screen state (be_object1b-local). */
-extern u8  D_80082C9C;              /* match-result category byte */
-extern u16 D_801C2EC4;              /* result-screen pad input */
-extern s32 D_801D3018;              /* result-screen SFX handle */
-extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
-
-/* Functions defined in be_object1.c. */
-extern s32  cardFlipHandler(HandlerNode *node);
-extern void initCardHands(void);
-
-/* Functions defined in other tripletriad TUs. */
-extern void processCardObjects(s32 a0);
-extern void resetTriadBoard(void);
-extern void setupTripleTriadHands(void);
-
 /**
- * @brief Triple Triad match controller — 10-state machine driving the post-game
- *        result flow (rule resolution → card counting → reward → cleanup).
+ * @brief Per-frame Triple Triad match controller (an update-list callback).
  *
- * Called as a per-frame handler off the battle-object dispatch chain. Each
- * call advances the state machine until it must wait for an asynchronous
- * event (input poll, sub-handler completion, animation finish), at which
- * point it returns @c 0 and the next frame re-enters. The state byte at
- * @c ctl->state (@c 0..9) is dispatched via a jumptable; states @c 2 and
- * @c 3 are unused and re-loop the dispatch (gcc-default fill for unused
- * cases). State @c >= 10 hangs intentionally.
+ * Runs the post-game flow as a state machine over @c ctl->state (see
+ * @ref MatchFlowState): each call advances until it must wait on an async
+ * event (input, a sub-handler, or an animation), then returns 0 so the next
+ * frame re-enters. A state of 10 or more hangs intentionally.
  *
- * State outline:
- *   - **0** (init): on first frame allocate a sub-handler running
- *     @c cardFlipHandler, mark @c g_cardFlipPhase = @c -1, clear the substate
- *     parameter slots. Stays here until @c g_cardFlipPhase becomes non-negative
- *     (the sub-handler picks a starting player), then advances to state 1.
- *   - **1** (player turn): on first frame dispatch on
- *     @c D_801A2C70[g_cardFlipPhase] (player type: 0/1 human, 2 AI, 3 demo) into
- *     @c spawnCardSelectCursor / @c spawnAiTurn to create a per-turn handler,
- *     stashed at @c ctl->subHandler. Subsequent frames poll
- *     @c updateObjectList(subHandler); on completion advance to state 4.
- *   - **4** (rule resolution, first pass): wait for @c anyCardEffectActive (UI
- *     idle). On entry call @c applyCardRules to evaluate Same/Plus chains.
- *     If the result flags either bit 2 (Same) or bit 3 (Plus), play the
- *     matching SFX (@c func_8009EB30 0/1), then sweep the 3x3 play area
- *     for cells marked with the corresponding flag bit and animate them via
- *     @c setCardEntityType. After @c counter == 1, finalize and advance to 5.
- *   - **5** (rule resolution, chain pass): keep applying @c applyCardRules
- *     until the result returns 0, playing the chain SFX (@c 5) once. Then
- *     advance to state 6.
- *   - **6** (empty-cell tally): count occupied cells in the play area. If
- *     all 9 are filled, advance to state 7. Otherwise flip @c g_cardFlipPhase
- *     and loop back to state 1 (next player's turn).
- *   - **7** (card count): wait one frame; then tally cards in
- *     @c g_tripleTriadCardHands by owner (low bit of @c initFlags). Stash the winner
- *     in @c D_801D30FC (@c 0/1 for winner, @c 2 for draw). Wait until
- *     @c counter >= 12, then advance to state 8.
- *   - **8** (result SFX + input wait): on first frame pick the result SFX
- *     based on winner/draw and start it via @c func_8009EB30, saving the
- *     handle in @c D_801D3018. Wait for @c D_801C2EC4 button input; on
- *     cancel (@c 0x4000) silence the SFX and stay; on confirm play
- *     @c func_800A2054 and advance to state 9 (or in Sudden Death mode
- *     loop back to state 1 via @c initCardHands reset).
- *   - **9** (fade out): call @c func_800A0370 once, wait 15 frames, then
- *     stop the result SFX, update the Triple Triad win/loss/draw counters
- *     in @c TripleTriadData, set @c D_80082C9C category byte, and trigger
- *     battle exit via @c g_tripleTriadState = @c 4.
- *
- * @param ctl  Battle-object handler context (state at +0x10, counter at
- *             +0x11, sub-handler pointer at +0x0C, rule flags at +0x13,
- *             retry flag at +0x15).
- * @return Always @c 0.
- *
- * @note Reaching 100% needs four register/scheduling constructs (a clean
- *       rewrite with separate, well-named locals and plain @c ++ compiles to
- *       ~99%): (1) ONE function-scope scratch @c acc, reused as the case-4
- *       combo cell-mask AND the case-6 empty-cell count — two separate locals
- *       do not coalesce into the single saved register the original reuses
- *       (otherwise a ~13-instr a3/t0 constant-temp cascade appears). (2)
- *       @c row=acc before the case-6 test reuses the dead loop counter,
- *       reproducing gcc's IV-vs-counter allocation. (3) case 8 tests @c >=3
- *       first and shares the literal @c 3 through @c mode
- *       (@c mode=3;func_800A247C(mode);mode=2) so gcc materializes @c a0=3
- *       once. (4) the case-9 result tally goes through @c TT_TALLY (a
- *       @c do/while(0) scheduling barrier) so the counter load is not hoisted
- *       ahead of the @c D_80082C9C store. The intentional hang on
- *       @c state @c >= @c 10 falls out of gcc's switch bounds check (no
- *       @c default case).
+ * @param ctl Handler node (state/counter/sub-handler/rule flags in its fields).
+ * @return Always 0.
  */
 s32 matchFlowHandler(HandlerNode *ctl) {
     s32 acc;
@@ -309,43 +211,15 @@ s32 updateCardObjects(s32 a0) {
 }
 
 /**
- * @brief Triple Triad: emit per-cell capture-direction marker sprites and flip
- *        the back-buffer's draw-env entry.
+ * @brief Render each board cell's element icon, then queue the back-buffer flip.
  *
- * Per-frame renderer that walks the 3x3 active play area (rows/cols 1..3).
- * Each board slot carries an @c element bitmask whose set bits select the
- * element icon(s) to render at that cell.
- * The function finds the lowest set bit of @c element, packs a 6-word combined
- * @c DR_TPAGE + @c SPRT primitive (24 bytes) into the active primitive pool
- * via @c g_primCursor, and links it into the OT at @c g_otBase[0x1B] (the
- * 0x6C byte slot in the sort tree) using @c AddPrim. The U/V coordinates are
- * computed from the bit position: @c U = ((bit&3)<<6) + ((frameTick<<2)&0x30)
- * (animated by @c g_tripleTriadFrameCount frame counter modulo 4), @c V = (bit>>2)<<4 + 0x10.
- * Cell pixel positions step by 0x40 in both axes (cell size).
+ * Per-frame renderer over the 3x3 play area: for each cell whose @c element
+ * bitmask is set, it emits a textured sprite of that element's icon into the
+ * primitive pool and links it into the ordering table (the icon's UV animates
+ * with @c g_tripleTriadFrameCount). Finishes by queueing the back-buffer's
+ * load for the next vblank.
  *
- * After all visible cells emit, @c g_primCursor is bumped to the new tail and
- * @c queueLoadImage is called with @c &g_drawEnvs[!activeBuffer] (the OTHER
- * draw-env) plus @c D_8012E66C as the callback — registering the back-buffer
- * for the next vblank flip.
- *
- * @return Always @c 0.
- *
- * @note Matching tricks: (1) @c TripleTriadCellPrim is a 6-word combined
- *       primitive (P_TAG + DR_TPAGE + SPRT). (2) The bit-scan loop uses a
- *       redundant @c saved = colByteOffset[boardBase+5] re-load (instead of
- *       @c saved = mask) — this re-emits the @c addu for the cell address,
- *       letting gcc allocate @c v1 (matching target) instead of reusing
- *       @c v0. (3) @c v = saved >> bit at the top of the while-loop body
- *       AND in the tail (line 76 below is redundant after the bottom-of-body
- *       shift, but the compiler emits a srav for it in the back-edge delay
- *       slot for the next iter's check). (4) @c volatile s32 g_tripleTriadFrameCount
- *       prevents gcc from narrowing the global load to @c lbu — the target
- *       uses a 32-bit @c lw. (5) @c i[arr] form @c colByteOffset[boardBase+5]
- *       forces the @c addu operand order @c (s2, s8) matching target.
- *       (6) @c row=1 / @c col=1 in declaration init (not the @c for header)
- *       fixes the s-reg allocation so that @c row→s7 and @c col→s4.
- *       (7) @c rowByteOffset = pixelY chains the init so gcc emits
- *       @c addu s6, s5, $0 (matching target's @c addu s6, s5, zero).
+ * @return Always 0.
  */
 s32 drawBoardElements(void) {
     TripleTriadCellPrim *prim = (TripleTriadCellPrim *)g_primCursor;
@@ -414,29 +288,13 @@ s32 updateChildList(CallbackNode *node) {
 }
 
 /**
- * @brief Triple Triad: tally per-player card ownership and render the two
- *        score-digit sprites for the end-of-game tally screen.
+ * @brief Tally each player's cards and draw the two end-of-game score digits.
  *
- * Walks all 10 @c TripleTriadCardObject slots in @c g_tripleTriadCardHands and bins each by the
- * low bit of @c initFlags (owner: player 0 or player 1) into a 2-element
- * stack-local @c cnt[]. Then emits two 6-word combined @c DR_TPAGE + @c SPRT
- * primitives — one per player — placed at fixed screen positions
- * (player 0 at @c x=0x28, player 1 at @c x=0x140; both at @c y=0xC0). The
- * @c u0 coordinate selects a digit glyph from a tex-page strip via the
- * formula @c u0 = (cnt[p] * 24) - 24 = (cnt[p] - 1) * 24 (each glyph is
- * 24 pixels wide). Sprites are 24x24, CLUT @c 0x3A40, @c v0 = 0x30.
+ * Counts the 10 @c g_tripleTriadCardHands slots by owner (low bit of
+ * @c initFlags), then emits one digit sprite per player at its fixed screen
+ * position.
  *
- * @return Always @c 0.
- *
- * @note Matching tricks: (1) @c cnt[1] = 0 then @c cnt[0] = 0 (reversed
- *       init order) matches the target's @c sw zero sequence — same trick
- *       used in @c matchFlowHandler's case 7. (2) The branch form
- *       @c if (!(i & 1)) ... else ... — with the @c i==0 (player 0) path
- *       in the @c if body — drives gcc to emit @c bnez to the player-1
- *       (@c 0x140) branch and fall through (in delay slot) to the
- *       player-0 (@c 0x28) value, matching target's @c bnez+j layout.
- *       The @c & 1 mask is reused for both the @c x0 branch and the
- *       @c cnt[i & 1] lookup so gcc CSEs the @c andi.
+ * @return Always 0.
  */
 s32 drawScoreDigits(void) {
     s32 i = 0;
