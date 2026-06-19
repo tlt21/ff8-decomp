@@ -115,8 +115,7 @@ typedef struct {
 extern s32  updateCardSelectCursor(SubstateMachineNode *p);
 extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
 extern void drawMenuPrim(s32 mode, SubstateSlot *slot);
-extern void commitCardToBoard(TripleTriadBoard *board, s32 entityIdx, s32 col, s32 row);
-extern void func_800A26C8(void);
+extern void func_800A26C8(void);  /* commitCardToBoard prototype lives in tripletriad.h */
 
 /* Per-player Triple Triad match state (region starts at 0x801A2C40).
    D_801A2C48[2][5] (the two players' 5-card hands) now lives in tripletriad.h. */
