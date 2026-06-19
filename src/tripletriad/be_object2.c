@@ -58,9 +58,9 @@ typedef struct {
     /* 0x10 */ u8 unk10;       /* search-depth parameter passed to searchBestMove */
     /* 0x11 */ u8 result;      /* searchBestMove result status */
     /* 0x12 */ u8 pad12[2];
-} func_8009DBE8_arg0;          /* 0x14 */
+} AiTurnNode;          /* 0x14 */
 
-/** @brief Outer state machine driven by @ref updateAiTurn (@c func_8009DBE8_arg0.state). */
+/** @brief Outer state machine driven by @ref updateAiTurn (@c AiTurnNode.state). */
 enum AiTurnState {
     AI_TURN_INIT    = 0,  /**< Reset the move-search workspace @c D_801D3460, then SEARCH. */
     AI_TURN_SEARCH  = 1,  /**< Run the move search (@ref AiSearchPhase sub-machine). */
@@ -68,7 +68,7 @@ enum AiTurnState {
     AI_TURN_PLACE   = 3   /**< Commit the chosen card to the board, then return 2. */
 };
 
-/** @brief Phase within @ref AI_TURN_SEARCH (@c func_8009DBE8_arg0.sub). */
+/** @brief Phase within @ref AI_TURN_SEARCH (@c AiTurnNode.sub). */
 enum AiSearchPhase {
     AI_SEARCH_PREP = 0,   /**< Arm the search timer; latch the candidate card slot. */
     AI_SEARCH_RUN  = 1,   /**< Run @ref searchBestMove and handle its result. */
@@ -678,12 +678,12 @@ void drawMenuPrim(s32 mode, SubstateSlot *slot) {
  * If the helper returns a valid index, passes the slot's @c cardId
  * byte to @c func_800A2114.
  *
- * @param a Search key (passed through to @c findCardSlot as arg 0).
- * @param b Filter mask (passed through as arg 1).
- * @param c Row/column key (passed through as arg 2).
+ * @param groupId  Search group — @c findCardSlot arg 0.
+ * @param fieldD   Secondary key — @c findCardSlot arg 1.
+ * @param priority Priority key — @c findCardSlot arg 2.
  */
-void initMenuObjectHandler(s32 a, s32 b, s32 c) {
-    s32 idx = findCardSlot(a, b, c);
+void initMenuObjectHandler(s32 groupId, s32 fieldD, s32 priority) {
+    s32 idx = findCardSlot(groupId, fieldD, priority);
     if (idx >= 0) {
         func_800A2114(g_tripleTriadCardHands[idx].cardId);
     }
@@ -848,34 +848,34 @@ void handleCursorSubstate3(SubstateSlot *slot, s32 idx) {
 /**
  * @brief Adjust a battle speed/volume parameter based on controller input.
  *
- * If D_801D332E has bit 0x8000 set and the current value at a0 is positive,
- * decrements the value and triggers a sound effect. If D_801D332E has bit
- * 0x2000 set and the value is less than 4, increments it and triggers a
+ * If D_801D332E has bit 0x8000 set and the current value at @p param is
+ * positive, decrements the value and triggers a sound effect. If D_801D332E has
+ * bit 0x2000 set and the value is less than 4, increments it and triggers a
  * sound effect. Stores the final value to D_801D335C.
  *
- * @param a0 Pointer to a halfword value to adjust.
+ * @param param Pointer to a halfword value to adjust.
  */
-void adjustConfigParam(u16 *a0) {
+void adjustConfigParam(u16 *param) {
     u16 val;
 
     if (D_801D332E & 0x8000) {
-        if (*(s16 *)a0 > 0) {
+        if (*(s16 *)param > 0) {
             func_800A233C(1);
-            val = *a0 - 1;
-            *a0 = val;
+            val = *param - 1;
+            *param = val;
             goto store;
         }
     }
     if (D_801D332E & 0x2000) {
-        if (*(s16 *)a0 < 4) {
+        if (*(s16 *)param < 4) {
             func_800A233C(1);
-            val = *a0 + 1;
-            *a0 = val;
+            val = *param + 1;
+            *param = val;
             goto store;
         }
     }
 store:
-    D_801D335C.field0 = *a0;
+    D_801D335C.field0 = *param;
 }
 
 /**
@@ -1097,19 +1097,19 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
  * 0xC, 0xD, 0xE on the node from the parameters. Resets D_801D3340 fields
  * at +0xC and +0xE to 1.
  *
- * @param a0 Value stored at node byte 0xD.
- * @param a1 Value stored at node byte 0xE.
+ * @param rowSeed   Cursor row seed (node @c fieldD).
+ * @param stateByte State byte forwarded to activateMenuSubstate (node @c fieldE).
  * @return Pointer to D_801D3380 list header.
  */
-u8 *spawnCardSelectCursor(s32 a0, s32 a1) {
+u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
     u8 *list = D_801D3380;
-    u8 *node;
+    SubstateMachineNode *node;
 
     initObjList(list, D_801D3360, 0x14, 1);
-    node = (u8 *)allocObjNode(list, (s32)updateCardSelectCursor);
-    node[0xC] = 0;
-    node[0xD] = a0;
-    node[0xE] = a1;
+    node = (SubstateMachineNode *)allocObjNode(list, (s32)updateCardSelectCursor);
+    node->state = 0;
+    node->fieldD = rowSeed;
+    node->fieldE = stateByte;
     D_801D3340[3].field0 = 1;
     D_801D3340[3].field2 = 1;
     return list;
@@ -2220,7 +2220,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
  * @return 2 once the card has been placed (state 3); 0 while still working or when
  *         input is disabled.
  */
-s32 updateAiTurn(func_8009DBE8_arg0 *a) {
+s32 updateAiTurn(AiTurnNode *node) {
     TripleTriadBoard board;
 
     if (g_tripleTriadInputFlags & TT_INPUT_DISABLED) {
@@ -2228,7 +2228,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
     }
 
     while (1) {
-        switch (a->state) {
+        switch (node->state) {
         case AI_TURN_INIT: {
             s32 i;
             for (i = 0; i < 9; i++) {
@@ -2238,44 +2238,44 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
                 D_801D3460[i].noBest = 1;
                 D_801D3460[i].checkBound = 0;
             }
-            a->state = AI_TURN_SEARCH;
-            a->sub = AI_SEARCH_PREP;
+            node->state = AI_TURN_SEARCH;
+            node->sub = AI_SEARCH_PREP;
             break;
         }
         case AI_TURN_SEARCH: {
-            s32 sub = a->sub;
+            s32 sub = node->sub;
             switch (sub) {
             case AI_SEARCH_PREP:
                 D_801D353C = 10;
-                a->cardSlot = D_801D3462;
-                a->sub++;
+                node->cardSlot = D_801D3462;
+                node->sub++;
                 break;
             case AI_SEARCH_RUN:
-                highlightCardSlot(D_801D35C0, a->cardSlot);
+                highlightCardSlot(D_801D35C0, node->cardSlot);
                 D_801D3538 = 100;
-                a->result = searchBestMove(&D_801D3398, D_801D35C0, D_801D3460, a->unk10);
-                if ((a->result & 0xFF) == 2) {
+                node->result = searchBestMove(&D_801D3398, D_801D35C0, D_801D3460, node->unk10);
+                if ((node->result & 0xFF) == 2) {
                     D_801D353C--;
                     return 0;
                 }
-                if (D_801D3570[D_801D35C0].cards[a->cardSlot].id == 0xFF) {
+                if (D_801D3570[D_801D35C0].cards[node->cardSlot].id == 0xFF) {
                     D_801D353C = 0;
                 }
-                a->sub++;
+                node->sub++;
                 break;
             case AI_SEARCH_WAIT:
-                highlightCardSlot(D_801D35C0, a->cardSlot);
+                highlightCardSlot(D_801D35C0, node->cardSlot);
                 if (D_801D353C > 0) {
                     D_801D353C--;
                     return 0;
                 }
-                if (a->result == 3) {
-                    a->sub = AI_SEARCH_PREP;  /* re-run the search from the top */
+                if (node->result == 3) {
+                    node->sub = AI_SEARCH_PREP;  /* re-run the search from the top */
                 } else {
                     /* sub == AI_TURN_ANIMATE here; assign the cached local (not the
                        literal) — that variable reuse is what makes the prologue match. */
-                    a->state = sub;
-                    a->sub = 0;               /* start the ANIMATE frame counter */
+                    node->state = sub;
+                    node->sub = 0;               /* start the ANIMATE frame counter */
                 }
                 break;
             }
@@ -2283,12 +2283,12 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
         }
         case AI_TURN_ANIMATE:
             highlightCardSlot(D_801D35C0, D_801D3466);
-            a->sub++;
-            if ((a->sub & 0xFF) < AI_ANIM_FRAMES) {
+            node->sub++;
+            if ((node->sub & 0xFF) < AI_ANIM_FRAMES) {
                 return 0;
             }
-            a->state = AI_TURN_PLACE;
-            a->sub = 0;
+            node->state = AI_TURN_PLACE;
+            node->sub = 0;
             break;
         case AI_TURN_PLACE:
             setBattleObjectAction(
@@ -2323,7 +2323,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
  * @return The AI turn-node list head (@c D_801D3560).
  */
 u8 *spawnAiTurn(s32 seat) {
-    func_8009DBE8_arg0 *node;
+    AiTurnNode *node;
     s32 mult;
     s32 slotCount;
     s32 player;
@@ -2359,7 +2359,7 @@ u8 *spawnAiTurn(s32 seat) {
     }
 
     initObjList(D_801D3560, D_801D3540, 0x14, 1);
-    node = (func_8009DBE8_arg0 *)allocObjNode(D_801D3560, (s32)updateAiTurn);
+    node = (AiTurnNode *)allocObjNode(D_801D3560, (s32)updateAiTurn);
     D_801D35C0 = seat;
     node->seat = seat;
     {
