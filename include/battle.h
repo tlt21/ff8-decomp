@@ -874,6 +874,7 @@ extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
 extern u8  D_800EE471;
 extern u8  D_800EE4C4;
+extern u16 D_80077E5C;
 /* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle internals).
  * ---------------------------------------------------------------- */

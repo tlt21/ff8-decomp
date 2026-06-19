@@ -1334,7 +1334,12 @@ void func_8009F570(s32 bitIndex) {
     *(s32 *)(base + wordIdx * 4 + 0xD0C) |= (1 << bitPos);
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F5B4);
+void func_8009F5B4(s32 arg0) {
+    if (!(D_80077E5C & CTRL_FLAG_100) && (func_8009F52C(D_800ED148.entities[arg0].linkedIdx) != 0)) {
+        D_800EE4C0.flags5 |= 2;
+    }
+    func_8009F570(D_800ED148.entities[arg0].linkedIdx);
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F65C);
 
