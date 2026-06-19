@@ -12,7 +12,7 @@
  * object. gcc emits each jtbl in a fresh ".section .rodata / .align 3" block;
  * when two jtbls share one object the second is 8-aligned, inserting a 4-byte
  * pad. The original places func_80099C78's table at 0xDC (4-aligned, no pad)
- * directly after func_80099204's 55-entry table that fills 0x00..0xDC. Keeping
+ * directly after formatString's 55-entry table that fills 0x00..0xDC. Keeping
  * this table first in its own object (placed by the linker's SUBALIGN(2)) lands
  * it at 0xDC with no pad. See [[func_80099C78_state]] / the be_object3b split.
  */

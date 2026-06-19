@@ -125,7 +125,7 @@ extern u32          *D_801D3008;        /**< Scratch buffer pointer for RotTrans
 
 /* ── Deferred VRAM transfer pool (flushVramTransfers) ──────────────────────────── */
 extern PoolEntry     g_vramQueue[];
-extern ResHeader     D_800B71D8;               /**< Resource header registered by the draw-target setup. */
+extern ResHeader     g_textBufferRes;               /**< Resource header registered by the draw-target setup. */
 extern ResHeader     g_tripleTriadCardFrames;  /**< Card frame/border graphics (4bpp TIM, uploaded to VRAM at init). */
 extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM, ~110 cards at 64x64, uploaded to VRAM at init). */
 
@@ -135,26 +135,26 @@ extern RECT          D_800A45A8;
 extern RECT          D_800A45B0;
 extern u32           g_orderingTables[2][TT_OT_LEN];  /**< Per-buffer ordering tables (OT). */
 extern u8            g_primPools[2][0x10000];  /* primitive pool, 64KB per buffer */
-extern u8            D_801D2FF0[2][8];
-extern u8            D_801C2FE0[2][0x8000];
-extern u8           *D_801D2FE0;
-extern u8           *D_801D3000;
+extern u8            g_textOTs[2][8];
+extern u8            g_textFrameBufs[2][0x8000];
+extern u8           *g_textFbPtr;
+extern u8           *g_textOtPtr;
 extern u8           *g_tripleTriadActiveList;
-extern u8            D_80182B84[];
+extern u8            g_hexDigits[];
 extern u8            g_tripleTriadCardCounts[];
 
 /* ── Debug text / misc state ──────────────────────────────────────────────── */
 extern s32           g_vramQueueCount;
 extern s32           g_scratchPtr;
-extern s16           D_80182B54;
-extern s16           D_80182B5A;
-extern s16           D_80182B58;
+extern s16           g_textBufferIndex;
+extern s16           g_textLineX;
+extern s16           g_textCursorY;
 extern s16           g_textCursorX;
 extern u8            g_vsyncMode;        /**< VSync() wait mode (0 = wait one vblank). */
 extern s8            g_fadeCounter;      /**< Display fade counter; counts toward 0, toggling SetDispMask. */
 extern volatile u16  g_vsyncRate;        /**< Display vsync rate (main-binary global); reset to 100 on TT exit. */
-extern RGB           D_80182B5C;        /**< Debug-text rgb color. */
-extern u32           D_80182AA0[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
+extern RGB           g_textColor;        /**< Debug-text rgb color. */
+extern u32           g_textPalette[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
 extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handler table. */
 
 /* ── Entry points defined in be_object1.c (forward-declared for earlier callers) ── */

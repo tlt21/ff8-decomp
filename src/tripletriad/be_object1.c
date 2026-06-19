@@ -23,7 +23,7 @@ void initTripleTriad(void) {
     resetTriadMenuState();
     func_800A1BE0();
     func_800A2208();
-    func_80098DD4();
+    initTextBuffer();
     func_8009EB98();
     queueTimUpload(&g_tripleTriadCardArt);
     queueTimUpload(&g_tripleTriadCardFrames);
@@ -504,37 +504,37 @@ s32 updateObjectList(u8 *listMem) {
 }
 
 /**
- * @brief Register @c D_800B71D8 and set up the current frame's draw targets.
+ * @brief Register @c g_textBufferRes and set up the current frame's draw targets.
  *
- * Registers the @c D_800B71D8 resource into the g_vramQueue pool via
+ * Registers the @c g_textBufferRes resource into the g_vramQueue pool via
  * @c queueTimUpload, kicks off @c ClearOTag for the current buffer's
- * drawenv slot, then rebases the framebuffer (@c D_801D2FE0) and drawenv
- * (@c D_801D3000) pointers to the slot indexed by @c D_80182B54. Unlike
+ * drawenv slot, then rebases the framebuffer (@c g_textFbPtr) and drawenv
+ * (@c g_textOtPtr) pointers to the slot indexed by @c g_textBufferIndex. Unlike
  * @c flipTextBuffer, this does not flip the buffer index first.
  */
-void func_80098DD4(void) {
-    queueTimUpload(&D_800B71D8);
-    ClearOTag(D_801D2FF0[D_80182B54], 2);
-    D_801D2FE0 = D_801C2FE0[D_80182B54];
-    D_801D3000 = D_801D2FF0[D_80182B54];
+void initTextBuffer(void) {
+    queueTimUpload(&g_textBufferRes);
+    ClearOTag(g_textOTs[g_textBufferIndex], 2);
+    g_textFbPtr = g_textFrameBufs[g_textBufferIndex];
+    g_textOtPtr = g_textOTs[g_textBufferIndex];
 }
 
 /**
  * @brief Set battle viewport dimensions if non-negative.
  *
- * Stores a0 to D_80182B5A and g_textCursorX if a0 >= 0.
- * Stores a1 to D_80182B58 if a1 >= 0.
+ * Stores a0 to g_textLineX and g_textCursorX if a0 >= 0.
+ * Stores a1 to g_textCursorY if a1 >= 0.
  *
  * @param a0 Width value (stored if >= 0).
  * @param a1 Height value (stored if >= 0).
  */
-void func_80098E54(s32 a0, s32 a1) {
+void setTextOrigin(s32 a0, s32 a1) {
     if (a0 >= 0) {
-        D_80182B5A = a0;
+        g_textLineX = a0;
         g_textCursorX = a0;
     }
     if (a1 >= 0) {
-        D_80182B58 = a1;
+        g_textCursorY = a1;
     }
 }
 
@@ -542,7 +542,7 @@ void func_80098E54(s32 a0, s32 a1) {
  * @brief Append one debug-text character as a 5x5 textured sprite primitive.
  *
  * Renders @p ch (uppercased on the fly) from the debug font atlas into a
- * fresh @c SPRT at the current packet-buffer tail (@c D_801D2FE0), then
+ * fresh @c SPRT at the current packet-buffer tail (@c g_textFbPtr), then
  * advances the cursor and the buffer pointer. Newline resets the cursor
  * to the line origin and steps down 7 px; any non-printable byte (below
  * space) just advances the cursor without emitting a glyph.
@@ -551,16 +551,16 @@ void func_80098E54(s32 a0, s32 a1) {
  * @c -0x80 / @c -0x20 wrap the indices into the texture-page coordinate
  * space. Odd/even character codes alternate between two CLUTs.
  */
-void func_80098E7C(u8 ch) {
+void drawTextChar(u8 ch) {
     SPRT *prim;
     s32 adjusted;
     s32 row;
 
-    prim = (SPRT *)D_801D2FE0;
+    prim = (SPRT *)g_textFbPtr;
 
     if (ch == '\n') {
-        g_textCursorX = D_80182B5A;
-        D_80182B58 += 7;
+        g_textCursorX = g_textLineX;
+        g_textCursorY += 7;
         return;
     }
 
@@ -580,12 +580,12 @@ void func_80098E7C(u8 ch) {
     /* Drop down to glyph index relative to space (0x20 = first printable). */
     adjusted = ch - 0x20;
 
-    prim->r0 = D_80182B5C.r;
-    prim->g0 = D_80182B5C.g;
-    prim->b0 = D_80182B5C.b;
+    prim->r0 = g_textColor.r;
+    prim->g0 = g_textColor.g;
+    prim->b0 = g_textColor.b;
 
     prim->x0 = g_textCursorX;
-    prim->y0 = D_80182B58;
+    prim->y0 = g_textCursorY;
 
     prim->u0 = ((adjusted << 2) & 0x38) - 0x80;
 
@@ -604,26 +604,26 @@ void func_80098E7C(u8 ch) {
     prim->h = 5;
     prim->w = 5;
 
-    AddPrim((u32 *)D_801D3000, prim);
+    AddPrim((u32 *)g_textOtPtr, prim);
 
-    D_801D2FE0 = (u8 *)(prim + 1);
+    g_textFbPtr = (u8 *)(prim + 1);
     g_textCursorX += 6;
 }
 
 /**
  * @brief Render a null-terminated text string, with @c '#<digit>' color escapes.
  *
- * Walks @p str byte by byte. Characters are passed to @c func_80098E7C for
+ * Walks @p str byte by byte. Characters are passed to @c drawTextChar for
  * sprite rendering. A @c '#' begins an escape: if the next byte is an ASCII
- * digit @c '0'..'8', it indexes the palette table @c D_80182AA0 and the
- * matching 4-byte RGB entry is copied into the live @c D_80182B5C color;
+ * digit @c '0'..'8', it indexes the palette table @c g_textPalette and the
+ * matching 4-byte RGB entry is copied into the live @c g_textColor color;
  * any other byte after @c '#' is rendered as a plain character (the @c '#'
  * is consumed silently).
  *
  * @note The @c escape_marker variable holds @c '#' across iterations to
  * anchor the constant in a callee-saved register (matches target codegen).
  */
-void func_80098FD8(u8 *str) {
+void drawText(u8 *str) {
     u8 ch;
 
     for (ch = *str++; ch != 0; ch = *str++) {
@@ -634,15 +634,15 @@ void func_80098FD8(u8 *str) {
             if (digit < '9') {
                 if (digit >= '0') {
                     /* Set color from palette entry indexed by ASCII digit. */
-                    memcpy(&D_80182B5C, &D_80182AA0[digit], 4);
+                    memcpy(&g_textColor, &g_textPalette[digit], 4);
                 } else {
-                    func_80098E7C(next);
+                    drawTextChar(next);
                 }
             } else {
-                func_80098E7C(next);
+                drawTextChar(next);
             }
         } else {
-            func_80098E7C(ch);
+            drawTextChar(ch);
         }
     }
 }
@@ -654,7 +654,7 @@ void func_80098FD8(u8 *str) {
  * @param a1 Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *func_800990A0(s32 a0, u8 *a1) {
+u8 *intToDecStr(s32 a0, u8 *a1) {
     u8 buf[36];
     u8 *dst = a1;
     u8 *p;
@@ -685,7 +685,7 @@ u8 *func_800990A0(s32 a0, u8 *a1) {
  * @param a1 Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *func_80099134(s32 a0, u8 *a1) {
+u8 *intToHexStr(s32 a0, u8 *a1) {
     u8 buf[20];
     u8 *dst = a1;
     u8 *p;
@@ -699,7 +699,7 @@ u8 *func_80099134(s32 a0, u8 *a1) {
 
     p = buf + 17;
     buf[17] = 0;
-    table = D_80182B84;
+    table = g_hexDigits;
 
     do {
         p--;
@@ -721,7 +721,7 @@ u8 *func_80099134(s32 a0, u8 *a1) {
  * @param a1 Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *func_800991AC(s32 a0, u8 *a1) {
+u8 *intToBinStr(s32 a0, u8 *a1) {
     u8 buf[36];
     u8 *dst = a1;
     u8 *p;
@@ -746,9 +746,9 @@ u8 *func_800991AC(s32 a0, u8 *a1) {
  * output into @p dst. The remaining @c args[1..] are the values referenced
  * by format specifiers. Supported specifiers:
  *
- *   - @c %d, @c %D : signed decimal (via @c func_800990A0)
- *   - @c %x, @c %X : hexadecimal    (via @c func_80099134)
- *   - @c %b, @c %B : binary         (via @c func_800991AC)
+ *   - @c %d, @c %D : signed decimal (via @c intToDecStr)
+ *   - @c %x, @c %X : hexadecimal    (via @c intToHexStr)
+ *   - @c %b, @c %B : binary         (via @c intToBinStr)
  *   - @c %c, @c %C : single character byte
  *   - @c %s, @c %S : null-terminated string
  *
@@ -763,7 +763,7 @@ u8 *func_800991AC(s32 a0, u8 *a1) {
  *              subsequent words are pulled in order by format specifiers.
  * @return Length of the produced string (excluding null terminator).
  */
-s32 func_80099204(char *dst, s32 *args) {
+s32 formatString(char *dst, s32 *args) {
     char *fmt = (char *)*args++;
     char *out = dst;
     char buf[256];
@@ -786,13 +786,13 @@ s32 func_80099204(char *dst, s32 *args) {
             ch = *fmt++;
             switch (ch) {
                 case 'D': case 'd':
-                    func_800990A0(*args++, buf);
+                    intToDecStr(*args++, buf);
                     break;
                 case 'X': case 'x':
-                    func_80099134(*args++, buf);
+                    intToHexStr(*args++, buf);
                     break;
                 case 'B': case 'b':
-                    func_800991AC(*args++, buf);
+                    intToBinStr(*args++, buf);
                     break;
                 case 'C': case 'c':
                     buf[0] = (u8)*args++;
@@ -830,54 +830,54 @@ end:
 
 /**
  * @brief Variadic forwarder: passes @p a0 and a pointer to the variadic
- *        args to @c func_80099204.
+ *        args to @c formatString.
  *
  * The `...` is load-bearing — it triggers gcc's varargs prologue that
  * saves a1-a3 to the caller's shadow area, letting @c &a1 act as the
  * start of a variadic argument list.
  */
-s32 func_800993F4(s32 a0, s32 a1, ...) {
-    return func_80099204((char *)a0, &a1);
+s32 btlSprintf(s32 a0, s32 a1, ...) {
+    return formatString((char *)a0, &a1);
 }
 
 /**
  * @brief Printf-style wrapper: formats variadic args into a 256-byte stack
- *        buffer via @c func_80099204, then outputs the result via
- *        @c func_80098FD8.
+ *        buffer via @c formatString, then outputs the result via
+ *        @c drawText.
  *
  * The `...` triggers gcc's varargs prologue, saving a1-a3 to the caller's
  * shadow save area so @c &a0 can act as the start of a variadic arg list.
  */
-void func_80099424(s32 a0, ...) {
+void drawTextf(s32 a0, ...) {
     s8 buf[0x100];
-    func_80099204((char *)buf, &a0);
-    func_80098FD8(buf);
+    formatString((char *)buf, &a0);
+    drawText(buf);
 }
 
 /**
  * @brief Flip the secondary text/overlay double-buffer and reset its draw state.
  *
  * Separate from the main @c flipBuffers double-buffer: finalizes the current
- * text/overlay framebuffer, toggles its own buffer index @c D_80182B54 (0 <-> 1),
+ * text/overlay framebuffer, toggles its own buffer index @c g_textBufferIndex (0 <-> 1),
  * resets the text cursor/viewport, and rebases the framebuffer (32 KB per buffer)
  * and OT pointers to the new slot.
  */
 void flipTextBuffer(void) {
-    u8 *fb = D_801D2FE0;
+    u8 *fb = g_textFbPtr;
 
     SetDrawTPage(fb, 0, 1, 3);
-    AddPrim(D_801D3000, fb);
-    DrawOTag(D_801D3000);
+    AddPrim(g_textOtPtr, fb);
+    DrawOTag(g_textOtPtr);
 
-    D_80182B54 = D_80182B54 ^ 1;
-    ClearOTag(D_801D2FF0[D_80182B54], 2);
+    g_textBufferIndex = g_textBufferIndex ^ 1;
+    ClearOTag(g_textOTs[g_textBufferIndex], 2);
 
-    D_80182B5A = 8;
+    g_textLineX = 8;
     g_textCursorX = 8;
-    D_80182B58 = 8;
+    g_textCursorY = 8;
 
-    D_801D2FE0 = D_801C2FE0[D_80182B54];
-    D_801D3000 = D_801D2FF0[D_80182B54];
+    g_textFbPtr = g_textFrameBufs[g_textBufferIndex];
+    g_textOtPtr = g_textOTs[g_textBufferIndex];
 }
 
 /**
