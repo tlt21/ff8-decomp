@@ -42,7 +42,6 @@ extern s32 D_801D3018;              /* result-screen SFX handle */
 extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
 
 /* Functions defined in be_object1.c. */
-extern u8  *queueLoadImage(u8 *drawEnv, u8 *cb);
 extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
 extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
@@ -411,7 +410,7 @@ s32 func_8009A314(void) {
     }
 
     g_primCursor = prim;
-    queueLoadImage((u8 *)&g_drawEnvs[g_drawBufferIndex ^ 1], D_8012E66C);
+    queueLoadImage(&g_drawEnvs[g_drawBufferIndex ^ 1].clip, D_8012E66C);
     return 0;
 }
 

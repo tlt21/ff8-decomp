@@ -261,7 +261,7 @@ void flushVramTransfers(void) {
  * @param rect Destination RECT (8 bytes, may be unaligned).
  * @param src  Source pixel data.
  */
-void queueLoadImage(u8 *rect, u8 *src) {
+void queueLoadImage(RECT *rect, void *src) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 0;
     memcpy(&entry->rect, rect, 8);
@@ -300,7 +300,7 @@ u8 *queueTimUpload(ResHeader *res) {
  * @param rect Source RECT (8 bytes, may be unaligned).
  * @param dst  Destination buffer.
  */
-void queueStoreImage(u8 *rect, u8 *dst) {
+void queueStoreImage(RECT *rect, void *dst) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 2;
     memcpy(&entry->rect, rect, 8);
@@ -317,7 +317,7 @@ void queueStoreImage(u8 *rect, u8 *dst) {
  * @param dstX Destination X (lower 16 bits).
  * @param dstY Destination Y (upper 16 bits).
  */
-void queueMoveImage(u8 *rect, s16 dstX, u16 dstY) {
+void queueMoveImage(RECT *rect, s16 dstX, u16 dstY) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 3;
     memcpy(&entry->rect, rect, 8);

@@ -3,6 +3,7 @@
 #include "tripletriad.h"
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libc.h"
+#include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
 
 /**
@@ -1103,7 +1104,7 @@ s32 func_8009FAF8(s32 arg0) {
  */
 s32 func_8009FC40(void) {
     s32 idx = g_drawBufferIndex ^ 1;
-    queueLoadImage(&g_drawEnvs[idx], D_8012E66C);
+    queueLoadImage(&g_drawEnvs[idx].clip, D_8012E66C);
     return 0;
 }
 
@@ -1632,7 +1633,7 @@ s32 func_800A0A88(void) {
  */
 s32 func_800A0AD4(void) {
     s32 idx = g_drawBufferIndex ^ 1;
-    queueLoadImage(&g_drawEnvs[idx], D_80158680);
+    queueLoadImage(&g_drawEnvs[idx].clip, D_80158680);
     return 0;
 }
 

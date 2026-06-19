@@ -161,4 +161,10 @@ extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handle
 extern void resetVramQueue(void);
 extern void flushVramTransfers(void);
 
+/* Deferred VRAM transfer queue (drained by flushVramTransfers). */
+extern void queueLoadImage(RECT *rect, void *src);
+extern u8  *queueTimUpload(ResHeader *res);
+extern void queueStoreImage(RECT *rect, void *dst);
+extern void queueMoveImage(RECT *rect, s16 dstX, u16 dstY);
+
 #endif /* TRIPLETRIAD_BE_OBJECT1_H */

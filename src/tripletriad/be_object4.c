@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
+#include "tripletriad/be_object1.h"
 #include "tripletriad/be_object4.h"
 
 /** @brief One 0x0C-byte entry of the D_80182E70 per-SFX configuration table. */
@@ -243,7 +244,7 @@ void closeMenu(void) {
  */
 s32 func_800A274C(void) {
     s32 idx = g_drawBufferIndex ^ 1;
-    queueLoadImage(&g_drawEnvs[idx], D_8012E66C);
+    queueLoadImage(&g_drawEnvs[idx].clip, D_8012E66C);
     return 0;
 }
 
