@@ -674,8 +674,8 @@ u8 *intToDecStr(s32 a0, u8 *a1) {
         a0 = a0 / 10;
     } while (a0 != 0);
 
-    func_80047CA4(dst, p);
-    return dst + func_80047CB4(dst);
+    strcpy(dst, p);
+    return dst + strlen(dst);
 }
 
 /**
@@ -707,8 +707,8 @@ u8 *intToHexStr(s32 a0, u8 *a1) {
         a0 >>= 4;
     } while (a0 != 0);
 
-    func_80047CA4(dst, p);
-    return dst + func_80047CB4(dst);
+    strcpy(dst, p);
+    return dst + strlen(dst);
 }
 
 /**
@@ -735,8 +735,8 @@ u8 *intToBinStr(s32 a0, u8 *a1) {
         a0 >>= 1;
     } while (a0 != 0);
 
-    func_80047CA4(dst, p);
-    return dst + func_80047CB4(dst);
+    strcpy(dst, p);
+    return dst + strlen(dst);
 }
 
 /**
@@ -754,7 +754,7 @@ u8 *intToBinStr(s32 a0, u8 *a1) {
  *
  * Each @c % may be followed by an optional @c '0' to select zero-padding
  * (default is space-padding), then a decimal field width parsed by
- * @c func_80047C54 (strtol). Plain characters are copied verbatim. The
+ * @c strtol (strtol). Plain characters are copied verbatim. The
  * @c escape_marker local anchors the @c '%' constant in a callee-saved
  * register, matching the target's register allocation.
  *
@@ -782,7 +782,7 @@ s32 formatString(char *dst, s32 *args) {
                 padCh = '0';
                 fmt++;
             }
-            width = func_80047C54(fmt, &fmt, 0);
+            width = strtol(fmt, &fmt, 0);
             ch = *fmt++;
             switch (ch) {
                 case 'D': case 'd':
@@ -799,7 +799,7 @@ s32 formatString(char *dst, s32 *args) {
                     buf[1] = 0;
                     break;
                 case 'S': case 's':
-                    func_80047CA4(buf, (char *)*args++);
+                    strcpy(buf, (char *)*args++);
                     break;
                 default:
                     buf[0] = ch;
@@ -807,7 +807,7 @@ s32 formatString(char *dst, s32 *args) {
                     break;
             }
             if (width > 0) {
-                s32 len = func_80047CB4(buf);
+                s32 len = strlen(buf);
                 if (len < width) {
                     s32 i;
                     width -= len;
@@ -816,8 +816,8 @@ s32 formatString(char *dst, s32 *args) {
                     }
                 }
             }
-            func_80047CA4(out, buf);
-            out += func_80047CB4(buf);
+            strcpy(out, buf);
+            out += strlen(buf);
         } else {
             *out++ = ch;
         }
@@ -825,7 +825,7 @@ s32 formatString(char *dst, s32 *args) {
     } while (ch != 0);
 end:
     *out = 0;
-    return func_80047CB4(dst);
+    return strlen(dst);
 }
 
 /**

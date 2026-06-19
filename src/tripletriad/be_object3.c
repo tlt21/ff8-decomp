@@ -95,7 +95,7 @@ extern u16 D_80182692;    /**< Card-claim banner string-table offsets (pool base
 extern u16 D_80182696;
 extern s32 func_800A03DC(void); /**< Per-frame board render/update loop. */
 extern u8  *func_80023A54(s32 cardId);       /**< Look up a card's name string. */
-extern void func_80047CA4(u8 *dst, u8 *src); /**< Copy a string into the work buffer. */
+extern void strcpy(u8 *dst, u8 *src); /**< Copy a string into the work buffer. */
 extern void func_80047C74(u8 *dst, u8 *src); /**< Append a string to the work buffer. */
 extern s32 isItemPresent(s32 cardId);        /**< Non-zero if the card is in the collection. */
 
@@ -1514,7 +1514,7 @@ s32 func_800A03DC(void) {
                     m->t[1] = 0;
                     m->t[2] = 0x100;
                     if (s0 == 0) {
-                        func_80047CA4(D_801D4078, func_80023A54(cell->cardId));
+                        strcpy(D_801D4078, func_80023A54(cell->cardId));
                         func_80047C74(D_801D4078, (u8 *)&D_80182692 - 0x12 + D_80182692);
                         func_800A1D68(1, D_801D4078, 0);
                         cell->field9++;
@@ -1560,7 +1560,7 @@ s32 func_800A03DC(void) {
                     m->t[1] = 0;
                     m->t[2] = 0x100;
                     if (s0 == 0) {
-                        func_80047CA4(D_801D4078, func_80023A54(cell->cardId));
+                        strcpy(D_801D4078, func_80023A54(cell->cardId));
                         func_80047C74(D_801D4078, (u8 *)&D_80182696 - 0x16 + D_80182696);
                         func_800A1D68(1, D_801D4078, 0);
                         cell->field9++;
