@@ -7,7 +7,16 @@
 /* Declarations for be_object1.c (Triple Triad board/card setup, draw-buffer
    init, deferred VRAM transfers, and the tetrahedral 3D icon). */
 
-#define BE_OT_LEN 28  /**< OT entries per buffer (D_801A2CE8). */
+#define TT_OT_LEN 28  /**< OT entries per buffer (g_orderingTables). */
+
+/* Display geometry used by initGraphics. The two draw buffers sit side by side
+   in VRAM (buffer 1 starts at x = TT_DRAW_W); only a TT_SCREEN_W-wide window is
+   shown on screen, and the GTE projection is centered on the draw buffer. */
+#define TT_DRAW_W    384  /**< Draw-buffer width in VRAM; also the X offset to buffer 1. */
+#define TT_SCREEN_W  256  /**< Visible display width. */
+#define TT_SCREEN_H  224  /**< Display / draw-buffer height. */
+#define TT_SCREEN_Y    8  /**< Display vertical offset. */
+#define TT_PROJ_DIST 512  /**< GTE projection distance (SetGeomScreen). */
 
 /* TIM file structs (Tim / TimSection) come from tim.h via battle.h. */
 
@@ -17,7 +26,7 @@ typedef struct {
     s32 offset;
 } ResHeader;
 
-/** @brief Deferred VRAM transfer dispatched by @c func_800988E0. */
+/** @brief Deferred VRAM transfer dispatched by @c flushVramTransfers. */
 typedef enum {
     POOL_LOAD_IMAGE  = 0,  /**< LoadImage(rect, src). */
     POOL_LOAD_TIM    = 1,  /**< LoadImage twice from a TIM file (CLUT + image). */
@@ -91,18 +100,18 @@ extern SVECTOR       D_80182B98[4];     /**< 4-vertex tetrahedron model. */
 extern TriadFaceDesc D_80182BB8[4];     /**< 4 G3 face descriptors. */
 extern u32          *D_801D3008;        /**< Scratch buffer pointer for RotTransPers4 outputs. */
 
-/* ── Deferred VRAM transfer pool (func_800988E0) ──────────────────────────── */
+/* ── Deferred VRAM transfer pool (flushVramTransfers) ──────────────────────────── */
 extern PoolEntry     D_801C2ED0[];
 extern ResHeader     D_800B71D8;               /**< Resource header registered by the draw-target setup. */
 extern ResHeader     g_tripleTriadCardFrames;  /**< Card frame/border graphics (4bpp TIM, uploaded to VRAM at init). */
 extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM, ~110 cards at 64x64, uploaded to VRAM at init). */
 
 /* ── Draw buffers / VRAM scratch ──────────────────────────────────────────── */
-extern DISPENV       D_801C2E88[2];
+extern DISPENV       g_dispEnvs[2];     /**< Per-buffer display environments. */
 extern RECT          D_800A45A8;
 extern RECT          D_800A45B0;
-extern u32           D_801A2CE8[2][BE_OT_LEN];
-extern u8            D_801A2DC8[2][0x10000];  /* primitive pool, 64KB per buffer */
+extern u32           g_orderingTables[2][TT_OT_LEN];  /**< Per-buffer ordering tables (OT). */
+extern u8            g_primPools[2][0x10000];  /* primitive pool, 64KB per buffer */
 extern u8            D_801D2FF0[2][8];
 extern u8            D_801C2FE0[2][0x8000];
 extern u8           *D_801D2FE0;
@@ -118,15 +127,15 @@ extern s16           D_80182B54;
 extern s16           D_80182B5A;
 extern s16           D_80182B58;
 extern s16           g_textCursorX;
-extern u8            D_801C2DC8;
-extern s8            D_801C2DC9;
-extern volatile u16  D_8005F158;
+extern u8            g_vsyncMode;        /**< VSync() wait mode (0 = wait one vblank). */
+extern s8            g_fadeCounter;      /**< Display fade counter; counts toward 0, toggling SetDispMask. */
+extern volatile u16  g_vsyncRate;        /**< Display vsync rate (main-binary global); reset to 100 on TT exit. */
 extern RGB           D_80182B5C;        /**< Debug-text rgb color. */
 extern u32           D_80182AA0[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
 extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handler table. */
 
 /* ── Entry points defined in be_object1.c (forward-declared for earlier callers) ── */
 extern void func_800988D4(void);
-extern void func_800988E0(void);
+extern void flushVramTransfers(void);
 
 #endif /* TRIPLETRIAD_BE_OBJECT1_H */

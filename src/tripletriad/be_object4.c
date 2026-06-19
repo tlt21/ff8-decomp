@@ -136,7 +136,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2114);
  *
  * Iterates indices 0-6, calling setSfxEntryParams(i, 0, 0) for each.
  */
-void func_800A21C4(void) {
+void clearAllSfx(void) {
     s32 i = 0;
     do {
         setSfxEntryParams(i, 0, 0);
@@ -222,11 +222,12 @@ void func_800A26C8(void) {
 }
 
 /**
- * @brief Tear down D_801D4568 and clear flag bit 2 in g_tripleTriadInputFlags.
+ * @brief Close the in-match menu overlay and re-enable card input.
  *
- * Calls func_800A2054 with mode 4, then clears bit 2 (0x4) in g_tripleTriadInputFlags.
+ * Tears down the menu object @c D_801D4568 and clears @c TT_INPUT_DISABLED so
+ * card input resumes. Counterpart to the menu-open handler @c func_800A26C8.
  */
-void func_800A271C(void) {
+void closeMenu(void) {
     func_800A2054(4);
     g_tripleTriadInputFlags &= ~TT_INPUT_DISABLED;
 }
@@ -234,15 +235,15 @@ void func_800A271C(void) {
 /**
  * @brief Add a rendering command entry based on the alternate screen index.
  *
- * Reads D_801C2DCA, XORs with 1 to get the alternate index, computes
- * an offset of index * 92 into D_801C2DD0, and calls func_80098A1C
+ * Reads g_drawBufferIndex, XORs with 1 to get the alternate index, computes
+ * an offset of index * 92 into g_drawEnvs, and calls func_80098A1C
  * with the resulting pointer and D_8012E66C.
  *
  * @return Always 0.
  */
 s32 func_800A274C(void) {
-    s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(&D_801C2DD0[idx], D_8012E66C);
+    s32 idx = g_drawBufferIndex ^ 1;
+    func_80098A1C(&g_drawEnvs[idx], D_8012E66C);
     return 0;
 }
 

@@ -41,7 +41,7 @@ typedef struct {
     /* 0x18 */ s16 baseX;    /**< Board position fed to the GTE translation. */
     /* 0x1A */ s16 baseY;
     /* 0x1C */ s16 baseZ;
-    /* 0x1E */ s16 sort;     /**< OT sort-offset (added to D_801C2EB0 base). */
+    /* 0x1E */ s16 sort;     /**< OT sort-offset (added to g_otBase base). */
 } ActiveObj; /* 0x20 */
 
 extern ActiveObj D_801D4308[]; /**< Active card-display object array. */

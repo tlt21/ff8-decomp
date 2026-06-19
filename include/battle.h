@@ -1045,8 +1045,8 @@ extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
 extern SubstateSlot D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
 
 /** @brief Battle-engine display-node spawner state (used by func_8009FED0). */
-extern u32 *D_801C2EB0;    /**< Display-list OT base — points at the active buffer's OT (D_801A2CE8[D_801C2DCA]); index by sort key. */
-extern void *D_801C2EB4;   /**< Current primitive-pool tail (advanced by display helpers). */
+extern u32 *g_otBase;    /**< Display-list OT base — points at the active buffer's OT (g_orderingTables[g_drawBufferIndex]); index by sort key. */
+extern void *g_primCursor;   /**< Current primitive-pool tail (advanced by display helpers). */
 extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
 extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
 extern s32 D_801D3EB8;     /**< Phase mirror counter (running scale). */

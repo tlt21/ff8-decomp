@@ -127,8 +127,8 @@ typedef struct {
 /**
  * @brief Card scale/fade animation sprite primitive (0x18 bytes).
  *
- * Built each frame by @c func_8009E270 / @c func_8009E464 at the @c D_801C2EB4
- * cursor and linked into @c D_801C2EB0[3]; the @c width field is animated to
+ * Built each frame by @c func_8009E270 / @c func_8009E464 at the @c g_primCursor
+ * cursor and linked into @c g_otBase[3]; the @c width field is animated to
  * scale the card sprite in/out.
  */
 typedef struct {
@@ -175,7 +175,7 @@ s32 func_8009E248(s32 a0) {
  * Three states driven by @c node->state: state 0 scales the width up from 0x40 toward
  * 0x180 over 5 frames (via the @c /5 ramp @c ((field0D<<12)/5)); state 1 holds @c width
  * at 0x40 for 0x28 frames; state 2 scales back down over 5 frames. Each frame it rebuilds
- * the @c CardScaleSprite at the @c D_801C2EB4 cursor and links it into @c D_801C2EB0[3].
+ * the @c CardScaleSprite at the @c g_primCursor cursor and links it into @c g_otBase[3].
  *
  * @param node State-machine driver node (@c field0E selects the 0x3802/0x3842 sprite variant).
  * @return 2 once the scale-out completes (state 2), else 0.
@@ -184,7 +184,7 @@ s32 func_8009E270(ScriptStateNode *node) {
     CardScaleSprite *prim;
     s32 q;
 
-    prim = D_801C2EB4;
+    prim = g_primCursor;
     switch (node->state) {
     case 0:
         q = ((++node->field0D & 0xFF) << 12) / 5;
@@ -223,8 +223,8 @@ s32 func_8009E270(ScriptStateNode *node) {
     }
     prim->field14 = 0xFF;
     prim->field16 = 0x40;
-    func_8004D584(D_801C2EB0 + 3, prim);
-    D_801C2EB4 = (u8 *)prim + 0x18;
+    func_8004D584(g_otBase + 3, prim);
+    g_primCursor = (u8 *)prim + 0x18;
     return 0;
 }
 
@@ -234,7 +234,7 @@ s32 func_8009E270(ScriptStateNode *node) {
  * Twin of @c func_8009E270 with a shorter hold (state 1 lasts 0x19 frames) and a
  * fixed sprite variant (no @c field0E branch — always @c field11=0x80 /
  * @c field12=0x3882). Each frame it rebuilds the @c CardScaleSprite at the
- * @c D_801C2EB4 cursor and links it into @c D_801C2EB0[3].
+ * @c g_primCursor cursor and links it into @c g_otBase[3].
  *
  * @param node State-machine driver node (state at 0x0C, frame counter at 0x0D).
  * @return 2 once the scale-out completes (state 2), else 0.
@@ -243,14 +243,14 @@ s32 func_8009E270(ScriptStateNode *node) {
  *       @c func_8009E270 (whose @c field0E if/else creates a basic-block boundary
  *       after @c field10), this function stores the sprite fields unconditionally,
  *       so without the barrier cc1 floats the @c color store down past @c field10
- *       to fill the @c D_801C2EB0 load-delay shadow. The barrier keeps it in source
+ *       to fill the @c g_otBase load-delay shadow. The barrier keeps it in source
  *       order, matching the original.
  */
 s32 func_8009E464(ScriptStateNode *node) {
     CardScaleSprite *prim;
     s32 q;
 
-    prim = D_801C2EB4;
+    prim = g_primCursor;
     switch (node->state) {
     case 0:
         q = ((++node->field0D & 0xFF) << 12) / 5;
@@ -284,8 +284,8 @@ s32 func_8009E464(ScriptStateNode *node) {
     prim->field12 = 0x3882;
     prim->field14 = 0xFF;
     prim->field16 = 0x40;
-    func_8004D584(D_801C2EB0 + 3, prim);
-    D_801C2EB4 = (u8 *)prim + 0x18;
+    func_8004D584(g_otBase + 3, prim);
+    g_primCursor = (u8 *)prim + 0x18;
     return 0;
 }
 
@@ -339,8 +339,8 @@ typedef struct {
 /**
  * @brief Per-frame builder for the two-layer screen gradient fade.
  *
- * Builds two @c GradientFadeQuad primitives at the @c D_801C2EB4 cursor and links each into
- * @c D_801C2EB0[3]. The @c variant (2/3/4) selects the palette base and first-layer blend
+ * Builds two @c GradientFadeQuad primitives at the @c g_primCursor cursor and links each into
+ * @c g_otBase[3]. The @c variant (2/3/4) selects the palette base and first-layer blend
  * word; the four vertex colours ramp with @c node->frame (each vertex 5 steps behind the
  * previous, clamped to 0..0x80 then packed as @c 0x3E000000|c|c<<8|c<<16). @c frame advances
  * each frame (capped at 0xFF).
@@ -350,7 +350,7 @@ typedef struct {
  *
  * @note Each layer's last colour store (@c color3) uses a @c volatile cast as a scheduling
  *       barrier: it stops cc1 pulling that store into the @c func_8004D584 jal delay slot, so
- *       the slot instead holds the @c D_801C2EB0+3 pointer arithmetic, matching the original.
+ *       the slot instead holds the @c g_otBase+3 pointer arithmetic, matching the original.
  */
 s32 func_8009E640(GradientFadeNode *node) {
     GradientFadeQuad *prim;
@@ -363,7 +363,7 @@ s32 func_8009E640(GradientFadeNode *node) {
     if (node->done == 1) {
         return 2;
     }
-    prim = D_801C2EB4;
+    prim = g_primCursor;
 
     switch (node->variant) {
     case 2:
@@ -416,7 +416,7 @@ s32 func_8009E640(GradientFadeNode *node) {
     prim->color1 = colors[2];
     prim->color2 = colors[1];
     *(volatile u32 *)&prim->color3 = colors[3];
-    func_8004D584(D_801C2EB0 + 3, prim);
+    func_8004D584(g_otBase + 3, prim);
     prim++;
 
     prim->tag = 0xC000000;
@@ -442,12 +442,12 @@ s32 func_8009E640(GradientFadeNode *node) {
     prim->color1 = colors[2];
     prim->color2 = colors[1];
     *(volatile u32 *)&prim->color3 = colors[3];
-    func_8004D584(D_801C2EB0 + 3, prim);
+    func_8004D584(g_otBase + 3, prim);
 
     if (node->frame < 0xFF) {
         node->frame++;
     }
-    D_801C2EB4 = (u8 *)prim + 0x34;
+    g_primCursor = (u8 *)prim + 0x34;
     return 0;
 }
 
@@ -455,7 +455,7 @@ s32 func_8009E640(GradientFadeNode *node) {
  * @brief Per-frame card colour fade-in / fade-out sprite builder.
  *
  * Sibling of @c func_8009E270 / @c func_8009E464: each frame it rebuilds a
- * @c CardScaleSprite at the @c D_801C2EB4 cursor and links it into @c D_801C2EB0[3],
+ * @c CardScaleSprite at the @c g_primCursor cursor and links it into @c g_otBase[3],
  * animating the sprite's @c color. A two-state machine drives it:
  *  - state 0 fades the colour up: @c alpha = (v*255)>>12 with
  *    @c v = ((++frame & 0xFF)<<12)/10, packing 0x66-prefixed RGB; advances to
@@ -466,7 +466,7 @@ s32 func_8009E640(GradientFadeNode *node) {
  *    re-initialising the whole primitive.
  *
  * Each branch links its primitive and advances the cursor with @c prim++
- * (a @c CardScaleSprite is 0x18 bytes), writing the new tail back to @c D_801C2EB4.
+ * (a @c CardScaleSprite is 0x18 bytes), writing the new tail back to @c g_primCursor.
  *
  * @param node State-machine driver (state at 0x0C, frame counter at 0x0D).
  * @return 2 when finished (@c node->field22 already 1, or while @c D_801D3D08 gates
@@ -486,7 +486,7 @@ s32 func_8009E904(ScriptStateNode *node) {
     if (D_801D3D08 >= 2) {
         return 0;
     }
-    prim = D_801C2EB4;
+    prim = g_primCursor;
     prim->tag = 0x5000000;
     prim->code = 0xE100062D;
     prim->width = 0x40;
@@ -503,7 +503,7 @@ s32 func_8009E904(ScriptStateNode *node) {
         a = a | t | (a << 16);
         *(volatile u32 *)&prim->color = a;
         prim->field12 = 0x3801;
-        func_8004D584(D_801C2EB0 + 3, prim++);
+        func_8004D584(g_otBase + 3, prim++);
         if (node->field0D >= 0xA) {
             node->state = 1;
             node->field0D = 0;
@@ -517,7 +517,7 @@ s32 func_8009E904(ScriptStateNode *node) {
             t2 = (a2 << 8) | 0x64000000;
             a2 = a2 | t2 | (a2 << 16);
             *(volatile u32 *)&prim->color = a2;
-            func_8004D584(D_801C2EB0 + 3, prim++);
+            func_8004D584(g_otBase + 3, prim++);
         } else {
             prim->color = 0x64808080;
             prim->field12 = 0x3801;
@@ -529,11 +529,11 @@ s32 func_8009E904(ScriptStateNode *node) {
             prim->width = 0x40;
             prim->field0E = 0x58;
             prim->field14 = 0xFF;
-            func_8004D584(D_801C2EB0 + 3, prim++);
+            func_8004D584(g_otBase + 3, prim++);
         }
         break;
     }
-    D_801C2EB4 = prim;
+    g_primCursor = prim;
     return 0;
 }
 
@@ -576,10 +576,13 @@ void func_8009EB98(void) {
 }
 
 /**
- * @brief Call func_80098D28 with D_801D3C68 and store result in D_801D3D08.
+ * @brief Tick the screen-fade effect objects, recording how many remain active.
+ *
+ * Updates the @c D_801D3C68 gradient-fade effect list and stores the live count
+ * in @c D_801D3D08.
  */
-void func_8009EBCC(void) {
-    D_801D3D08 = func_80098D28(D_801D3C68);
+void updateFadeEffects(void) {
+    D_801D3D08 = updateObjectList(D_801D3C68);
 }
 
 /**
@@ -665,8 +668,8 @@ s32 func_8009EBF4(void)
                 tmp->mtx.t[2] = e->posZ;
                 SetRotMatrix(&tmp->mtx);
                 SetTransMatrix(&tmp->mtx);
-                D_801C2EB4 = func_8009AE6C(e->marker, e->row | 0x12,
-                                           D_801C2EB0 + e->sort, D_801C2EB4);
+                g_primCursor = func_8009AE6C(e->marker, e->row | 0x12,
+                                           g_otBase + e->sort, g_primCursor);
             }
         }
     }
@@ -1092,15 +1095,15 @@ s32 func_8009FAF8(s32 arg0) {
 /**
  * @brief Add a rendering command entry based on the alternate screen index.
  *
- * Reads D_801C2DCA, XORs with 1 to get the alternate index, computes
- * an offset of index * 92 into D_801C2DD0, and calls func_80098A1C
+ * Reads g_drawBufferIndex, XORs with 1 to get the alternate index, computes
+ * an offset of index * 92 into g_drawEnvs, and calls func_80098A1C
  * with the resulting pointer and D_8012E66C.
  *
  * @return Always 0.
  */
 s32 func_8009FC40(void) {
-    s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(&D_801C2DD0[idx], D_8012E66C);
+    s32 idx = g_drawBufferIndex ^ 1;
+    func_80098A1C(&g_drawEnvs[idx], D_8012E66C);
     return 0;
 }
 
@@ -1114,7 +1117,7 @@ extern void func_800A030C(s32 a0);
  *
  * State 0: warmup. Calls func_800A030C(0xF) once, ticks 15 frames.
  * State 1: setup. Calls func_8009FAF8(counter) per counter, polls
- *          func_80098D28 until ready; tries counter 0..1, then branches
+ *          updateObjectList until ready; tries counter 0..1, then branches
  *          to state 2 (if g_tripleTriadRules & 1) or state 4.
  * State 2: clear sweep. Every 5 ticks, marks queued actions in
  *          D_801D3EC0[row][col] complete for column = 4 down to 0;
@@ -1146,7 +1149,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
                 ctx->cachedResult = func_8009FAF8(ctx->counter);
                 ctx->subState++;
             }
-            if (func_80098D28(ctx->cachedResult) != 0) {
+            if (updateObjectList(ctx->cachedResult) != 0) {
                 return 0;
             }
             ctx->counter++;
@@ -1276,7 +1279,7 @@ s32 func_8009FED0(void) {
             }
             SetRotMatrix(node->subNode);
             SetTransMatrix(node->subNode);
-            D_801C2EB4 = func_8009AE6C((u8)D_801D44FC, 0x13, &D_801C2EB0[3], D_801C2EB4);
+            g_primCursor = func_8009AE6C((u8)D_801D44FC, 0x13, &g_otBase[3], g_primCursor);
             func_80098BA0(0x28);
             D_80182E64 = D_801D44FC;
         } else {
@@ -1358,7 +1361,7 @@ s32 func_800A01DC(FadeObject *obj) {
     s32 progress;
     s32 frame;
 
-    prim = D_801C2EB4;
+    prim = g_primCursor;
     prim->tag = 0x5000000;
     prim->w = 0x180;
     prim->y0 = 0;
@@ -1368,10 +1371,10 @@ s32 func_800A01DC(FadeObject *obj) {
     func_800408A4(obj->endColor[0], obj->endColor[1], obj->endColor[2]);
     func_80040918(obj->startColor, progress, &prim->r0);
     prim->code = 0x62;
-    func_8004D584(D_801C2EB0 + 2, prim);
+    func_8004D584(g_otBase + 2, prim);
     func_8004D724((u8 *)prim + 0x10, 1, 1, 0x40);
-    func_8004D584(D_801C2EB0 + 2, (u8 *)prim + 0x10);
-    D_801C2EB4 = (u8 *)prim + 0x18;
+    func_8004D584(g_otBase + 2, (u8 *)prim + 0x10);
+    g_primCursor = (u8 *)prim + 0x18;
     frame = (u16)obj->frame;
     obj->frame = frame + 1;
     if ((s16)frame >= obj->duration) {
@@ -1587,7 +1590,7 @@ s32 func_800A03DC(void) {
         if (cell->flags & 1) {
             SetRotMatrix(m);
             SetTransMatrix(m);
-            D_801C2EB4 = func_8009AE6C(cell->cardId, s7, D_801C2EB0 + (cell->sort + 9), D_801C2EB4);
+            g_primCursor = func_8009AE6C(cell->cardId, s7, g_otBase + (cell->sort + 9), g_primCursor);
         }
     }
     func_80098BA0(0x20);
@@ -1621,15 +1624,15 @@ s32 func_800A0A88(void) {
 /**
  * @brief Add a rendering command for the alternate screen buffer.
  *
- * Reads D_801C2DCA, XORs with 1 to get the alternate index, computes
- * an offset of index * 92 into D_801C2DD0, and calls func_80098A1C
+ * Reads g_drawBufferIndex, XORs with 1 to get the alternate index, computes
+ * an offset of index * 92 into g_drawEnvs, and calls func_80098A1C
  * with the resulting pointer and D_80158680.
  *
  * @return Always 0.
  */
 s32 func_800A0AD4(void) {
-    s32 idx = D_801C2DCA ^ 1;
-    func_80098A1C(&D_801C2DD0[idx], D_80158680);
+    s32 idx = g_drawBufferIndex ^ 1;
+    func_80098A1C(&g_drawEnvs[idx], D_80158680);
     return 0;
 }
 

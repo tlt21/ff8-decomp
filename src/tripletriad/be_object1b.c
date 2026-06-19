@@ -44,7 +44,7 @@ extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
 /* Functions defined in be_object1.c. */
 extern u8  *func_80098A1C(u8 *drawEnv, u8 *cb);
 extern void func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
-extern s32  func_80098D28(u8 *sub);
+extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
 extern void func_8009953C(void);
 
@@ -74,7 +74,7 @@ extern void setupTripleTriadHands(void);
  *     @c D_801A2C70[D_801D30F8] (player type: 0/1 human, 2 AI, 3 demo) into
  *     @c spawnCardSelectCursor / @c spawnAiTurn to create a per-turn handler,
  *     stashed at @c ctl->subHandler. Subsequent frames poll
- *     @c func_80098D28(subHandler); on completion advance to state 4.
+ *     @c updateObjectList(subHandler); on completion advance to state 4.
  *   - **4** (rule resolution, first pass): wait for @c anyCardEffectActive (UI
  *     idle). On entry call @c applyCardRules to evaluate Same/Plus chains.
  *     If the result flags either bit 2 (Same) or bit 3 (Plus), play the
@@ -154,7 +154,7 @@ s32 func_80099C78(HandlerNode *ctl) {
                     ctl->counter++;
                     return 0;
                 }
-                if (func_80098D28(ctl->subHandler) == 0) {
+                if (updateObjectList(ctl->subHandler) == 0) {
                     ctl->state = 4;
                     ctl->counter = 0;
                     break;
@@ -319,14 +319,14 @@ s32 func_8009A2F4(s32 a0) {
  * element icon(s) to render at that cell.
  * The function finds the lowest set bit of @c element, packs a 6-word combined
  * @c DR_TPAGE + @c SPRT primitive (24 bytes) into the active primitive pool
- * via @c D_801C2EB4, and links it into the OT at @c D_801C2EB0[0x1B] (the
+ * via @c g_primCursor, and links it into the OT at @c g_otBase[0x1B] (the
  * 0x6C byte slot in the sort tree) using @c AddPrim. The U/V coordinates are
  * computed from the bit position: @c U = ((bit&3)<<6) + ((frameTick<<2)&0x30)
  * (animated by @c g_tripleTriadFrameCount frame counter modulo 4), @c V = (bit>>2)<<4 + 0x10.
  * Cell pixel positions step by 0x40 in both axes (cell size).
  *
- * After all visible cells emit, @c D_801C2EB4 is bumped to the new tail and
- * @c func_80098A1C is called with @c &D_801C2DD0[!activeBuffer] (the OTHER
+ * After all visible cells emit, @c g_primCursor is bumped to the new tail and
+ * @c func_80098A1C is called with @c &g_drawEnvs[!activeBuffer] (the OTHER
  * draw-env) plus @c D_8012E66C as the callback — registering the back-buffer
  * for the next vblank flip.
  *
@@ -360,7 +360,7 @@ typedef struct {
 } TripleTriadCellPrim;
 
 s32 func_8009A314(void) {
-    TripleTriadCellPrim *prim = (TripleTriadCellPrim *)D_801C2EB4;
+    TripleTriadCellPrim *prim = (TripleTriadCellPrim *)g_primCursor;
     s32 row = 1;
     u8 *boardBase = (u8 *)&D_801D3398;
     s32 pixelY = 0x28;
@@ -398,7 +398,7 @@ s32 func_8009A314(void) {
                 prim->h        = 0xF;
                 prim->w        = 0xF;
 
-                AddPrim((s32 *)&D_801C2EB0[0x1B], prim);
+                AddPrim((s32 *)&g_otBase[0x1B], prim);
                 prim++;
             }
 
@@ -410,19 +410,19 @@ s32 func_8009A314(void) {
         rowByteOffset += 0x28;
     }
 
-    D_801C2EB4 = prim;
-    func_80098A1C((u8 *)&D_801C2DD0[D_801C2DCA ^ 1], D_8012E66C);
+    g_primCursor = prim;
+    func_80098A1C((u8 *)&g_drawEnvs[g_drawBufferIndex ^ 1], D_8012E66C);
     return 0;
 }
 
 /**
  * @brief Query the list at @p node->listPtr; return 2 if empty, 0 otherwise.
  *
- * Calls @c func_80098D28 on the node's @c listPtr (a list-head pointer at
+ * Calls @c updateObjectList on the node's @c listPtr (a list-head pointer at
  * offset 0x0C) and returns @c 2 when that returns 0 (empty list), else 0.
  */
 s32 func_8009A4E0(CallbackNode *node) {
-    return (func_80098D28(node->listPtr) == 0) << 1;
+    return (updateObjectList(node->listPtr) == 0) << 1;
 }
 
 /**
@@ -462,7 +462,7 @@ s32 func_8009A508(void) {
         cnt[g_tripleTriadCardHands[i].initFlags & 1]++;
     }
 
-    prim = (TripleTriadCellPrim *)D_801C2EB4;
+    prim = (TripleTriadCellPrim *)g_primCursor;
 
     for (i = 0; i < 2; i++) {
         prim->tag      = 0x05000000;
@@ -477,11 +477,11 @@ s32 func_8009A508(void) {
         prim->h        = 0x18;
         prim->w        = 0x18;
 
-        AddPrim((s32 *)&D_801C2EB0[4], prim);
+        AddPrim((s32 *)&g_otBase[4], prim);
         prim++;
     }
 
-    D_801C2EB4 = prim;
+    g_primCursor = prim;
     return 0;
 }
 

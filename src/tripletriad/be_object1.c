@@ -54,7 +54,7 @@ s32 tripleTriadMainLoop(void) {
     do {
         if (g_tripleTriadInputFlags & TT_INPUT_DISABLED) {
             if (D_801C2EC0[2] & 0x30) {
-                func_800A271C();
+                closeMenu();
             }
             for (i = 0; i < 3; i++) {
                 D_801C2EC0[i] = 0;
@@ -69,24 +69,24 @@ s32 tripleTriadMainLoop(void) {
             }
         }
 
-        if (g_tripleTriadActiveList != 0) func_80098D28(g_tripleTriadActiveList);
+        if (g_tripleTriadActiveList != 0) updateObjectList(g_tripleTriadActiveList);
         processTriadTasks();
-        func_8009EBCC();
+        updateFadeEffects();
         updateTriadMenu();
         func_800A1C6C();
-        func_80098690();
-        func_80098828();
+        flipBuffers();
+        sampleInput();
         func_800A2214();
         g_tripleTriadFrameCount++;
     } while (g_tripleTriadState != TT_STATE_EXIT);
 
-    D_801C2DC9 = -1;
+    g_fadeCounter = -1;
     for (i = 0; i < 2; i++) {
         func_800A1C6C();
-        func_80098690();
+        flipBuffers();
     }
-    func_800A21C4();
-    D_8005F158 = 100;
+    clearAllSfx();
+    g_vsyncRate = 100;
     return 0;
 }
 
@@ -103,89 +103,86 @@ void initGraphics(void) {
     RECT *screen0;
     RECT *screen1;
 
-    SetDefDrawEnv(&D_801C2DD0[0], 0, 0, 384, 224);
-    disp = D_801C2E88;
-    SetDefDispEnv(&disp[0], 384, 0, 384, 224);
+    SetDefDrawEnv(&g_drawEnvs[0], 0, 0, TT_DRAW_W, TT_SCREEN_H);
+    disp = g_dispEnvs;
+    SetDefDispEnv(&disp[0], TT_DRAW_W, 0, TT_DRAW_W, TT_SCREEN_H);
     screen0 = &disp[0].screen;
     screen0->x = 0;
-    screen0->y = 8;
-    screen0->w = 256;
-    screen0->h = 224;
+    screen0->y = TT_SCREEN_Y;
+    screen0->w = TT_SCREEN_W;
+    screen0->h = TT_SCREEN_H;
 
-    SetDefDrawEnv(&D_801C2DD0[1], 384, 0, 384, 224);
-    SetDefDispEnv(&disp[1], 0, 0, 384, 224);
+    SetDefDrawEnv(&g_drawEnvs[1], TT_DRAW_W, 0, TT_DRAW_W, TT_SCREEN_H);
+    SetDefDispEnv(&disp[1], 0, 0, TT_DRAW_W, TT_SCREEN_H);
     disp[1].screen.x = 0;
     screen1 = &disp[1].screen;
-    screen1->y = 8;
-    screen1->w = 256;
-    screen1->h = 224;
+    screen1->y = TT_SCREEN_Y;
+    screen1->w = TT_SCREEN_W;
+    screen1->h = TT_SCREEN_H;
 
     ClearImage(&D_800A45A8, 0, 0, 0);
-    D_800A45A8.x = 384;
+    D_800A45A8.x = TT_DRAW_W;
     D_800A45A8.y = 0;
     ClearImage(&D_800A45A8, 0, 0, 0);
 
     ClearImage(&D_800A45B0, 0xFF, 0xFF, 0xFF);
 
-    D_801C2DCA = 0;
-    D_801C2EB0 = &D_801A2CE8[0][0];
-    ClearOTagR(&D_801A2CE8[0][0], BE_OT_LEN);
-    D_801C2EB4 = &D_801A2DC8[D_801C2DCA][0];
+    g_drawBufferIndex = 0;
+    g_otBase = &g_orderingTables[0][0];
+    ClearOTagR(&g_orderingTables[0][0], TT_OT_LEN);
+    g_primCursor = &g_primPools[g_drawBufferIndex][0];
 
     InitGeom();
-    SetGeomOffset(192, 112);
-    SetGeomScreen(512);
+    SetGeomOffset(TT_DRAW_W / 2, TT_SCREEN_H / 2);
+    SetGeomScreen(TT_PROJ_DIST);
     SetDispMask(0);
 
-    D_801C2DC9 = 2;
-    D_801C2DC8 = 0;
+    g_fadeCounter = 2;
+    g_vsyncMode = 0;
     func_800988D4();
 }
 
 /**
- * @brief Flip the battle engine's double-buffered draw/display environments.
+ * @brief Flip the double-buffered draw/display environments — the per-frame present.
  *
- * Called once per frame (paired with @c func_80099464). Synchronizes with
- * vsync and the previous draw, advances the fade-in/fade-out counter
- * @c D_801C2DC9 (decrements positives, increments negatives; on reaching
- * zero, toggles @c SetDispMask), then flips @c D_801C2DCA to the next
- * buffer index. The just-flipped buffer's draw and disp envs are pushed
- * to the GPU, the previous buffer's OT is drawn, and the new buffer's
- * OT base + primitive pool tail are reset so the next frame's primitives
- * accumulate into the fresh buffer. @c g_activeDrawEnv is updated to
- * point at the buffer being prepared (the one NOT just put on display).
+ * Waits for vsync and the previous draw to finish, advances the fade counter
+ * @c g_fadeCounter (toggling the display mask as it crosses zero), then flips the
+ * active buffer index @c g_drawBufferIndex: the new buffer's draw/disp envs are pushed
+ * to the GPU, the just-completed buffer's ordering table is drawn, and the new
+ * buffer's OT and primitive pool are reset so the next frame accumulates into
+ * it. @c g_activeDrawEnv tracks the buffer now being built.
  */
-void func_80098690(void) {
-    func_80099464();
+void flipBuffers(void) {
+    flipTextBuffer();
     VSync(1);
     DrawSync(0);
     VSync(1);
-    VSync(D_801C2DC8);
+    VSync(g_vsyncMode);
 
-    if (D_801C2DC9 > 0) {
-        D_801C2DC9--;
-        if (D_801C2DC9 == 0) {
+    if (g_fadeCounter > 0) {
+        g_fadeCounter--;
+        if (g_fadeCounter == 0) {
             SetDispMask(1);
         }
-    } else if (D_801C2DC9 < 0) {
-        D_801C2DC9++;
-        if (D_801C2DC9 == 0) {
+    } else if (g_fadeCounter < 0) {
+        g_fadeCounter++;
+        if (g_fadeCounter == 0) {
             SetDispMask(0);
         }
     }
 
-    D_801C2DCA ^= 1;
+    g_drawBufferIndex ^= 1;
 
-    PutDrawEnv(&D_801C2DD0[D_801C2DCA]);
-    PutDispEnv(&D_801C2E88[D_801C2DCA]);
-    func_800988E0();
+    PutDrawEnv(&g_drawEnvs[g_drawBufferIndex]);
+    PutDispEnv(&g_dispEnvs[g_drawBufferIndex]);
+    flushVramTransfers();
 
-    DrawOTag(&D_801A2CE8[D_801C2DCA ^ 1][BE_OT_LEN - 1]);
-    D_801C2EB4 = &D_801A2DC8[D_801C2DCA][0];
-    D_801C2EB0 = &D_801A2CE8[D_801C2DCA][0];
-    ClearOTagR(&D_801A2CE8[D_801C2DCA][0], BE_OT_LEN);
+    DrawOTag(&g_orderingTables[g_drawBufferIndex ^ 1][TT_OT_LEN - 1]);
+    g_primCursor = &g_primPools[g_drawBufferIndex][0];
+    g_otBase = &g_orderingTables[g_drawBufferIndex][0];
+    ClearOTagR(&g_orderingTables[g_drawBufferIndex][0], TT_OT_LEN);
 
-    g_activeDrawEnv = &D_801C2DD0[D_801C2DCA ^ 1];
+    g_activeDrawEnv = &g_drawEnvs[g_drawBufferIndex ^ 1];
 }
 
 /**
@@ -194,7 +191,7 @@ void func_80098690(void) {
  * Reads current controller state for three input types (digital, analog X, analog Y)
  * and fills their respective 3-element history arrays with the initial values.
  */
-void func_80098828(void) {
+void sampleInput(void) {
     s32 i;
 
     func_800A2BD8();
@@ -221,10 +218,10 @@ void func_800988D4(void) {
  *
  * Walks @c D_801C2FD0 entries and performs the requested operation on each
  * (LoadImage / LoadImage TIM / StoreImage / MoveImage), then resets the pool
- * count to zero. Entries are typically queued by @c func_800988E0's siblings
+ * count to zero. Entries are typically queued by @c flushVramTransfers's siblings
  * during a frame and flushed here once vsync has elapsed.
  */
-void func_800988E0(void) {
+void flushVramTransfers(void) {
     s32 i;
     PoolEntry *p = D_801C2ED0;
 
@@ -482,7 +479,7 @@ void *func_80098CC0(u8 *a0, s32 a1) {
  * @param a0 Pointer to the list header (head at +0, tail at +4).
  * @return Number of nodes remaining in the list.
  */
-s32 func_80098D28(u8 *a0) {
+s32 updateObjectList(u8 *a0) {
     u8 *prev = 0;
     s32 count = 0;
     u8 *node = (u8 *)*(s32 *)(a0 + 0);
@@ -514,7 +511,7 @@ s32 func_80098D28(u8 *a0) {
  * @c func_80098A6C, kicks off @c ClearOTag for the current buffer's
  * drawenv slot, then rebases the framebuffer (@c D_801D2FE0) and drawenv
  * (@c D_801D3000) pointers to the slot indexed by @c D_80182B54. Unlike
- * @c func_80099464, this does not flip the buffer index first.
+ * @c flipTextBuffer, this does not flip the buffer index first.
  */
 void func_80098DD4(void) {
     func_80098A6C(&D_800B71D8);
@@ -859,15 +856,14 @@ void func_80099424(s32 a0, ...) {
 }
 
 /**
- * @brief Flip the battle double-buffer and reinitialize per-frame state.
+ * @brief Flip the secondary text/overlay double-buffer and reset its draw state.
  *
- * Performs end-of-frame teardown on the current framebuffer/drawenv,
- * then toggles the active buffer index in @c D_80182B54 (0 <-> 1),
- * starts the new frame, resets viewport fields to 8, and rebases the
- * framebuffer (32 KB per buffer) and drawenv (8 bytes per buffer)
- * pointers to the new slot.
+ * Separate from the main @c flipBuffers double-buffer: finalizes the current
+ * text/overlay framebuffer, toggles its own buffer index @c D_80182B54 (0 <-> 1),
+ * resets the text cursor/viewport, and rebases the framebuffer (32 KB per buffer)
+ * and OT pointers to the new slot.
  */
-void func_80099464(void) {
+void flipTextBuffer(void) {
     u8 *fb = D_801D2FE0;
 
     SetDrawTPage(fb, 0, 1, 3);
@@ -1098,8 +1094,8 @@ s32 cardFlipHandler(HandlerNode *node) {
     func_80041794(0x100, &D_801D3010->mat);
     SetRotMatrix(&D_801D3010->mat);
     SetTransMatrix(&D_801D3010->mat);
-    ot = &D_801C2EB0[4];
-    D_801C2EB4 = func_800995F8(ot, D_801C2EB4);
+    ot = &g_otBase[4];
+    g_primCursor = func_800995F8(ot, g_primCursor);
     func_80098BA0(0x28);
     return 0;
 }

@@ -300,27 +300,27 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
         s32 col = entity->fieldD + 1;
         s8 elementMod = D_801D3398.cells[entity->priority + 1][col].elementMod;
         if (elementMod != 0) {
-            D_801C2EB4 = drawCardOverlaySprite(node, elementMod,
-                                        &D_801C2EB0[node->base.pad], D_801C2EB4);
+            g_primCursor = drawCardOverlaySprite(node, elementMod,
+                                        &g_otBase[node->base.pad], g_primCursor);
         }
     }
 
     SetRotMatrix(&node->mat);
     SetTransMatrix(&node->mat);
 
-    D_801C2EB4 = func_8009AE6C(entity->cardId, entity->initFlags,
-                                &D_801C2EB0[node->base.pad], D_801C2EB4);
-    transformCardEffect(entity, node, &D_801C2EB0[node->base.pad]);
+    g_primCursor = func_8009AE6C(entity->cardId, entity->initFlags,
+                                &g_otBase[node->base.pad], g_primCursor);
+    transformCardEffect(entity, node, &g_otBase[node->base.pad]);
 
     func_80098BA0(0x28);
     return 0;
 }
 
 /**
- * @brief Call func_80098D28 with D_801D3110.
+ * @brief Call updateObjectList with D_801D3110.
  */
 void processCardObjects(void) {
-    func_80098D28(D_801D3110);
+    updateObjectList(D_801D3110);
 }
 
 /**
@@ -629,7 +629,7 @@ void resetTriadMenuState(void) {
  *
  * Dispatches on @p mode (1..5); modes outside that range are no-ops. Each
  * case calls @c func_8002FF34 to emit a single GPU packet into
- * @c &D_801C2EB0[4] (OT bucket #4), advancing @c D_801C2EB4 (the global
+ * @c &g_otBase[4] (OT bucket #4), advancing @c g_primCursor (the global
  * primitive-pool tail). The substate slot's two halfwords (@c field0,
  * @c field2) supply per-mode anchor offsets:
  *
@@ -647,27 +647,27 @@ void resetTriadMenuState(void) {
 void drawMenuPrim(s32 mode, SubstateSlot *slot) {
     switch (mode) {
     case 1:
-        D_801C2EB4 = func_8002FF34(&D_801C2EB0[4], D_801C2EB4,
+        g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     1, 0x58,
                                     (slot->field2 << 5) + 0x30, 0x808080);
         break;
     case 2:
-        D_801C2EB4 = func_8002FF34(&D_801C2EB0[4], D_801C2EB4,
+        g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, 0x110,
                                     (slot->field2 << 5) + 0x30, 0x808080);
         break;
     case 3:
-        D_801C2EB4 = func_8002FF34(&D_801C2EB0[4], D_801C2EB4,
+        g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x68,
                                     (slot->field2 << 6) | 0x30, 0x808080);
         break;
     case 4:
-        D_801C2EB4 = func_8002FF34(&D_801C2EB0[4], D_801C2EB4,
+        g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x28,
                                     0x4C, 0x808080);
         break;
     case 5:
-        D_801C2EB4 = func_8002FF34(&D_801C2EB0[4], D_801C2EB4,
+        g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x28,
                                     0x94, 0x808080);
         break;
@@ -1007,7 +1007,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
  *  - state 2 : arm row-cursor substate 3 via @ref activateMenuSubstate, advance
  *              to state 3.
  *  - state 3 : per-frame display tick:
- *              - if @c D_801C2DCA is set, draw the snapshot via
+ *              - if @c g_drawBufferIndex is set, draw the snapshot via
  *                @ref drawMenuPrim.
  *              - update the active cursor entity via @ref func_8009A878.
  *              - inspect @c D_801D3359 (= a UI trigger code):
@@ -1061,7 +1061,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             break;
         case 3: {
             s32 trig;
-            if (D_801C2DCA != 0) {
+            if (g_drawBufferIndex != 0) {
                 drawMenuPrim(p->fieldD + 1, &p->snapshot);
             }
             func_8009A878(p->fieldD, p->snapshot.field2);
@@ -1352,7 +1352,7 @@ extern const VECTOR func_80098154;
  *  - @b 6 (flip): drive an angle from @c field02 (0..19, swept over 20
  *    frames as @c (n+1)*4096/20 — a 12-bit fixed-point sweep through
  *    [0, 4096]) and emit the gouraud quad via @c drawCardEffectQuad into a fixed
- *    OT layer (@c &D_801C2EB0[6], vs the per-card sort-key layer used by the
+ *    OT layer (@c &g_otBase[6], vs the per-card sort-key layer used by the
  *    normal render). @c field02 advances; when it reaches @c 20 the state is
  *    cleared.
  *
@@ -1383,7 +1383,7 @@ void transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, vo
 
 flip:
     if (stateCopy == 6) {
-        D_801C2EB4 = drawCardEffectQuad(node, ((field02 + 1) * 4096) / 20, &D_801C2EB0[6], D_801C2EB4);
+        g_primCursor = drawCardEffectQuad(node, ((field02 + 1) * 4096) / 20, &g_otBase[6], g_primCursor);
         entity->field02++;
         if (entity->field02 >= 20) {
             entity->state = 0;
@@ -1397,7 +1397,7 @@ slide:
     node->mat.t[2] = 0x200;
     SetRotMatrix(&node->mat);
     SetTransMatrix(&node->mat);
-    D_801C2EB4 = drawCardShadow(otBucket, D_801C2EB4);
+    g_primCursor = drawCardShadow(otBucket, g_primCursor);
 }
 
 /**
@@ -2401,8 +2401,8 @@ void initTriadTaskPool(void) {
 }
 
 /**
- * @brief Call func_80098D28 with D_801D3C58.
+ * @brief Call updateObjectList with D_801D3C58.
  */
 void processTriadTasks(void) {
-    func_80098D28(D_801D3C58);
+    updateObjectList(D_801D3C58);
 }

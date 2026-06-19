@@ -316,8 +316,8 @@ extern s32           D_801D30F8;       /**< Current seat / phase latched at the 
 extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame counter (volatile forces lw, not lbu). */
 extern s32           g_tripleTriadInputFlags;       /**< Input-state flags (TT_INPUT_*). */
 extern u8            g_tripleTriadState;        /**< Current phase / next handler to dispatch (TripleTriadState). */
-extern u8            D_801C2DCA;        /**< Active double-buffer index. */
-extern DRAWENV       D_801C2DD0[2];     /**< Per-buffer draw environments. */
+extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
+extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
 extern u8            D_801D3028[];      /**< Battle-update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
@@ -325,12 +325,12 @@ extern u8            D_8012E66C[];      /**< Vblank flip callback. */
 
 /* ── Cross-TU entry points (defined in sibling be_objectN TUs) ─────────────── */
 extern void func_800A233C(s32 a);
-extern void func_800A271C(void);
+extern void closeMenu(void);
 extern void processTriadTasks(void);
-extern void func_8009EBCC(void);
+extern void updateFadeEffects(void);
 extern void updateTriadMenu(void);
 extern void func_800A1C6C(void);
 extern void func_800A2214(void);
-extern void func_800A21C4(void);
+extern void clearAllSfx(void);
 
 #endif /* TRIPLETRIAD_H */
