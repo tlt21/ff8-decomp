@@ -42,8 +42,6 @@ extern s32 D_801D3018;              /* result-screen SFX handle */
 extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
 
 /* Functions defined in be_object1.c. */
-extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
-extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
 extern void initCardHands(void);
 

@@ -1150,7 +1150,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
                 ctx->cachedResult = func_8009FAF8(ctx->counter);
                 ctx->subState++;
             }
-            if (updateObjectList(ctx->cachedResult) != 0) {
+            if (updateObjectList((u8 *)ctx->cachedResult) != 0) {
                 return 0;
             }
             ctx->counter++;
@@ -1314,10 +1314,10 @@ u8 *initTripleTriadScripts(void) {
     s32 colOff;
 
     initObjList(D_801D3FA0, D_801D3FB0, 0x14, 0xA);
-    node = (ScriptCtx *)allocObjNode(D_801D3FA0, func_8009FC90);
+    node = (ScriptCtx *)allocObjNode(D_801D3FA0, (s32)func_8009FC90);
     node->state = 0;
     node->subState = 0;
-    allocObjNode(D_801D3FA0, func_8009EBF4);
+    allocObjNode(D_801D3FA0, (s32)func_8009EBF4);
     row = 0;
     base = (u8 *)D_801D3EC0;
     marker = 0xFF;
@@ -1340,8 +1340,8 @@ u8 *initTripleTriadScripts(void) {
         row++;
         rowOff += 0x6E;
     } while (row < 2);
-    allocObjNode(D_801D3FA0, func_8009FED0);
-    allocObjNode(D_801D3FA0, func_8009FC40);
+    allocObjNode(D_801D3FA0, (s32)func_8009FED0);
+    allocObjNode(D_801D3FA0, (s32)func_8009FC40);
     return D_801D3FA0;
 }
 

@@ -167,4 +167,11 @@ extern u8  *queueTimUpload(ResHeader *res);
 extern void queueStoreImage(RECT *rect, void *dst);
 extern void queueMoveImage(RECT *rect, s16 dstX, u16 dstY);
 
+/* Pool-backed object list (nodes carved from a fixed pool; see ObjList). */
+extern void  initObjList(u8 *listMem, u8 *pool, s32 stride, s32 count);
+extern void *findFreeNode(u8 *listMem);
+extern void *allocObjNode(u8 *listMem, s32 callback);
+extern void *allocObjNodeFront(u8 *listMem, s32 callback);
+extern s32   updateObjectList(u8 *listMem);
+
 #endif /* TRIPLETRIAD_BE_OBJECT1_H */

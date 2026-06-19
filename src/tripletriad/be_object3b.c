@@ -1,5 +1,6 @@
 #include "common.h"
 #include "battle.h"
+#include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
 
 /* Card-claim flow globals (defined in the tripletriad data segments). */
@@ -28,7 +29,6 @@ extern s32  func_800A0AD4();  /**< Post-claim handler (be_object3.c). */
 
 /* Pool/item helpers defined in other tripletriad TUs. */
 extern void markItemPresent(s32 cardId);
-extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 count);
 
 /**
  * @brief Per-frame state node for the card-claim transition controller (@c func_800A15C8).

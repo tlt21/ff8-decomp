@@ -1,6 +1,7 @@
 #include "common.h"
 #include "battle.h"
 #include "tripletriad.h"
+#include "tripletriad/be_object1.h"
 #include "tripletriad/be_object2.h"
 
 extern u8 D_801D3110[];
@@ -120,8 +121,6 @@ extern void func_800A26C8(void);
 /* Per-player Triple Triad match state (region starts at 0x801A2C40).
    D_801A2C48[2][5] (the two players' 5-card hands) now lives in tripletriad.h. */
 
-extern void  initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 count);
-extern void *allocObjNode(u8 *list, s32 callback);
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern s32   func_8009A7A4(s32 a, s32 b, s32 c);
 extern void  func_8009A878(s32 a, s32 b);
