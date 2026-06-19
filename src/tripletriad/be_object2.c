@@ -399,26 +399,10 @@ void setupTripleTriadHands(void) {
  * @param out    Output primitive buffer (pre-allocated by the caller).
  * @return       Pointer to the next free primitive slot in @p out.
  *
- * @note Reaching 100% needs four gcc-2.7.2 scheduling/allocation devices (this
- *       was be_object2's last function, matched over ~16 rounds; a clean rewrite
- *       compiles to ~99.5%). They are decomp scaffolds — the original 1998 source
- *       produced this codegen naturally; finding the natural equivalents is
- *       permuter territory:
- *       1. The rank-digit loop walks a SEPARATE @c anchor pointer (advanced at
- *          the loop tail) for the rgb/tpage/clut/uv stores while @c out drives
- *          the projection + tag store. This makes the store address an i-derived
- *          induction variable, so its @c addiu lands in the back-edge delay slot
- *          (a single @c out walker makes it out-derived and steps mid-block).
- *       2. The two empty @c do/while(0) blocks bracketing the rgb store are
- *          zero-instruction basic-block boundaries: the first keeps the rgb value
- *          built inline, the second keeps the store ahead of the @c out advance.
- *       3. The dead @c argP=gPrim in the inner loop amplifies @c gPrim's
- *          reference count so the @c %hi temp for @c D_80182C70 is rematerialized
- *          into @c v0 instead of fused into @c a0.
- *       4. The triple-nested @c do/while(0) around @c eflag=flags&0x10 amplifies
- *          @c flags so it out-ranks @c baseColor for register @c s7; the
- *          @c do/while(0) around @c argP=gPrim before the border AddPrim blocks
- *          the cross-jump that would merge the front and back AddPrim tails.
+ * @note A clean rewrite compiles to ~99.5%. The separate @c anchor walker in the
+ *       rank-digit loop, the empty @c do/while(0) blocks, and the dead
+ *       @c argP=gPrim reads are gcc-2.7.2 scheduling/allocation scaffolds that are
+ *       load-bearing for the match — they are marked inline; don't simplify them.
  */
 void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
     CardRenderWork *work;
@@ -893,13 +877,6 @@ store:
  * @c D_801D3334 / @c D_801D3330: bit-0xC0 sets @c D_801D3359=2 and
  * snapshots @c D_801D3340[D_801D3358] to @c D_801D335C; bit-0x10 sets
  * @c D_801D3359=3.
- *
- * @note The switch dispatcher's jump table lives at the fixed overlay
- *       offset @c 0x11C inside the @c be_dispatch region. The splat
- *       yaml carves a @c be_object2 .rodata subsegment there with
- *       @c linker_section_order: .text so the linker places
- *       @c be_object2.o(.rodata) (which contains the gcc-generated
- *       jtbl) at exactly that offset.
  */
 void updateTriadMenu(void) {
     s32 state = *(u8 *)&D_801D3338;
@@ -1349,11 +1326,8 @@ extern const VECTOR func_80098154;
  *    normal render). @c field02 advances; when it reaches @c 20 the state is
  *    cleared.
  *
- * @note The dispatch is written with @c goto so gcc emits a flat three-way
- *       branch (@c >=6 to the flip block, @c !=0 to the slide block, else
- *       fall through to return) with both bodies out-of-line. @c state is also
- *       copied into a second local (@c stateCopy) so the flip-state check binds
- *       a separate register, matching the original's codegen.
+ * @note The @c goto dispatch and the @c stateCopy second local are scaffolds
+ *       that are load-bearing for the match — keep them.
  *
  * @param entity   The card object being animated.
  * @param node     Its render node (transform matrix + base position).
@@ -2272,8 +2246,8 @@ s32 updateAiTurn(AiTurnNode *node) {
                 if (node->result == 3) {
                     node->sub = AI_SEARCH_PREP;  /* re-run the search from the top */
                 } else {
-                    /* sub == AI_TURN_ANIMATE here; assign the cached local (not the
-                       literal) — that variable reuse is what makes the prologue match. */
+                    /* sub == AI_TURN_ANIMATE; using the cached local (not the
+                       literal) is load-bearing for the match. */
                     node->state = sub;
                     node->sub = 0;               /* start the ANIMATE frame counter */
                 }
