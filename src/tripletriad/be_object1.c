@@ -363,144 +363,143 @@ void func_80098BA0(s32 a0) {
 }
 
 /**
- * @brief Initialize a linked list header and clear all node slots.
+ * @brief Initialize an @c ObjList header and mark every pool node free.
  *
- * @param a0 Pointer to the list header (head, tail, pool ptr, size, count).
- * @param a1 Pointer to the node pool.
- * @param a2 Size of each node in bytes.
- * @param a3 Number of nodes in the pool.
+ * @param listMem List header to initialize.
+ * @param pool    Node-pool base.
+ * @param stride  Size of each node in bytes.
+ * @param count   Number of nodes in the pool.
  */
-void func_80098BC0(u8 *a0, u8 *a1, s32 a2, s32 a3) {
-    s32 i = 0;
-    *(s32 *)(a0 + 0) = 0;
-    *(s32 *)(a0 + 4) = 0;
-    *(s32 *)(a0 + 8) = (s32)a1;
-    *(s16 *)(a0 + 0xC) = a2;
-    *(s16 *)(a0 + 0xE) = a3;
-    if (a3 > 0) {
-        do {
-            *(s16 *)a1 = 0;
-            i++;
-            a1 += a2;
-        } while (i < a3);
+void func_80098BC0(u8 *listMem, u8 *pool, s32 stride, s32 count) {
+    ObjList *list = (ObjList *)listMem;
+    s32 i;
+
+    list->head = 0;
+    list->tail = 0;
+    list->pool = pool;
+    list->stride = stride;
+    list->count = count;
+
+    for (i = 0; i < count; i++) {
+        ((ObjListNode *)pool)->flags = 0;
+        pool += stride;
     }
 }
 
 /**
  * @brief Find and return the first free node in the pool.
  *
- * Scans the node pool referenced by the list header for a node whose
- * flags bit 0 is clear (inactive). Returns the first free node found,
- * or NULL if all nodes are in use.
+ * Scans the pool for a node whose @c flags bit 0 is clear (inactive).
  *
- * @param a0 Pointer to list header (+0x8=pool, +0xC=stride, +0xE=count).
- * @return Pointer to the first free node, or NULL if none available.
+ * @param listMem List header whose pool is scanned.
+ * @return The first free node, or NULL if all nodes are in use.
  */
-void *func_80098BF8(u8 *a0) {
-    s32 count = *(s16 *)(a0 + 0xE);
-    u8 *pool = (u8 *)*(s32 *)(a0 + 0x8);
+void *func_80098BF8(u8 *listMem) {
+    ObjList *list = (ObjList *)listMem;
+    s32 count = list->count;
+    u8 *node = list->pool;
     s32 i = 0;
+
     if (count > 0) {
         s32 n = count;
         do {
-            if (!(*(u16 *)pool & 1)) {
-                return pool;
+            if (!(((ObjListNode *)node)->flags & 1)) {
+                return node;
             }
             i++;
-            pool += *(s16 *)(a0 + 0xC);
+            node += list->stride;
         } while (i < n);
     }
     return 0;
 }
 
 /**
- * @brief Allocate a node and append it to a doubly-tracked linked list.
+ * @brief Allocate a node and append it to the list tail.
  *
- * Calls func_80098BF8 to allocate a node. If successful, initializes
- * flags (sets bit 0), clears fields at +2 and +4, stores @p a1 at +8,
- * and appends the node: if the list is non-empty, links old tail to
- * new node; otherwise sets head. Always updates tail pointer.
+ * Allocates a free node, marks it active, stores @p callback, and links it
+ * onto the tail (or sets @c head if the list was empty).
  *
- * @param a0 Pointer to list header (head at +0, tail at +4).
- * @param a1 Value to store at offset +8 of the new node (callback pointer).
- * @return Pointer to the new node, or NULL if allocation failed.
+ * @param listMem  List header.
+ * @param callback Per-frame callback stored in the new node.
+ * @return The new node, or NULL if the pool is full.
+ *
+ * @note The header is reached via @c (ObjList *)listMem rather than a cached
+ *       local so gcc keeps it in the saved arg register across the alloc call.
  */
-void *func_80098C44(u8 *a0, s32 a1) {
-    u8 *node = (u8 *)func_80098BF8(a0);
+void *func_80098C44(u8 *listMem, s32 callback) {
+    ObjListNode *node = func_80098BF8(listMem);
+
     if (node != 0) {
-        s32 tail;
-        *(u16 *)(node + 0) |= 1;
-        *(u16 *)(node + 2) = 0;
-        *(s32 *)(node + 4) = 0;
-        *(s32 *)(node + 8) = a1;
-        tail = *(s32 *)(a0 + 4);
+        ObjListNode *tail;
+        node->flags |= 1;
+        node->field02 = 0;
+        node->next = 0;
+        node->callback = callback;
+        tail = ((ObjList *)listMem)->tail;
         if (tail != 0) {
-            *(s32 *)(tail + 4) = (s32)node;
+            tail->next = node;
         } else {
-            *(s32 *)a0 = (s32)node;
+            ((ObjList *)listMem)->head = node;
         }
-        *(s32 *)(a0 + 4) = (s32)node;
+        ((ObjList *)listMem)->tail = node;
     }
     return node;
 }
 
 /**
- * @brief Allocate and insert a node into a linked list.
+ * @brief Allocate a node and prepend it to the list head.
  *
- * Calls func_80098BF8 to allocate a node. If allocation succeeds,
- * initializes flags (sets bit 0), clears field at +2, stores @p a1
- * at offset +8, and prepends the node to the list headed at @p a0.
- *
- * @param a0 Pointer to the list head pointer.
- * @param a1 Value to store at offset +8 of the new node (callback pointer).
- * @return Pointer to the new node, or NULL if allocation failed.
+ * @param listMem  List header.
+ * @param callback Per-frame callback stored in the new node.
+ * @return The new node, or NULL if the pool is full.
  */
-void *func_80098CC0(u8 *a0, s32 a1) {
-    u8 *node = (u8 *)func_80098BF8(a0);
+void *func_80098CC0(u8 *listMem, s32 callback) {
+    ObjList *list = (ObjList *)listMem;
+    ObjListNode *node = func_80098BF8(listMem);
+
     if (node != 0) {
-        *(u16 *)(node + 0) |= 1;
-        *(u16 *)(node + 2) = 0;
-        *(s32 *)(node + 8) = a1;
-        *(s32 *)(node + 4) = *(s32 *)a0;
-        *(s32 *)a0 = (s32)node;
+        node->flags |= 1;
+        node->field02 = 0;
+        node->callback = callback;
+        node->next = list->head;
+        list->head = node;
     }
     return node;
 }
 
 /**
- * @brief Iterate a linked list, calling each node's callback and removing finished nodes.
+ * @brief Tick every node's callback, unlinking those that report completion.
  *
- * Walks through the linked list at @p a0, calling the function pointer at
- * offset +8 of each node with the node as the argument. If the callback
- * returns a value with bit 1 set, the node is removed from the list
- * (flags cleared, unlinked). Otherwise the node is kept and the count
- * incremented. Updates the list tail pointer when done.
+ * Walks the list, calling each node's @c callback; a return value with bit 1
+ * set unlinks (and frees) that node. Surviving nodes are counted and the tail
+ * pointer is rebuilt.
  *
- * @param a0 Pointer to the list header (head at +0, tail at +4).
- * @return Number of nodes remaining in the list.
+ * @param listMem List header.
+ * @return Number of nodes still live.
  */
-s32 updateObjectList(u8 *a0) {
-    u8 *prev = 0;
+s32 updateObjectList(u8 *listMem) {
+    ObjList *list = (ObjList *)listMem;
+    ObjListNode *prev = 0;
+    ObjListNode *node = list->head;
     s32 count = 0;
-    u8 *node = (u8 *)*(s32 *)(a0 + 0);
     s32 result;
 
     while (node != 0) {
-        result = ((s32 (*)(u8 *))*(s32 *)(node + 8))(node);
+        result = ((ObjNodeFn)node->callback)(node);
         if (result & 2) {
-            *(s16 *)(node + 0) = 0;
+            node->flags = 0;
             if (prev != 0) {
-                *(s32 *)(prev + 4) = *(s32 *)(node + 4);
+                prev->next = node->next;
             } else {
-                *(s32 *)(a0 + 0) = *(s32 *)(node + 4);
+                list->head = node->next;
             }
         } else {
             prev = node;
             count++;
         }
-        node = (u8 *)*(s32 *)(node + 4);
+        node = node->next;
     }
-    *(s32 *)(a0 + 4) = (s32)prev;
+    list->tail = prev;
     return count;
 }
 

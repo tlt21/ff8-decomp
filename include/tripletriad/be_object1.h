@@ -73,6 +73,29 @@ typedef struct { u8 r, g, b; } RGB;
 /** @brief Battle-state handler signature (entries of @c g_tripleTriadStateHandlers). */
 typedef u8 *(*BattleStateFn)(void);
 
+/** @brief Generic pool-backed list-node header (0xC bytes). Type-specific nodes
+ *  (e.g. @c HandlerNode) extend this; the pool allocator/iterator only touches
+ *  this header. */
+typedef struct ObjListNode {
+    u16                 flags;     /* 0x0 — bit 0 = active/allocated */
+    u16                 field02;   /* 0x2 — cleared on allocation */
+    struct ObjListNode *next;      /* 0x4 — next node in the list */
+    s32                 callback;  /* 0x8 — per-frame callback (see ObjNodeFn) */
+} ObjListNode;
+
+/** @brief Per-frame node callback; a return value with bit 1 set unlinks the node. */
+typedef s32 (*ObjNodeFn)(ObjListNode *node);
+
+/** @brief Pool-backed singly-linked list header (0x10 bytes). Nodes are carved
+ *  from a fixed @c pool of @c count entries, each @c stride bytes. */
+typedef struct {
+    ObjListNode *head;    /* 0x0 */
+    ObjListNode *tail;    /* 0x4 */
+    void        *pool;    /* 0x8 — node-pool base */
+    s16          stride;  /* 0xC — node size in bytes */
+    s16          count;   /* 0xE — node count */
+} ObjList;
+
 /** @brief Battle-state handler node: sub-state selector, frame counter, and
  *  phase bit (which side the card is showing). Shared between the card-flip
  *  handler (be_object1.c) and the match-flow driver (be_object1b.c). */
