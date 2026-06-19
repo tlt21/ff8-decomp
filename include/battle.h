@@ -1076,7 +1076,6 @@ extern void func_80041794(s32 angle, MATRIX *m);
 extern s32  scratchAlloc(s32 size);
 extern void scratchFree(s32 size);
 extern void *func_8009AE6C(s32 a, s32 b, void *ot, void *out);
-extern u8 *func_8009A6EC(u8 *src, s16 *dst);
 
 /* --- Battle animation lifecycle --- */
 extern void activateBattleAnim(s32 idx);

@@ -4,6 +4,7 @@
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libc.h"
 #include "tripletriad/be_object1.h"
+#include "tripletriad/be_object1b.h"
 #include "tripletriad/be_object3.h"
 
 /**

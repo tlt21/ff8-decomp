@@ -4,6 +4,7 @@
 #include "psxsdk/libc.h"
 #include "psxsdk/libgpu.h"
 #include "tripletriad/be_object1.h"
+#include "tripletriad/be_object1b.h"
 #include "gamestate.h"
 
 /*
@@ -346,16 +347,6 @@ s32 func_8009A2F4(s32 a0) {
  *       (7) @c rowByteOffset = pixelY chains the init so gcc emits
  *       @c addu s6, s5, $0 (matching target's @c addu s6, s5, zero).
  */
-typedef struct {
-    /* 0x00 */ u32 tag;        /**< @c P_TAG: len=5, next=0 (six-dword primitive). */
-    /* 0x04 */ u32 tpageCmd;   /**< GP0(0xE1) Draw Mode + tpage attribute = @c 0xE100060C. */
-    /* 0x08 */ u32 sprtCmd;    /**< GP0(0x66) textured sprite + grey-tint RGB = @c 0x66808080. */
-    /* 0x0C */ s16 x0, y0;     /**< Screen-space sprite origin (top-left). */
-    /* 0x10 */ u8  u0, v0;     /**< Texture-page UV (bit-position derived). */
-    /* 0x12 */ u16 clut;       /**< CLUT id (varies by lowest set bit of @c element). */
-    /* 0x14 */ s16 w, h;       /**< Sprite size in pixels (15x15). */
-} TripleTriadCellPrim;
-
 s32 func_8009A314(void) {
     TripleTriadCellPrim *prim = (TripleTriadCellPrim *)g_primCursor;
     s32 row = 1;
