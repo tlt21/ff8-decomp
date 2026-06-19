@@ -915,14 +915,14 @@ void initCardHands(void) {
     cnt[0] = 0;
 
     for (i = 0; i < 10; i++) {
-        s32 c;
+        s32 seq;
         entry = &g_tripleTriadCardHands[i];
         owner = entry->initFlags & 1;
         entry->fieldD = 0;
         entry->groupId = owner;
-        c = cnt[owner];
-        entry->priority = c;
-        cnt[owner] = c + 1;
+        seq = cnt[owner];
+        entry->priority = seq;
+        cnt[owner] = seq + 1;
         if (D_801A2C70[owner] == 3 && !(g_tripleTriadRules & 1)) {
             entry->posData[1] = 0x800;
         }
@@ -1031,17 +1031,17 @@ s32 cardFlipHandler(HandlerNode *node) {
         node->counter = 0;
         break;
     case 1: {
-        s32 c = node->counter;
-        if (c < 60) {
-            s32 t = (c << 12) / 60;
-            s32 sv = func_8003ED64(t / 4);
+        s32 frame = node->counter;
+        if (frame < 60) {
+            s32 t = (frame << 12) / 60;
+            s32 sine = func_8003ED64(t / 4);
             g_cardFlipAngles.vx = (u32)t >> 2;
-            g_cardFlipAngles.vy = ((g_cardFlipSpin + 0xA000) * sv) >> 12;
+            g_cardFlipAngles.vy = ((g_cardFlipSpin + 0xA000) * sine) >> 12;
             g_cardFlipXform->vec = g_cardFlipUpVec;
-        } else if ((c -= 60) < 10) {
+        } else if ((frame -= 60) < 10) {
             g_cardFlipXform->vec = g_cardFlipUpVec;
-        } else if ((c -= 10) < 15) {
-            s32 d = (c << 12) / 15;
+        } else if ((frame -= 10) < 15) {
+            s32 d = (frame << 12) / 15;
             tmp = d;
             g_cardFlipAngles.vx = (-(d << 10) >> 12) + 0x400;
             g_cardFlipAngles.vy = g_cardFlipSpin + (((-g_cardFlipSpin) * d) >> 12);
@@ -1074,11 +1074,11 @@ s32 cardFlipHandler(HandlerNode *node) {
     }
     case 3: {
         s32 t = (node->counter << 12) / 10;
-        s32 sinv = func_8003ED64(t / 4);
+        s32 sine = func_8003ED64(t / 4);
         if (node->phase) {
-            sinv = 0x1000 - sinv;
+            sine = 0x1000 - sine;
         }
-        g_cardFlipXform->vec.vx = ((sinv * 0x118) >> 12) - 0x8C;
+        g_cardFlipXform->vec.vx = ((sine * 0x118) >> 12) - 0x8C;
         g_cardFlipXform->vec.vy = -0x5C;
         g_cardFlipXform->vec.vz = (-(func_8003ED64(t / 2) << 6) >> 12) + 0x200;
         node->counter++;
