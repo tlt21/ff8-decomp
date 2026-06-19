@@ -124,7 +124,7 @@ extern TriadFaceDesc D_80182BB8[4];     /**< 4 G3 face descriptors. */
 extern u32          *D_801D3008;        /**< Scratch buffer pointer for RotTransPers4 outputs. */
 
 /* ── Deferred VRAM transfer pool (flushVramTransfers) ──────────────────────────── */
-extern PoolEntry     D_801C2ED0[];
+extern PoolEntry     g_vramQueue[];
 extern ResHeader     D_800B71D8;               /**< Resource header registered by the draw-target setup. */
 extern ResHeader     g_tripleTriadCardFrames;  /**< Card frame/border graphics (4bpp TIM, uploaded to VRAM at init). */
 extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM, ~110 cards at 64x64, uploaded to VRAM at init). */
@@ -144,7 +144,7 @@ extern u8            D_80182B84[];
 extern u8            g_tripleTriadCardCounts[];
 
 /* ── Debug text / misc state ──────────────────────────────────────────────── */
-extern s32           D_801C2FD0;
+extern s32           g_vramQueueCount;
 extern s32           D_801C2FD8;
 extern s16           D_80182B54;
 extern s16           D_80182B5A;
@@ -158,7 +158,7 @@ extern u32           D_80182AA0[];      /**< Color palette table, indexed by ASC
 extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handler table. */
 
 /* ── Entry points defined in be_object1.c (forward-declared for earlier callers) ── */
-extern void func_800988D4(void);
+extern void resetVramQueue(void);
 extern void flushVramTransfers(void);
 
 #endif /* TRIPLETRIAD_BE_OBJECT1_H */

@@ -236,14 +236,14 @@ void closeMenu(void) {
  * @brief Add a rendering command entry based on the alternate screen index.
  *
  * Reads g_drawBufferIndex, XORs with 1 to get the alternate index, computes
- * an offset of index * 92 into g_drawEnvs, and calls func_80098A1C
+ * an offset of index * 92 into g_drawEnvs, and calls queueLoadImage
  * with the resulting pointer and D_8012E66C.
  *
  * @return Always 0.
  */
 s32 func_800A274C(void) {
     s32 idx = g_drawBufferIndex ^ 1;
-    func_80098A1C(&g_drawEnvs[idx], D_8012E66C);
+    queueLoadImage(&g_drawEnvs[idx], D_8012E66C);
     return 0;
 }
 

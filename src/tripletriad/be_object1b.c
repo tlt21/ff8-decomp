@@ -42,7 +42,7 @@ extern s32 D_801D3018;              /* result-screen SFX handle */
 extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
 
 /* Functions defined in be_object1.c. */
-extern u8  *func_80098A1C(u8 *drawEnv, u8 *cb);
+extern u8  *queueLoadImage(u8 *drawEnv, u8 *cb);
 extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
 extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
@@ -326,7 +326,7 @@ s32 func_8009A2F4(s32 a0) {
  * Cell pixel positions step by 0x40 in both axes (cell size).
  *
  * After all visible cells emit, @c g_primCursor is bumped to the new tail and
- * @c func_80098A1C is called with @c &g_drawEnvs[!activeBuffer] (the OTHER
+ * @c queueLoadImage is called with @c &g_drawEnvs[!activeBuffer] (the OTHER
  * draw-env) plus @c D_8012E66C as the callback — registering the back-buffer
  * for the next vblank flip.
  *
@@ -411,7 +411,7 @@ s32 func_8009A314(void) {
     }
 
     g_primCursor = prim;
-    func_80098A1C((u8 *)&g_drawEnvs[g_drawBufferIndex ^ 1], D_8012E66C);
+    queueLoadImage((u8 *)&g_drawEnvs[g_drawBufferIndex ^ 1], D_8012E66C);
     return 0;
 }
 

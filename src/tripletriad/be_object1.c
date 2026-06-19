@@ -25,8 +25,8 @@ void initTripleTriad(void) {
     func_800A2208();
     func_80098DD4();
     func_8009EB98();
-    func_80098A6C(&g_tripleTriadCardArt);
-    func_80098A6C(&g_tripleTriadCardFrames);
+    queueTimUpload(&g_tripleTriadCardArt);
+    queueTimUpload(&g_tripleTriadCardFrames);
 
     g_tripleTriadInputFlags = 0;
     g_tripleTriadFrameCount = 0;
@@ -139,7 +139,7 @@ void initGraphics(void) {
 
     g_fadeCounter = 2;
     g_vsyncMode = 0;
-    func_800988D4();
+    resetVramQueue();
 }
 
 /**
@@ -207,25 +207,25 @@ void sampleInput(void) {
 }
 
 /**
- * @brief Clear D_801C2FD0 to zero.
+ * @brief Clear g_vramQueueCount to zero.
  */
-void func_800988D4(void) {
-    D_801C2FD0 = 0;
+void resetVramQueue(void) {
+    g_vramQueueCount = 0;
 }
 
 /**
- * @brief Dispatch all pending entries in the @c D_801C2ED0 GPU-transfer pool.
+ * @brief Dispatch all pending entries in the @c g_vramQueue GPU-transfer pool.
  *
- * Walks @c D_801C2FD0 entries and performs the requested operation on each
+ * Walks @c g_vramQueueCount entries and performs the requested operation on each
  * (LoadImage / LoadImage TIM / StoreImage / MoveImage), then resets the pool
  * count to zero. Entries are typically queued by @c flushVramTransfers's siblings
  * during a frame and flushed here once vsync has elapsed.
  */
 void flushVramTransfers(void) {
     s32 i;
-    PoolEntry *p = D_801C2ED0;
+    PoolEntry *p = g_vramQueue;
 
-    for (i = 0; i < D_801C2FD0; p++, i++) {
+    for (i = 0; i < g_vramQueueCount; p++, i++) {
         switch (p->active) {
             case POOL_LOAD_IMAGE:
                 LoadImage(&p->rect, p->src);
@@ -248,13 +248,13 @@ void flushVramTransfers(void) {
                 break;
         }
     }
-    D_801C2FD0 = 0;
+    g_vramQueueCount = 0;
 }
 
 /**
- * @brief Register an inactive D_801C2ED0 pool entry with an 8-byte data copy.
+ * @brief Register an inactive g_vramQueue pool entry with an 8-byte data copy.
  *
- * Takes the next slot in the D_801C2ED0 pool (indexed by D_801C2FD0),
+ * Takes the next slot in the g_vramQueue pool (indexed by g_vramQueueCount),
  * marks it inactive, copies 8 bytes from @p a0 into the slot's data
  * region (offsets 4..0xB, via unaligned-safe copy), and stores @p a1
  * as the callback at offset 0xC.
@@ -262,18 +262,18 @@ void flushVramTransfers(void) {
  * @param a0 Source of 8 bytes to copy (may be unaligned).
  * @param a1 Callback pointer stored at offset 0xC of the slot.
  */
-void func_80098A1C(u8 *a0, u8 *a1) {
-    PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
+void queueLoadImage(u8 *a0, u8 *a1) {
+    PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 0;
     memcpy(&entry->rect, a0, 8);
     entry->src = a1;
 }
 
 /**
- * @brief Register a callback into D_801C2ED0 and advance into @p a0.
+ * @brief Register a callback into g_vramQueue and advance into @p a0.
  *
- * Takes the next free slot in D_801C2ED0 (indexed by the counter at
- * D_801C2FD0), marks it active, stores @p a0 as the callback pointer,
+ * Takes the next free slot in g_vramQueue (indexed by the counter at
+ * g_vramQueueCount), marks it active, stores @p a0 as the callback pointer,
  * then follows a two-step offset chain from @p a0:
  *   1. Read an @c s32 offset at @c a0+8; advance @c a0 by 8 plus that offset.
  *   2. Read an @c s32 offset at the new @c a0; return (@c a0 + that offset).
@@ -282,11 +282,11 @@ void func_80098A1C(u8 *a0, u8 *a1) {
  *           location in the same record.
  * @return The final address resulting from the two-step offset chain.
  */
-u8 *func_80098A6C(ResHeader *res) {
+u8 *queueTimUpload(ResHeader *res) {
     PoolEntry *entry;
     s32 *rel;
 
-    entry = &D_801C2ED0[D_801C2FD0++];
+    entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 1;
     entry->src = res;
 
@@ -296,31 +296,31 @@ u8 *func_80098A6C(ResHeader *res) {
 }
 
 /**
- * @brief Register a D_801C2ED0 slot with @c active=2 and an 8-byte data copy.
+ * @brief Register a g_vramQueue slot with @c active=2 and an 8-byte data copy.
  *
- * Variant of @c func_80098A1C: takes the next pool slot, marks it with flag
- * @c 2 (vs @c 0 in @c func_80098A1C), copies 8 bytes from @p a0 into the
+ * Variant of @c queueLoadImage: takes the next pool slot, marks it with flag
+ * @c 2 (vs @c 0 in @c queueLoadImage), copies 8 bytes from @p a0 into the
  * data region (offsets 4..0xB, unaligned-safe), and stores @p a1 as the
  * callback at offset 0xC.
  */
-void func_80098AB4(u8 *a0, u8 *a1) {
-    PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
+void queueStoreImage(u8 *a0, u8 *a1) {
+    PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 2;
     memcpy(&entry->rect, a0, 8);
     entry->src = a1;
 }
 
 /**
- * @brief Register a D_801C2ED0 slot with @c active=3, data copy, and a
+ * @brief Register a g_vramQueue slot with @c active=3, data copy, and a
  *        packed 16-bit pair at offset 0xC.
  *
- * Same pool-registration pattern as @c func_80098A1C /
- * @c func_80098AB4, but stores a packed 32-bit value at offset 0xC
+ * Same pool-registration pattern as @c queueLoadImage /
+ * @c queueStoreImage, but stores a packed 32-bit value at offset 0xC
  * formed from two 16-bit args (@p a2 as the upper 16 bits, sign-extended
  * @p a1 as the lower 16 bits).
  */
-void func_80098B08(u8 *a0, s16 a1, u16 a2) {
-    PoolEntry *entry = &D_801C2ED0[D_801C2FD0++];
+void queueMoveImage(u8 *a0, s16 a1, u16 a2) {
+    PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 3;
     memcpy(&entry->rect, a0, 8);
     entry->src = (void *)(((s32)a2 << 16) | a1);
@@ -506,14 +506,14 @@ s32 updateObjectList(u8 *listMem) {
 /**
  * @brief Register @c D_800B71D8 and set up the current frame's draw targets.
  *
- * Registers the @c D_800B71D8 resource into the D_801C2ED0 pool via
- * @c func_80098A6C, kicks off @c ClearOTag for the current buffer's
+ * Registers the @c D_800B71D8 resource into the g_vramQueue pool via
+ * @c queueTimUpload, kicks off @c ClearOTag for the current buffer's
  * drawenv slot, then rebases the framebuffer (@c D_801D2FE0) and drawenv
  * (@c D_801D3000) pointers to the slot indexed by @c D_80182B54. Unlike
  * @c flipTextBuffer, this does not flip the buffer index first.
  */
 void func_80098DD4(void) {
-    func_80098A6C(&D_800B71D8);
+    queueTimUpload(&D_800B71D8);
     ClearOTag(D_801D2FF0[D_80182B54], 2);
     D_801D2FE0 = D_801C2FE0[D_80182B54];
     D_801D3000 = D_801D2FF0[D_80182B54];
