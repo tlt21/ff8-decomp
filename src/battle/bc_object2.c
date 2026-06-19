@@ -1048,7 +1048,33 @@ s32 func_8009E33C(s32 arg0, s32 arg1, s32 arg2) {
     return -100000;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E418);
+s32 func_8009E418(s32 arg0, s32 arg1, s32 arg2) {
+    s32 temp_a0;
+    s32 var_a1;
+    s32 ret;
+
+     if (func_8009D594(arg0, arg1) != 0) {
+         return 0;
+     }
+
+    ret = func_8009E33C(arg0, arg1, arg2);
+    if (ret != -100000) {
+        return ret;
+    }
+    
+    temp_a0 = D_800ED148.entities[arg1].field2C;
+
+    var_a1 = temp_a0 / 8;
+    if ((D_800EE4C1 == 4 || D_800EE4C1 == 13) && arg0 < 3 && g_battleChars.chars[arg0].statusFlags & 2) {
+        var_a1 = temp_a0 / 4;
+    }
+    
+    if (var_a1 == 0) {
+        return 1;
+    }
+        
+    return var_a1;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E528);
 
