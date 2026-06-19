@@ -8,6 +8,13 @@
 #include "tripletriad/be_object2.h"
 #include "gamestate.h"
 
+/* Private prototypes (functions local to this translation unit). */
+s32 matchFlowHandler(HandlerNode *ctl);
+s32 updateCardObjects(s32 node);
+s32 drawBoardElements(void);
+s32 updateChildList(CallbackNode *node);
+s32 drawScoreDigits(void);
+
 /**
  * @brief Per-frame Triple Triad match controller (an update-list callback).
  *
@@ -130,7 +137,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     s32 i;
                     cnt[1] = 0;
                     cnt[0] = 0;
-                    for (i = 0; i < 10; i++) cnt[g_tripleTriadCardHands[i].initFlags & 1]++;
+                    for (i = 0; i < 10; i++) cnt[g_tripleTriadCardHands[i].initFlags & TT_OWNER_MASK]++;
                     if (cnt[0] > cnt[1])      D_801D30FC = 0;
                     else if (cnt[1] > cnt[0]) D_801D30FC = 1;
                     else                      D_801D30FC = TT_WINNER_DRAW;
@@ -307,7 +314,7 @@ s32 drawScoreDigits(void) {
     cnt[0] = 0;
 
     for (; i < 10; i++) {
-        cnt[g_tripleTriadCardHands[i].initFlags & 1]++;
+        cnt[g_tripleTriadCardHands[i].initFlags & TT_OWNER_MASK]++;
     }
 
     prim = (TripleTriadCellPrim *)g_primCursor;
@@ -360,54 +367,54 @@ u8 *initTripleTriadUpdateList(void) {
 }
 
 /**
- * @brief Fill an animation rectangle from a card-slot descriptor.
+ * @brief Compute a card's screen position from its slot descriptor.
  *
- * Writes the rectangle's position and size from the descriptor's type: types 0
- * and 1 are vertical strips (left/right), type 2 is a tile grid.
+ * Writes a position vector from the descriptor's type: types 0 and 1 are the
+ * left/right hand strips, type 2 is the board grid.
  *
  * @param src Descriptor bytes: [0] = type, [1] = column, [2] = row.
- * @param dst Output rectangle (x, y, w, h as 4 × s16).
+ * @param dst Position vector to fill; @c vz is the depth, @c pad the OT sort key.
  * @return @p dst.
  */
-u8 *layoutCardSlot(u8 *src, s16 *dst) {
+SVECTOR *layoutCardSlot(u8 *src, SVECTOR *dst) {
     u8 type = src[0];
 
     switch (type) {
-    case 0:
-        dst[0] = -0x8C;
+    case TT_CARDSLOT_STRIP_L:
+        dst->vx = -0x8C;
         {
             u8 row = src[2];
-            s32 width = 0x200;
-            dst[2] = width;
-            dst[1] = row * 32 - 0x40;
+            s32 depth = 0x200;
+            dst->vz = depth;
+            dst->vy = row * 32 - 0x40;
         }
-        dst[3] = -(s32)src[2] + 0xE;
+        dst->pad = -(s32)src[2] + 0xE;
         break;
-    case 1:
-        dst[0] = 0x8C;
+    case TT_CARDSLOT_STRIP_R:
+        dst->vx = 0x8C;
         {
             u8 row = src[2];
-            s32 width = 0x200;
-            dst[2] = width;
-            dst[1] = row * 32 - 0x40;
+            s32 depth = 0x200;
+            dst->vz = depth;
+            dst->vy = row * 32 - 0x40;
         }
-        dst[3] = -(s32)src[2] + 0xE;
+        dst->pad = -(s32)src[2] + 0xE;
         break;
-    case 2: {
+    case TT_CARDSLOT_GRID: {
         s32 col = src[1];
-        dst[0] = (col - 1) * 64;
+        dst->vx = (col - 1) * 64;
         {
             u8 row = src[2];
-            dst[2] = 0x200;
-            dst[3] = 0x12;
-            dst[1] = (row - 1) * 64;
+            dst->vz = 0x200;
+            dst->pad = 0x12;
+            dst->vy = (row - 1) * 64;
         }
         break;
     }
     default:
-        return (u8 *)dst;
+        return dst;
     }
-    return (u8 *)dst;
+    return dst;
 }
 
 /**
@@ -429,10 +436,10 @@ s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority) {
     if (groupId < 0) return -1;
 
     switch (groupId) {
-    case 0:
-    case 1:
+    case TT_GROUP_CPU_HAND:
+    case TT_GROUP_PLAYER_HAND:
         for (i = 0; i < 10; i++) {
-            if (g_tripleTriadCardHands[i].flags & 1) {
+            if (g_tripleTriadCardHands[i].flags & TT_CARD_ACTIVE) {
                 if (g_tripleTriadCardHands[i].groupId == groupId) {
                     if (g_tripleTriadCardHands[i].priority == priority) {
                         return i;
@@ -442,7 +449,7 @@ s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority) {
         }
         return -1;
 
-    case 2:
+    case TT_GROUP_BOARD:
         for (i = 0; i < 10; i++) {
             if (g_tripleTriadCardHands[i].groupId == groupId) {
                 if (g_tripleTriadCardHands[i].fieldD == fieldD) {
@@ -459,10 +466,10 @@ s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority) {
 }
 
 /**
- * @brief Flag the card object matching a search key (sets @c flags bit @c 0x2).
+ * @brief Flag the card object matching a search key (sets @c TT_CARD_ROTATE_CW).
  *
- * Looks up the slot via @c findCardSlot and, if found, sets bit @c 0x2 of its
- * @c flags.
+ * Looks up the slot via @c findCardSlot and, if found, sets @c TT_CARD_ROTATE_CW
+ * in its @c flags.
  *
  * @param groupId  Search-mode selector / target group passed to findCardSlot.
  * @param priority Target priority passed as findCardSlot's third arg.
@@ -470,6 +477,6 @@ s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority) {
 void highlightCardSlot(s32 groupId, s32 priority) {
     s32 idx = findCardSlot(groupId, 0, priority);
     if (idx >= 0) {
-        g_tripleTriadCardHands[idx].flags |= 2;
+        g_tripleTriadCardHands[idx].flags |= TT_CARD_ROTATE_CW;
     }
 }

@@ -35,19 +35,16 @@ typedef struct {
  * @brief Scratch buffer for func_8009EBF4's per-card matrix build (0x2C bytes).
  *
  * Allocated each frame via scratchAlloc; @c f0/@c f2 carry the card's row/col,
- * layoutCardSlot fills @c f4..@c fA (position + sort), and @c mtx holds the
+ * layoutCardSlot fills @c pos (position + OT sort key), and @c mtx holds the
  * rotation/translation matrix passed to SetRotMatrix / SetTransMatrix.
  */
 typedef struct {
-    /* 0x00 */ u8     f0;
-    /* 0x01 */ u8     pad1;
-    /* 0x02 */ u8     f2;
-    /* 0x03 */ u8     pad3;
-    /* 0x04 */ s16    f4;
-    /* 0x06 */ s16    f6;
-    /* 0x08 */ s16    f8;
-    /* 0x0A */ s16    fA;
-    /* 0x0C */ MATRIX mtx;
+    /* 0x00 */ u8      f0;    /**< layoutCardSlot descriptor type. */
+    /* 0x01 */ u8      pad1;
+    /* 0x02 */ u8      f2;    /**< layoutCardSlot descriptor row. */
+    /* 0x03 */ u8      pad3;
+    /* 0x04 */ SVECTOR pos;   /**< Position filled by layoutCardSlot (vx/vy/vz/pad). */
+    /* 0x0C */ MATRIX  mtx;
 } TmpBuf; /* 0x2C */
 
 /**
@@ -624,11 +621,11 @@ s32 func_8009EBF4(void)
                 s0 = func_8003ED64(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
-                layoutCardSlot((u8 *)tmp, &tmp->f4);
-                e->posX = tmp->f4;
-                e->posY = ((tmp->f6 - 0xE0) * s0 >> 12) + 0xE0;
-                e->posZ = tmp->f8;
-                e->sort = tmp->fA;
+                layoutCardSlot((u8 *)tmp, &tmp->pos);
+                e->posX = tmp->pos.vx;
+                e->posY = ((tmp->pos.vy - 0xE0) * s0 >> 12) + 0xE0;
+                e->posZ = tmp->pos.vz;
+                e->sort = tmp->pos.pad;
                 if (e->field02 >= 0xF) {
                     e->status = 0;
                     e->field02 = 0;
@@ -640,11 +637,11 @@ s32 func_8009EBF4(void)
                 s0 = func_8003ED64(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
-                layoutCardSlot((u8 *)tmp, &tmp->f4);
-                e->posX = tmp->f4;
-                e->posY = ((0xE0 - tmp->f6) * s0 >> 12) + tmp->f6;
-                e->posZ = tmp->f8;
-                e->sort = tmp->fA;
+                layoutCardSlot((u8 *)tmp, &tmp->pos);
+                e->posX = tmp->pos.vx;
+                e->posY = ((0xE0 - tmp->pos.vy) * s0 >> 12) + tmp->pos.vy;
+                e->posZ = tmp->pos.vz;
+                e->sort = tmp->pos.pad;
                 if (e->field02 >= 0xF) {
                     e->status = 0;
                     e->field02 = 0;

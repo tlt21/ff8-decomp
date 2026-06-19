@@ -2,15 +2,52 @@
 #define TRIPLETRIAD_BE_OBJECT1B_H
 
 #include "common.h"
+#include "psxsdk/libgte.h"  /* SVECTOR (layoutCardSlot) */
 
 /* Declarations for be_object1b.c (Triple Triad match-flow controller, the
    per-frame update-list callbacks, and battle-object search helpers). */
 
-/* matchFlowHandler hold-frame durations + result-screen cancel bit. */
+/* ───────────────────────────── Public ──────────────────────────────────── */
+
+/* Enums / defines / consts */
+
+/** @brief @c layoutCardSlot descriptor type (the byte at @c src[0]). */
+typedef enum {
+    TT_CARDSLOT_STRIP_L = 0,  /**< Left vertical strip.  */
+    TT_CARDSLOT_STRIP_R = 1,  /**< Right vertical strip. */
+    TT_CARDSLOT_GRID    = 2,  /**< Board tile grid.      */
+} TripleTriadCardSlotLayout;
+
+/* Public prototypes */
+
+/** @brief Build the per-frame update list and return its head. */
+extern u8 *initTripleTriadUpdateList(void);
+
+/** @brief Compute a card's screen position (an @c SVECTOR) from a slot descriptor. */
+extern SVECTOR *layoutCardSlot(u8 *src, SVECTOR *dst);
+
+/** @brief Find the @c g_tripleTriadCardHands slot matching a search key, or -1. */
+extern s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority);
+
+/** @brief Flag the matching card object (sets @c TT_CARD_ROTATE_CW). */
+extern void highlightCardSlot(s32 groupId, s32 priority);
+
+/* ───────── Private (only used in be_object1b.c; may move into the .c) ────── */
+
+/* Enums / defines / consts */
+
+/** matchFlowHandler hold-frame durations + result-screen cancel bit. */
 #define TT_HOLD_FRAMES_RULE  0x1E    /**< Hold after a combo capture (MATCH_FLOW_RULES). */
 #define TT_HOLD_FRAMES_TALLY 0x0C    /**< Hold on the card-count tally (MATCH_FLOW_TALLY). */
 #define TT_HOLD_FRAMES_FADE  0x0F    /**< Hold during the result fade (MATCH_FLOW_FADE). */
 #define PAD_UP               0x4000  /**< Result-screen cancel bit (D_801C2EC4). */
+
+/** @brief @c D_80082C9C match-result category (also picks the @c TripleTriadData record bumped). */
+#define TT_RESULT_VICTORY 0
+#define TT_RESULT_DEFEAT  1
+#define TT_RESULT_DRAW    2
+
+/* Typedefs */
 
 /** @brief Six-word combined DR_TPAGE + SPRT primitive (24 bytes) used by the
  *  cell-marker and score-tally renderers. */
@@ -37,25 +74,7 @@ typedef enum {
     MATCH_FLOW_FADE     = 9,  /**< Fade out, record the result, exit the match.  */
 } MatchFlowState;
 
-/* ── Functions defined in be_object1b.c ──────────────────────────────────── */
-
-/** @brief Build the per-frame update list and return its head. */
-extern u8 *initTripleTriadUpdateList(void);
-
-/** @brief Fill an animation RECT from an entity descriptor (type/col/row). */
-extern u8 *layoutCardSlot(u8 *src, s16 *dst);
-
-/** @brief Find the @c g_tripleTriadCardHands slot matching a search key, or -1. */
-extern s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority);
-
-/** @brief Flag the matching card object (sets bit 1 of its @c flags). */
-extern void highlightCardSlot(s32 groupId, s32 priority);
-
-/* Result-screen state. */
-/** @brief @c D_80082C9C match-result category (also picks the @c TripleTriadData record bumped). */
-#define TT_RESULT_VICTORY 0
-#define TT_RESULT_DEFEAT  1
-#define TT_RESULT_DRAW    2
+/* Data */
 extern u8  D_80082C9C;  /**< Match-result category byte (a @c TT_RESULT_* value). */
 extern s32 D_801D3018;  /**< Result-screen SFX handle. */
 

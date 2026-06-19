@@ -191,6 +191,18 @@ typedef enum {
     CARD_FX_SHAKE       = 7,  /**< Short shake/twitch, then clears and advances priority. */
 } CardEffectState;
 
+/** @brief Bits in @c TripleTriadCardObject.flags. */
+#define TT_CARD_ACTIVE    0x0001  /**< Active/selectable card (filtered by @c findCardSlot). */
+#define TT_CARD_ROTATE_CW 0x0002  /**< Spin clockwise; set to highlight the card. */
+
+/** @brief @c TripleTriadCardObject.groupId — which collection a card object is in. */
+typedef enum {
+    TT_GROUP_CPU_HAND    = 0,  /**< In the CPU's hand.    */
+    TT_GROUP_PLAYER_HAND = 1,  /**< In the player's hand. */
+    TT_GROUP_BOARD       = 2,  /**< Placed on the board.  */
+    TT_GROUP_LEFT        = 3,  /**< Left of the board.    */
+} TripleTriadCardGroup;
+
 /** @brief The two players' hands as card objects (5 each, 10 total). */
 extern TripleTriadCardObject g_tripleTriadCardHands[10];
 

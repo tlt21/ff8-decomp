@@ -276,7 +276,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
     }
 
     func_8009C12C(entity);
-    layoutCardSlot(&entity->groupId, &node->base.vx);
+    layoutCardSlot(&entity->groupId, &node->base);
     func_80041274(&entity->posData[0], node);
 
     node->mat.t[0]  = node->base.vx + entity->offX;
