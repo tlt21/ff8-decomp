@@ -252,35 +252,31 @@ void flushVramTransfers(void) {
 }
 
 /**
- * @brief Register an inactive g_vramQueue pool entry with an 8-byte data copy.
+ * @brief Enqueue a LoadImage transfer (@c active=0).
  *
- * Takes the next slot in the g_vramQueue pool (indexed by g_vramQueueCount),
- * marks it inactive, copies 8 bytes from @p a0 into the slot's data
- * region (offsets 4..0xB, via unaligned-safe copy), and stores @p a1
- * as the callback at offset 0xC.
+ * Takes the next g_vramQueue slot, marks it as a LoadImage, copies the 8-byte
+ * @p rect into the slot (unaligned-safe), and stores @p src as the source
+ * pixel pointer.
  *
- * @param a0 Source of 8 bytes to copy (may be unaligned).
- * @param a1 Callback pointer stored at offset 0xC of the slot.
+ * @param rect Destination RECT (8 bytes, may be unaligned).
+ * @param src  Source pixel data.
  */
-void queueLoadImage(u8 *a0, u8 *a1) {
+void queueLoadImage(u8 *rect, u8 *src) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 0;
-    memcpy(&entry->rect, a0, 8);
-    entry->src = a1;
+    memcpy(&entry->rect, rect, 8);
+    entry->src = src;
 }
 
 /**
- * @brief Register a callback into g_vramQueue and advance into @p a0.
+ * @brief Enqueue a TIM upload (@c active=1) and return its resolved data address.
  *
- * Takes the next free slot in g_vramQueue (indexed by the counter at
- * g_vramQueueCount), marks it active, stores @p a0 as the callback pointer,
- * then follows a two-step offset chain from @p a0:
- *   1. Read an @c s32 offset at @c a0+8; advance @c a0 by 8 plus that offset.
- *   2. Read an @c s32 offset at the new @c a0; return (@c a0 + that offset).
+ * Takes the next g_vramQueue slot, marks it as a TIM upload, and stores @p res
+ * as the source. Then walks @p res's two-step @c offset chain (each step adds a
+ * relative @c s32 offset) to compute the resource's payload address.
  *
- * @param a0 Pointer to a header whose byte-offset fields chain into another
- *           location in the same record.
- * @return The final address resulting from the two-step offset chain.
+ * @param res Resource header whose @c offset field chains to its payload.
+ * @return The resolved payload address at the end of the offset chain.
  */
 u8 *queueTimUpload(ResHeader *res) {
     PoolEntry *entry;
@@ -296,34 +292,36 @@ u8 *queueTimUpload(ResHeader *res) {
 }
 
 /**
- * @brief Register a g_vramQueue slot with @c active=2 and an 8-byte data copy.
+ * @brief Enqueue a StoreImage transfer (@c active=2).
  *
- * Variant of @c queueLoadImage: takes the next pool slot, marks it with flag
- * @c 2 (vs @c 0 in @c queueLoadImage), copies 8 bytes from @p a0 into the
- * data region (offsets 4..0xB, unaligned-safe), and stores @p a1 as the
- * callback at offset 0xC.
+ * Variant of @c queueLoadImage that marks the slot as a StoreImage: copies the
+ * 8-byte @p rect into the slot and stores @p dst as the destination buffer.
+ *
+ * @param rect Source RECT (8 bytes, may be unaligned).
+ * @param dst  Destination buffer.
  */
-void queueStoreImage(u8 *a0, u8 *a1) {
+void queueStoreImage(u8 *rect, u8 *dst) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 2;
-    memcpy(&entry->rect, a0, 8);
-    entry->src = a1;
+    memcpy(&entry->rect, rect, 8);
+    entry->src = dst;
 }
 
 /**
- * @brief Register a g_vramQueue slot with @c active=3, data copy, and a
- *        packed 16-bit pair at offset 0xC.
+ * @brief Enqueue a MoveImage transfer (@c active=3).
  *
- * Same pool-registration pattern as @c queueLoadImage /
- * @c queueStoreImage, but stores a packed 32-bit value at offset 0xC
- * formed from two 16-bit args (@p a2 as the upper 16 bits, sign-extended
- * @p a1 as the lower 16 bits).
+ * Same pattern as @c queueLoadImage / @c queueStoreImage, but packs the
+ * destination coordinates into the source field as @c dstY<<16 | dstX.
+ *
+ * @param rect Source RECT (8 bytes, may be unaligned).
+ * @param dstX Destination X (lower 16 bits).
+ * @param dstY Destination Y (upper 16 bits).
  */
-void queueMoveImage(u8 *a0, s16 a1, u16 a2) {
+void queueMoveImage(u8 *rect, s16 dstX, u16 dstY) {
     PoolEntry *entry = &g_vramQueue[g_vramQueueCount++];
     entry->active = 3;
-    memcpy(&entry->rect, a0, 8);
-    entry->src = (void *)(((s32)a2 << 16) | a1);
+    memcpy(&entry->rect, rect, 8);
+    entry->src = (void *)(((s32)dstY << 16) | dstX);
 }
 
 void func_80098B68(void) {
@@ -339,27 +337,27 @@ void initScratchHeap(void) {
 /**
  * @brief Allocate aligned memory from the scratchpad heap and return the new pointer.
  *
- * Rounds @p a0 up to the next multiple of 4, then advances g_scratchPtr
+ * Rounds @p size up to the next multiple of 4, then advances g_scratchPtr
  * by that amount. This is the counterpart of scratchFree (which subtracts).
  *
- * @param a0 Size to allocate (will be aligned up to 4).
+ * @param size Size to allocate (will be aligned up to 4).
  * @return The previous value of g_scratchPtr (start of allocated block).
  */
-s32 scratchAlloc(s32 a0) {
+s32 scratchAlloc(s32 size) {
     s32 old = g_scratchPtr;
-    g_scratchPtr = old + ((a0 + 3) & ~3);
+    g_scratchPtr = old + ((size + 3) & ~3);
     return old;
 }
 
 /**
  * @brief Align a size up to 4 bytes and subtract from the allocation pointer.
  *
- * Rounds a0 up to the next multiple of 4 and decrements g_scratchPtr by that amount.
+ * Rounds @p size up to the next multiple of 4 and decrements g_scratchPtr by that amount.
  *
- * @param a0 Size to allocate (will be aligned up to 4).
+ * @param size Size to free (will be aligned up to 4).
  */
-void scratchFree(s32 a0) {
-    g_scratchPtr -= (a0 + 3) & ~3;
+void scratchFree(s32 size) {
+    g_scratchPtr -= (size + 3) & ~3;
 }
 
 /**
@@ -520,21 +518,21 @@ void initTextBuffer(void) {
 }
 
 /**
- * @brief Set battle viewport dimensions if non-negative.
+ * @brief Set the debug-text cursor origin (each axis only if non-negative).
  *
- * Stores a0 to g_textLineX and g_textCursorX if a0 >= 0.
- * Stores a1 to g_textCursorY if a1 >= 0.
+ * Stores @p x to g_textLineX and g_textCursorX if @p x >= 0.
+ * Stores @p y to g_textCursorY if @p y >= 0.
  *
- * @param a0 Width value (stored if >= 0).
- * @param a1 Height value (stored if >= 0).
+ * @param x Cursor origin X (stored if >= 0).
+ * @param y Cursor origin Y (stored if >= 0).
  */
-void setTextOrigin(s32 a0, s32 a1) {
-    if (a0 >= 0) {
-        g_textLineX = a0;
-        g_textCursorX = a0;
+void setTextOrigin(s32 x, s32 y) {
+    if (x >= 0) {
+        g_textLineX = x;
+        g_textCursorX = x;
     }
-    if (a1 >= 0) {
-        g_textCursorY = a1;
+    if (y >= 0) {
+        g_textCursorY = y;
     }
 }
 
@@ -650,19 +648,19 @@ void drawText(u8 *str) {
 /**
  * Converts an integer to a decimal string representation.
  *
- * @param a0 The integer value to convert.
- * @param a1 Pointer to the output buffer.
+ * @param value The integer value to convert.
+ * @param out   Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *intToDecStr(s32 a0, u8 *a1) {
+u8 *intToDecStr(s32 value, u8 *out) {
     u8 buf[36];
-    u8 *dst = a1;
+    u8 *dst = out;
     u8 *p;
 
-    if (a0 < 0) {
+    if (value < 0) {
         *dst = 0x2D;
         dst++;
-        a0 = -a0;
+        value = -value;
     }
 
     p = buf + 33;
@@ -670,9 +668,9 @@ u8 *intToDecStr(s32 a0, u8 *a1) {
 
     do {
         p--;
-        *p = (a0 % 10) + 0x30;
-        a0 = a0 / 10;
-    } while (a0 != 0);
+        *p = (value % 10) + 0x30;
+        value = value / 10;
+    } while (value != 0);
 
     strcpy(dst, p);
     return dst + strlen(dst);
@@ -681,20 +679,20 @@ u8 *intToDecStr(s32 a0, u8 *a1) {
 /**
  * Converts an integer to a hexadecimal string representation.
  *
- * @param a0 The integer value to convert.
- * @param a1 Pointer to the output buffer.
+ * @param value The integer value to convert.
+ * @param out   Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *intToHexStr(s32 a0, u8 *a1) {
+u8 *intToHexStr(s32 value, u8 *out) {
     u8 buf[20];
-    u8 *dst = a1;
+    u8 *dst = out;
     u8 *p;
     u8 *table;
 
-    if (a0 < 0) {
+    if (value < 0) {
         *dst = 0x2D;
         dst++;
-        a0 = -a0;
+        value = -value;
     }
 
     p = buf + 17;
@@ -703,9 +701,9 @@ u8 *intToHexStr(s32 a0, u8 *a1) {
 
     do {
         p--;
-        *p = *(u8 *)((a0 & 0xF) + (s32)table);
-        a0 >>= 4;
-    } while (a0 != 0);
+        *p = *(u8 *)((value & 0xF) + (s32)table);
+        value >>= 4;
+    } while (value != 0);
 
     strcpy(dst, p);
     return dst + strlen(dst);
@@ -714,16 +712,16 @@ u8 *intToHexStr(s32 a0, u8 *a1) {
 /**
  * @brief Convert an integer to a binary string representation.
  *
- * Writes the binary digits of @p a0 into the buffer at @p a1,
+ * Writes the binary digits of @p value into the buffer at @p out,
  * then returns a pointer to the end of the written string.
  *
- * @param a0 The integer value to convert.
- * @param a1 Pointer to the output buffer.
+ * @param value The integer value to convert.
+ * @param out   Pointer to the output buffer.
  * @return Pointer to the end of the written string.
  */
-u8 *intToBinStr(s32 a0, u8 *a1) {
+u8 *intToBinStr(s32 value, u8 *out) {
     u8 buf[36];
-    u8 *dst = a1;
+    u8 *dst = out;
     u8 *p;
 
     p = buf + 33;
@@ -731,9 +729,9 @@ u8 *intToBinStr(s32 a0, u8 *a1) {
 
     do {
         p--;
-        *p = (a0 & 1) + 0x30;
-        a0 >>= 1;
-    } while (a0 != 0);
+        *p = (value & 1) + 0x30;
+        value >>= 1;
+    } while (value != 0);
 
     strcpy(dst, p);
     return dst + strlen(dst);
@@ -829,15 +827,18 @@ end:
 }
 
 /**
- * @brief Variadic forwarder: passes @p a0 and a pointer to the variadic
+ * @brief Variadic forwarder: passes @p dst and a pointer to the variadic
  *        args to @c formatString.
  *
- * The `...` is load-bearing — it triggers gcc's varargs prologue that
- * saves a1-a3 to the caller's shadow area, letting @c &a1 act as the
- * start of a variadic argument list.
+ * The `...` is load-bearing — it triggers gcc's varargs prologue that saves
+ * the a1-a3 argument registers to the caller's shadow area, letting @c &fmt
+ * act as the start of a variadic argument list.
+ *
+ * @param dst Output buffer.
+ * @param fmt Format string (first variadic word).
  */
-s32 btlSprintf(s32 a0, s32 a1, ...) {
-    return formatString((char *)a0, &a1);
+s32 btlSprintf(s32 dst, s32 fmt, ...) {
+    return formatString((char *)dst, &fmt);
 }
 
 /**
@@ -845,12 +846,15 @@ s32 btlSprintf(s32 a0, s32 a1, ...) {
  *        buffer via @c formatString, then outputs the result via
  *        @c drawText.
  *
- * The `...` triggers gcc's varargs prologue, saving a1-a3 to the caller's
- * shadow save area so @c &a0 can act as the start of a variadic arg list.
+ * The `...` triggers gcc's varargs prologue, saving the a1-a3 argument
+ * registers to the caller's shadow save area so @c &fmt can act as the start
+ * of a variadic arg list.
+ *
+ * @param fmt Format string (followed by variadic args).
  */
-void drawTextf(s32 a0, ...) {
+void drawTextf(s32 fmt, ...) {
     s8 buf[0x100];
-    formatString((char *)buf, &a0);
+    formatString((char *)buf, &fmt);
     drawText(buf);
 }
 
