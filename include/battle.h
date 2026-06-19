@@ -1014,17 +1014,17 @@ void func_800A559C(s32 idx);
  *  tripletriad state region (overlay @ 0x801C2000..0x801D4000).
  * ---------------------------------------------------------------- */
 
-/** @brief Per-state mask tables consumed by the battle-engine tick.
- *  Each is indexed by @c D_801D3338 (state byte, 0..1) or OR'd across
- *  the first two entries when state == 2. */
-extern u16 D_801C2EB8[];
-extern u16 D_801C2EC0[];
-extern u16 D_801C2EC8[];
+/** @brief Per-pad button-mask buffers (held / pressed / repeat), seeded by
+ *  @c sampleInput. Each is indexed by @c D_801D3338 (state byte, 0..1) or OR'd
+ *  across the first two entries when state == 2. */
+extern u16 g_padRepeat[];   /**< Auto-repeat mask. */
+extern u16 g_padPressed[];  /**< Newly-pressed (rising-edge) mask; [2] aliased as D_801C2EC4. */
+extern u16 g_padHeld[];     /**< Held (currently-down) mask. */
 
 /** @brief Battle-engine frame-state region. */
-extern u16 D_801D332C;     /**< Latched mask C (from D_801C2EC8). */
-extern u16 D_801D332E;     /**< Latched mask A (from D_801C2EB8). */
-extern u16 D_801D3330;     /**< Latched mask B (bits 0xC0/0x10 trigger completion). */
+extern u16 D_801D332C;     /**< Latched held mask (from g_padHeld). */
+extern u16 D_801D332E;     /**< Latched repeat mask (from g_padRepeat). */
+extern u16 D_801D3330;     /**< Latched pressed mask (bits 0xC0/0x10 trigger completion). */
 extern s32 D_801D3334;     /**< Completion-suppress flags (bits 1, 2). */
 extern u8  D_801D3338;     /**< State byte (-1 = idle, 0..2 = active). */
 /**

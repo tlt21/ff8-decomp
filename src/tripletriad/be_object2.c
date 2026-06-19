@@ -886,7 +886,7 @@ store:
  * @brief Per-frame battle-engine tick: latch state masks then dispatch substate.
  *
  * Reads @c D_801D3338 as a signed byte. State 0/1 latches the per-state
- * mask entries from @c D_801C2EC8 / @c D_801C2EB8 / @c D_801C2EC0 into
+ * mask entries from @c g_padHeld / @c g_padRepeat / @c g_padPressed into
  * @c D_801D332C / @c D_801D332E / @c D_801D3330; state 2 latches the
  * OR of the first two entries; state < 0 or > 2 skips the latch.
  *
@@ -911,14 +911,14 @@ void updateTriadMenu(void) {
     switch (state) {
     case 0:
     case 1:
-        D_801D332C = D_801C2EC8[state];
-        D_801D332E = D_801C2EB8[state];
-        D_801D3330 = D_801C2EC0[state];
+        D_801D332C = g_padHeld[state];
+        D_801D332E = g_padRepeat[state];
+        D_801D3330 = g_padPressed[state];
         break;
     case 2:
-        D_801D332C = D_801C2EC8[0] | D_801C2EC8[1];
-        D_801D332E = D_801C2EB8[0] | D_801C2EB8[1];
-        D_801D3330 = D_801C2EC0[0] | D_801C2EC0[1];
+        D_801D332C = g_padHeld[0] | g_padHeld[1];
+        D_801D332E = g_padRepeat[0] | g_padRepeat[1];
+        D_801D3330 = g_padPressed[0] | g_padPressed[1];
         break;
     }
 

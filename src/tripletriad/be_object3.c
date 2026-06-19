@@ -1518,7 +1518,7 @@ s32 func_800A03DC(void) {
                         func_80047C74(D_801D4078, (u8 *)&D_80182692 - 0x12 + D_80182692);
                         func_800A1D68(1, D_801D4078, 0);
                         cell->field9++;
-                    } else if ((D_801C2EC0[0] | D_801C2EC0[1]) != 0) {
+                    } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
                         func_800A2054(1);
                         func_800A233C(isItemPresent(cell->cardId) ? 0x59 : 0x12);
@@ -1564,7 +1564,7 @@ s32 func_800A03DC(void) {
                         func_80047C74(D_801D4078, (u8 *)&D_80182696 - 0x16 + D_80182696);
                         func_800A1D68(1, D_801D4078, 0);
                         cell->field9++;
-                    } else if ((D_801C2EC0[0] | D_801C2EC0[1]) != 0) {
+                    } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
                         func_800A2054(1);
                         func_800A233C(0x59);

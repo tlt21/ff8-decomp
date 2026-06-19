@@ -273,37 +273,22 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A29D4);
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2A8C);
 
-/**
- * @brief Return the value at index a0 from array D_801D4B20.
- *
- * @param a0 Array index.
- * @return Value at D_801D4B20[a0].
- */
-s32 func_800A2B84(s32 a0) {
+/** @brief Held-button mask for pad @p a0 (buttons currently down). */
+s32 getPadHeld(s32 a0) {
     return D_801D4B20[a0];
 }
 
-/**
- * @brief Return the value at index a0 from array D_801D4B30.
- *
- * @param a0 Array index.
- * @return Value at D_801D4B30[a0].
- */
-s32 func_800A2BA0(s32 a0) {
+/** @brief Newly-pressed (rising-edge) button mask for pad @p a0. */
+s32 getPadPressed(s32 a0) {
     return D_801D4B30[a0];
 }
 
-/**
- * @brief Return the value at index a0 from array D_801D4B28.
- *
- * @param a0 Array index.
- * @return Value at D_801D4B28[a0].
- */
-s32 func_800A2BBC(s32 a0) {
+/** @brief Auto-repeat button mask for pad @p a0. */
+s32 getPadRepeat(s32 a0) {
     return D_801D4B28[a0];
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2BD8);
+INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", readPads);
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2D34);
 

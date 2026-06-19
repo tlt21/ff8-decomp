@@ -53,12 +53,12 @@ s32 tripleTriadMainLoop(void) {
 
     do {
         if (g_tripleTriadInputFlags & TT_INPUT_DISABLED) {
-            if (D_801C2EC0[2] & 0x30) {
+            if (g_padPressed[2] & 0x30) {
                 closeMenu();
             }
             for (i = 0; i < 3; i++) {
-                D_801C2EC0[i] = 0;
-                D_801C2EC8[i] = D_801C2EB8[i] = 0;
+                g_padPressed[i] = 0;
+                g_padHeld[i] = g_padRepeat[i] = 0;
             }
         }
 
@@ -186,23 +186,23 @@ void flipBuffers(void) {
 }
 
 /**
- * @brief Initialize controller input arrays for battle engine.
+ * @brief Sample the controllers and publish pad 0's button masks.
  *
- * Reads current controller state for three input types (digital, analog X, analog Y)
- * and fills their respective 3-element history arrays with the initial values.
+ * Reads both pads via @c readPads, then writes pad 0's held / pressed / repeat
+ * masks into all three slots of @c g_padHeld / @c g_padPressed / @c g_padRepeat.
  */
 void sampleInput(void) {
     s32 i;
 
-    func_800A2BD8();
-    D_801C2EC8[0] = func_800A2B84(0);
-    D_801C2EC0[0] = func_800A2BA0(0);
-    D_801C2EB8[0] = func_800A2BBC(0);
+    readPads();
+    g_padHeld[0] = getPadHeld(0);
+    g_padPressed[0] = getPadPressed(0);
+    g_padRepeat[0] = getPadRepeat(0);
 
     for (i = 1; i < 3; i++) {
-        D_801C2EC8[i] = D_801C2EC8[0];
-        D_801C2EC0[i] = D_801C2EC0[0];
-        D_801C2EB8[i] = D_801C2EB8[0];
+        g_padHeld[i] = g_padHeld[0];
+        g_padPressed[i] = g_padPressed[0];
+        g_padRepeat[i] = g_padRepeat[0];
     }
 }
 
