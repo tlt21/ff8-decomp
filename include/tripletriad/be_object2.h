@@ -9,22 +9,24 @@
    typedefs, and prototypes out of be_object2.c into here as you go. */
 
 /**
- * @brief Capture-direction descriptor — one entry per cardinal direction.
+ * @brief Capture-direction descriptor — maps a captured-from direction to a
+ *        card slide-in animation.
  *
- * @c D_80182D54 holds four of these (UP, DOWN, LEFT, RIGHT). For a cell that
- * was captured this turn, @c resolveCaptures matches the cell's
- * @c TT_CELL_CAP_FROM_* bit against @c capBit to find the direction, then
- * drives the flip animation by setting the entity's type to @c animType.
+ * @c D_80182D54 holds four entries (captured-from UP, LEFT, RIGHT, DOWN). For a
+ * cell captured this turn, @c resolveCaptures matches the cell's
+ * @c TT_CELL_CAP_FROM_* bit against @c capBit, then plays the matching
+ * @c animType slide animation via @c setCardEntityType.
  */
 typedef struct {
     s16 capBit;    /* 0x00 — matching TT_CELL_CAP_FROM_* bit */
-    s16 animType;  /* 0x02 — entity type passed to setCardEntityType (selects flip animation) */
+    s16 animType;  /* 0x02 — CardEffectState (a CARD_FX_SLIDE_* direction) for setCardEntityType */
 } CaptureDir;      /* 0x04 */
 
 extern CaptureDir D_80182D54[4];
 
-/** @brief Set a battle entity's type (which selects its animation); triggers a
- *         flip effect for types 2..5. @c entityIdx indexes @c g_tripleTriadCardHands. */
+/** @brief Set a card object's effect-animation @c state (a @ref CardEffectState);
+ *         the @c CARD_FX_SLIDE_* captures also trigger a flip SFX.
+ *         @c entityIdx indexes @c g_tripleTriadCardHands. */
 extern void setCardEntityType(s32 entityIdx, s32 type);
 
 /** @brief Resolve captured cells: trigger each captured cell's flip animation

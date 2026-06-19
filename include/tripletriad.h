@@ -124,6 +124,10 @@ typedef struct {
     /* 0x00 */ TripleTriadBoardSlot cells[TT_BOARD_ROWS][TT_BOARD_COLS];
 } TripleTriadBoard;
 
+/** @brief Byte strides for addressing the board by raw offset (see @c drawBoardElements). */
+#define TT_SLOT_BYTES ((s32)sizeof(TripleTriadBoardSlot))   /**< One board cell. */
+#define TT_ROW_BYTES  (TT_SLOT_BYTES * TT_BOARD_COLS)        /**< One board row. */
+
 /** @brief Global 5x5 Triple Triad board (sentinel-padded). */
 extern TripleTriadBoard D_801D3398;
 
@@ -144,7 +148,7 @@ extern TripleTriadBoard D_801D3398;
  */
 typedef struct {
     /* 0x00 */ u8  cardId;       /**< Card id — index into @c g_tripleTriadCardStats. */
-    /* 0x01 */ u8  state;        /**< Slot state/sub-category (1 = active, 7 = reset). */
+    /* 0x01 */ u8  state;        /**< Effect-animation state — a @ref CardEffectState. */
     /* 0x02 */ s16 field02;      /**< Cleared whenever @c state is written. */
     /* 0x04 */ u16 flags;        /**< Bit 0x2 = rotating CW (consumed by handler). */
     /* 0x06 */ s16 angle;        /**< Current animation angle (clamped to 0..0x1000). */
@@ -166,6 +170,26 @@ typedef struct {
     /* 0x20 */ s16 offZ;
     /* 0x22 */ s16 offSort;      /**< Added to node @c sortKey. */
 } TripleTriadCardObject; /* 36 bytes */
+
+/**
+ * @brief @c TripleTriadCardObject.state values — the per-card effect animation
+ *        driven each frame by @c func_8009C12C / @c transformCardEffect.
+ *
+ * The four @c CARD_FX_SLIDE_* directions are contiguous (2..5) because the
+ * handler does @c state-=2 and indexes the @c D_80182D10 motion-vector table
+ * (LEFT, UP, DOWN, RIGHT). @c setCardEntityType plays the capture SFX for any
+ * value in that range.
+ */
+typedef enum {
+    CARD_FX_IDLE        = 0,  /**< No per-frame update. */
+    CARD_FX_FLIP        = 1,  /**< Open / flip-over sequence. */
+    CARD_FX_SLIDE_LEFT  = 2,  /**< Directional capture, slides toward -X. */
+    CARD_FX_SLIDE_UP    = 3,  /**< Directional capture, slides toward -Y. */
+    CARD_FX_SLIDE_DOWN  = 4,  /**< Directional capture, slides toward +Y. */
+    CARD_FX_SLIDE_RIGHT = 5,  /**< Directional capture, slides toward +X. */
+    CARD_FX_FLASH       = 6,  /**< Translucent gouraud-quad flash overlay (~20 frames); no position update. */
+    CARD_FX_SHAKE       = 7,  /**< Short shake/twitch, then clears and advances priority. */
+} CardEffectState;
 
 /** @brief The two players' hands as card objects (5 each, 10 total). */
 extern TripleTriadCardObject g_tripleTriadCardHands[10];
@@ -323,6 +347,7 @@ extern u8            D_801D3028[];      /**< Battle-update callback list header.
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
 extern u16           D_801C2EC4;        /**< Result-screen pad input. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
+#define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
 
 /* ── Cross-TU entry points (defined in sibling be_objectN TUs) ─────────────── */

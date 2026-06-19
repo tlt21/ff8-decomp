@@ -147,10 +147,9 @@ extern void handleCursorSubstate3(SubstateSlot *slot, s32 idx);
 /**
  * @brief Set up a battle object slot and cancel lower-priority siblings in its group.
  *
- * Stores the three action params in slot @p idx, marks it active via
- * @c setCardEntityType(idx, 1), then sweeps the 10 slots: any sibling sharing
- * @c groupId with strictly lower @c priority gets reset via
- * @c setCardEntityType(i, 7).
+ * Stores the three action params in slot @p idx, marks it active
+ * (@c CARD_FX_FLIP), then sweeps the 10 slots: any sibling sharing @c groupId
+ * with strictly lower @c priority is reset (@c CARD_FX_SHAKE).
  *
  * @param idx     Index of the slot being placed (0..9).
  * @param param0  First action parameter (stored at @c slot.param0).
@@ -163,12 +162,12 @@ void setBattleObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
     g_tripleTriadCardHands[idx].param0 = param0;
     g_tripleTriadCardHands[idx].param1 = param1;
     g_tripleTriadCardHands[idx].param2 = param2;
-    setCardEntityType(idx, 1);
+    setCardEntityType(idx, CARD_FX_FLIP);
 
     for (i = 0; i < 10; i++) {
         if (g_tripleTriadCardHands[i].groupId == g_tripleTriadCardHands[idx].groupId
             && g_tripleTriadCardHands[i].priority < g_tripleTriadCardHands[idx].priority) {
-            setCardEntityType(i, 7);
+            setCardEntityType(i, CARD_FX_SHAKE);
         }
     }
 }
@@ -293,7 +292,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
         }
     }
 
-    if (entity->state == 0 && entity->groupId == 2) {
+    if (entity->state == CARD_FX_IDLE && entity->groupId == 2) {
         s32 col = entity->fieldD + 1;
         s8 elementMod = D_801D3398.cells[entity->priority + 1][col].elementMod;
         if (elementMod != 0) {
@@ -356,7 +355,7 @@ void setupTripleTriadHands(void) {
             node = (BattleObjectCtl *)allocObjNode(D_801D3110, (s32)updateCardObject);
             node->entry = entity;
             entity->cardId = hand[slot];
-            entity->state      = 0;
+            entity->state      = CARD_FX_IDLE;
             entity->initFlags  = 0x12 | player;
             entity->groupId    = player;
             entity->fieldD     = 0;
@@ -1117,42 +1116,39 @@ u8 *spawnCardSelectCursor(s32 a0, s32 a1) {
 }
 
 /**
- * @brief Set the type for a battle entity in g_tripleTriadCardHands and optionally trigger an effect.
+ * @brief Set a card object's animation @c state and clear its @c field02.
  *
- * Computes entry at g_tripleTriadCardHands + a0 * 36, sets entry[1] = a1 (type),
- * clears entry[2..3]. If type is in range [2, 5], calls func_800A2364(0x5A, 1).
+ * A @p type of 2..5 also triggers a capture-effect SFX.
  *
- * @param a0 Entity index.
- * @param a1 Entity type.
+ * @param entityIdx Index into @c g_tripleTriadCardHands.
+ * @param type      New animation type, stored as the object's @c state.
  */
-void setCardEntityType(s32 a0, s32 a1) {
-    u8 *base = (u8 *)g_tripleTriadCardHands;
-    u8 *entry = base + a0 * 36;
-    entry[1] = a1;
-    *(s16 *)(entry + 2) = 0;
-    if (a1 < 6) {
-        if (a1 >= 2) {
+void setCardEntityType(s32 entityIdx, s32 type) {
+    TripleTriadCardObject *base = g_tripleTriadCardHands;
+    TripleTriadCardObject *entry = &base[entityIdx];
+    entry->state = type;
+    entry->field02 = 0;
+    if (type <= CARD_FX_SLIDE_RIGHT) {
+        if (type >= CARD_FX_SLIDE_LEFT) {
             func_800A2364(0x5A, 1);
         }
     }
 }
 
 /**
- * @brief Check if any battle entity in g_tripleTriadCardHands has a non-zero type.
+ * @brief Report whether any card object is mid-effect (non-zero @c state).
  *
- * Iterates up to 10 entries (stride 36) and checks byte at offset 1.
- *
- * @return 1 if any entity has non-zero type, 0 otherwise.
+ * @return 1 if any of the 10 card objects has a non-zero @c state, else 0.
  */
 s32 anyCardEffectActive(void) {
     s32 i = 0;
-    u8 *entry = (u8 *)g_tripleTriadCardHands;
+    TripleTriadCardObject *entry = g_tripleTriadCardHands;
     do {
-        if (entry[1] != 0) {
+        if (entry->state != CARD_FX_IDLE) {
             return 1;
         }
         i++;
-        entry += 0x24;
+        entry++;
     } while (i < 10);
     return 0;
 }
@@ -1194,11 +1190,11 @@ void func_8009C12C(TripleTriadCardObject *entity) {
     field02 = entity->field02;
 
     switch (state) {
-    case 0:
-    case 6:
+    case CARD_FX_IDLE:
+    case CARD_FX_FLASH:
         break;
 
-    case 1:
+    case CARD_FX_FLIP:
         if (field02 < 20) {
             if (field02 == 0) {
                 func_800A233C(0x59);
@@ -1223,7 +1219,7 @@ void func_8009C12C(TripleTriadCardObject *entity) {
                     entity->offZ = (((4096 - rcos(t / 4)) * 128) >> 12) - 128;
                     entity->angle = 0;
                 } else {
-                    entity->state = 0;
+                    entity->state = CARD_FX_IDLE;
                     entity->offSort = 0;
                 }
             }
@@ -1231,11 +1227,11 @@ void func_8009C12C(TripleTriadCardObject *entity) {
         entity->field02++;
         break;
 
-    case 2:
-    case 3:
-    case 4:
-    case 5:
-        state -= 2;
+    case CARD_FX_SLIDE_LEFT:
+    case CARD_FX_SLIDE_UP:
+    case CARD_FX_SLIDE_DOWN:
+    case CARD_FX_SLIDE_RIGHT:
+        state -= CARD_FX_SLIDE_LEFT;
         if (field02 < 25) {
             if (field02 == 12) {
                 entity->initFlags ^= 1;
@@ -1251,20 +1247,20 @@ void func_8009C12C(TripleTriadCardObject *entity) {
             if (field02 < 5) {
                 entity->offSort = 0;
             } else {
-                entity->state = 0;
+                entity->state = CARD_FX_IDLE;
             }
         }
         entity->field02++;
         break;
 
-    case 7:
+    case CARD_FX_SHAKE:
         entity->field02++;
         t = (entity->field02 << 12) / 10;
         t = rsin(t / 4);
         entity->offY = (u32)t >> 7;
         if (entity->field02 >= 10) {
             entity->offY = 0;
-            entity->state = 0;
+            entity->state = CARD_FX_IDLE;
             entity->field02 = 0;
             entity->priority++;
         }
@@ -1370,20 +1366,20 @@ void transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, vo
     s32 field02 = entity->field02;
 
     stateCopy = state;
-    if (state >= 6) {
+    if (state >= CARD_FX_FLASH) {
         goto flip;
     }
-    if (state != 0) {
+    if (state != CARD_FX_IDLE) {
         goto slide;
     }
     return;
 
 flip:
-    if (stateCopy == 6) {
+    if (stateCopy == CARD_FX_FLASH) {
         g_primCursor = drawCardEffectQuad(node, ((field02 + 1) * 4096) / 20, &g_otBase[6], g_primCursor);
         entity->field02++;
         if (entity->field02 >= 20) {
-            entity->state = 0;
+            entity->state = CARD_FX_IDLE;
             entity->field02 = 0;
         }
     }

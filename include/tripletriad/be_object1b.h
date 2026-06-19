@@ -52,7 +52,11 @@ extern s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority);
 extern void highlightCardSlot(s32 groupId, s32 priority);
 
 /* Result-screen state. */
-extern u8  D_80082C9C;  /**< Match-result category byte. */
+/** @brief @c D_80082C9C match-result category (also picks the @c TripleTriadData record bumped). */
+#define TT_RESULT_VICTORY 0
+#define TT_RESULT_DEFEAT  1
+#define TT_RESULT_DRAW    2
+extern u8  D_80082C9C;  /**< Match-result category byte (a @c TT_RESULT_* value). */
 extern s32 D_801D3018;  /**< Result-screen SFX handle. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT1B_H */
