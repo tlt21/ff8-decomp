@@ -1284,7 +1284,12 @@ s32 func_8009F46C(s32 entityIdx) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F4BC);
+s32 func_8009F4BC(s32 arg0) {
+    if (!(D_800ED148.entities[arg0].status & CTRL_FLAG_40)) {
+        D_800EE4C0.flags6 |= 1;
+    }
+    return D_800ED148.entities[arg0].field2C / 20;
+}
 
 /**
  * @brief Test a bit in the battle flag array at g_gameState+0xD0C.
