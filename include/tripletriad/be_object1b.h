@@ -18,6 +18,19 @@ typedef struct {
     /* 0x14 */ s16 w, h;       /**< Sprite size in pixels. */
 } TripleTriadCellPrim;
 
+/** @brief @c HandlerNode.state values for the match-flow controller
+ *  (@ref matchFlowHandler). States 2 and 3 are unused. */
+typedef enum {
+    MATCH_FLOW_INIT     = 0,  /**< Set up the match; pick the starting player.   */
+    MATCH_FLOW_TURN     = 1,  /**< A player or the AI places a card.             */
+    MATCH_FLOW_RULES    = 4,  /**< Evaluate Same/Plus and animate the captures.  */
+    MATCH_FLOW_CHAIN    = 5,  /**< Cascade further capture chains until settled. */
+    MATCH_FLOW_TURN_END = 6,  /**< Board full -> tally; else next player's turn. */
+    MATCH_FLOW_TALLY    = 7,  /**< Count each side's cards and pick the winner.  */
+    MATCH_FLOW_RESULT   = 8,  /**< Play the result jingle; wait for input.       */
+    MATCH_FLOW_FADE     = 9,  /**< Fade out, record the result, exit the match.  */
+} MatchFlowState;
+
 /* ── Functions defined in be_object1b.c ──────────────────────────────────── */
 
 /** @brief Build the per-frame update list and return its head. */

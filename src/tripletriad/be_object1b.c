@@ -125,7 +125,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
     s32 acc;
     while (1) {
         switch (ctl->state) {
-            case 0: {
+            case MATCH_FLOW_INIT: {
                 if (ctl->counter == 0) {
                     HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (s32)cardFlipHandler);
                     sub->state = CARD_FLIP_INIT;
@@ -136,11 +136,11 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     ctl->counter++;
                 }
                 if (g_cardFlipPhase < 0) return 0;
-                ctl->state = 1;
+                ctl->state = MATCH_FLOW_TURN;
                 ctl->counter = 0;
                 break;
             }
-            case 1: {
+            case MATCH_FLOW_TURN: {
                 if (ctl->counter == 0) {
                     u8 playerType = D_801A2C70[g_cardFlipPhase];
                     switch (playerType) {
@@ -153,13 +153,13 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     return 0;
                 }
                 if (updateObjectList(ctl->subHandler) == 0) {
-                    ctl->state = 4;
+                    ctl->state = MATCH_FLOW_RULES;
                     ctl->counter = 0;
                     break;
                 }
                 return 0;
             }
-            case 4: {
+            case MATCH_FLOW_RULES: {
                 if (anyCardEffectActive()) return 0;
                 if (ctl->counter == 0) {
                     u8 rules = applyCardRules(&D_801D3398, 1);
@@ -186,15 +186,15 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 } else {
                     ctl->retryFlag = 1;
                     resolveCaptures(&D_801D3398);
-                    ctl->state = 5;
+                    ctl->state = MATCH_FLOW_CHAIN;
                     ctl->counter = 0;
                 }
                 break;
             }
-            case 5: {
+            case MATCH_FLOW_CHAIN: {
                 if (anyCardEffectActive()) return 0;
                 if (ctl->rulesFlags == 0) {
-                    ctl->state = 6;
+                    ctl->state = MATCH_FLOW_TURN_END;
                     ctl->counter = 0;
                     break;
                 }
@@ -206,7 +206,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 }
                 break;
             }
-            case 6: {
+            case MATCH_FLOW_TURN_END: {
                 s32 row;
                 acc = 0; /* empty-cell count; reuses the case-4 scratch register */
                 for (row = 1; row <= 3; row++) {
@@ -217,15 +217,15 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     }
                 }
                 row = acc; /* reuse the dead counter for the test (IV/counter alloc) */
-                if (row == 0) ctl->state = 7;
+                if (row == 0) ctl->state = MATCH_FLOW_TALLY;
                 else {
                     g_cardFlipPhase ^= 1;
-                    ctl->state = 1;
+                    ctl->state = MATCH_FLOW_TURN;
                 }
                 ctl->counter = 0;
                 break;
             }
-            case 7: {
+            case MATCH_FLOW_TALLY: {
                 ctl->counter++;
                 if (ctl->counter == 1) {
                     u8 cnt[2];
@@ -238,11 +238,11 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     else                      D_801D30FC = 2;
                 }
                 if ((u8)ctl->counter < TT_HOLD_FRAMES_TALLY) return 0;
-                ctl->state = 8;
+                ctl->state = MATCH_FLOW_RESULT;
                 ctl->counter = 0;
                 break;
             }
-            case 8: {
+            case MATCH_FLOW_RESULT: {
                 if (ctl->counter == 0) {
                     s32 mode;
                     /* test >=3 first and pass the shared 3 via mode so gcc materializes a0=3 once */
@@ -262,14 +262,14 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
                     initCardHands();
                     g_cardFlipPhase ^= 1;
-                    ctl->state = 1;
+                    ctl->state = MATCH_FLOW_TURN;
                 } else {
-                    ctl->state = 9;
+                    ctl->state = MATCH_FLOW_FADE;
                 }
                 ctl->counter = 0;
                 break;
             }
-            case 9: {
+            case MATCH_FLOW_FADE: {
                 if (ctl->counter == 0) func_800A0370(TT_HOLD_FRAMES_FADE);
                 ctl->counter++;
                 if ((u8)ctl->counter < TT_HOLD_FRAMES_FADE) return 0;
