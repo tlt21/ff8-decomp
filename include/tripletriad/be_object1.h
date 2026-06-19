@@ -50,9 +50,9 @@ typedef struct {
 } TransformBuf;    /* 0x28 */
 
 /**
- * @brief One face of the tetrahedral 3D icon model (@c D_80182BB8[4]).
+ * @brief One face of the tetrahedral 3D icon model (@c g_triadIconFaces[4]).
  *
- * The 4 entries pair with the 4-vertex SVECTOR table @c D_80182B98 to describe
+ * The 4 entries pair with the 4-vertex SVECTOR table @c g_triadIconVerts to describe
  * a tetrahedral 3D icon (3 yellow faces and one white face). The 3 vertex
  * indices select corners from the transformed vertex output; the three color
  * words pre-pack the @c POLY_G3 @c r/g/b/code byte quartets for direct
@@ -112,16 +112,16 @@ typedef struct {
 } HandlerNode;
 
 /* ── Card-flip transform scratch ──────────────────────────────────────────── */
-extern SVECTOR       D_80182BF8;        /* +Z unit scratch vector (morph source)   */
-extern SVECTOR       D_80182C00;        /* scratch target vector                   */
-extern SVECTOR       D_80182C08;        /* per-frame YXZ rotation angles           */
-extern s32           D_801D300C;        /* spin direction delta (+/-0x400)         */
-extern TransformBuf *D_801D3010;        /* current frame's transform scratch       */
+extern SVECTOR       g_cardFlipUpVec;        /* +Z unit scratch vector (morph source)   */
+extern SVECTOR       g_cardFlipTarget;        /* scratch target vector                   */
+extern SVECTOR       g_cardFlipAngles;        /* per-frame YXZ rotation angles           */
+extern s32           g_cardFlipSpin;        /* spin direction delta (+/-0x400)         */
+extern TransformBuf *g_cardFlipXform;        /* current frame's transform scratch       */
 
 /* ── Tetrahedral 3D icon model ────────────────────────────────────────────── */
-extern SVECTOR       D_80182B98[4];     /**< 4-vertex tetrahedron model. */
-extern TriadFaceDesc D_80182BB8[4];     /**< 4 G3 face descriptors. */
-extern u32          *D_801D3008;        /**< Scratch buffer pointer for RotTransPers4 outputs. */
+extern SVECTOR       g_triadIconVerts[4];     /**< 4-vertex tetrahedron model. */
+extern TriadFaceDesc g_triadIconFaces[4];     /**< 4 G3 face descriptors. */
+extern u32          *g_triadIconScratch;        /**< Scratch buffer pointer for RotTransPers4 outputs. */
 
 /* ── Deferred VRAM transfer pool (flushVramTransfers) ──────────────────────────── */
 extern PoolEntry     g_vramQueue[];
@@ -131,8 +131,8 @@ extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM,
 
 /* ── Draw buffers / VRAM scratch ──────────────────────────────────────────── */
 extern DISPENV       g_dispEnvs[2];     /**< Per-buffer display environments. */
-extern RECT          D_800A45A8;
-extern RECT          D_800A45B0;
+extern RECT          g_fbClearRect;
+extern RECT          g_texClearRect;
 extern u32           g_orderingTables[2][TT_OT_LEN];  /**< Per-buffer ordering tables (OT). */
 extern u8            g_primPools[2][0x10000];  /* primitive pool, 64KB per buffer */
 extern u8            g_textOTs[2][8];

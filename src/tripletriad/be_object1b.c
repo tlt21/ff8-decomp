@@ -46,7 +46,7 @@ extern u8  *queueLoadImage(u8 *drawEnv, u8 *cb);
 extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
 extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
-extern void func_8009953C(void);
+extern void initCardHands(void);
 
 /* Functions defined in other tripletriad TUs. */
 extern void processCardObjects(s32 a0);
@@ -67,11 +67,11 @@ extern void setupTripleTriadHands(void);
  *
  * State outline:
  *   - **0** (init): on first frame allocate a sub-handler running
- *     @c cardFlipHandler, mark @c D_801D30F8 = @c -1, clear the substate
- *     parameter slots. Stays here until @c D_801D30F8 becomes non-negative
+ *     @c cardFlipHandler, mark @c g_cardFlipPhase = @c -1, clear the substate
+ *     parameter slots. Stays here until @c g_cardFlipPhase becomes non-negative
  *     (the sub-handler picks a starting player), then advances to state 1.
  *   - **1** (player turn): on first frame dispatch on
- *     @c D_801A2C70[D_801D30F8] (player type: 0/1 human, 2 AI, 3 demo) into
+ *     @c D_801A2C70[g_cardFlipPhase] (player type: 0/1 human, 2 AI, 3 demo) into
  *     @c spawnCardSelectCursor / @c spawnAiTurn to create a per-turn handler,
  *     stashed at @c ctl->subHandler. Subsequent frames poll
  *     @c updateObjectList(subHandler); on completion advance to state 4.
@@ -85,7 +85,7 @@ extern void setupTripleTriadHands(void);
  *     until the result returns 0, playing the chain SFX (@c 5) once. Then
  *     advance to state 6.
  *   - **6** (empty-cell tally): count occupied cells in the play area. If
- *     all 9 are filled, advance to state 7. Otherwise flip @c D_801D30F8
+ *     all 9 are filled, advance to state 7. Otherwise flip @c g_cardFlipPhase
  *     and loop back to state 1 (next player's turn).
  *   - **7** (card count): wait one frame; then tally cards in
  *     @c g_tripleTriadCardHands by owner (low bit of @c initFlags). Stash the winner
@@ -96,7 +96,7 @@ extern void setupTripleTriadHands(void);
  *     handle in @c D_801D3018. Wait for @c D_801C2EC4 button input; on
  *     cancel (@c 0x4000) silence the SFX and stay; on confirm play
  *     @c func_800A2054 and advance to state 9 (or in Sudden Death mode
- *     loop back to state 1 via @c func_8009953C reset).
+ *     loop back to state 1 via @c initCardHands reset).
  *   - **9** (fade out): call @c func_800A0370 once, wait 15 frames, then
  *     stop the result SFX, update the Triple Triad win/loss/draw counters
  *     in @c TripleTriadData, set @c D_80082C9C category byte, and trigger
@@ -132,24 +132,24 @@ s32 func_80099C78(HandlerNode *ctl) {
                     HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (s32)cardFlipHandler);
                     sub->state = 0;
                     sub->counter = 0;
-                    D_801D30F8 = -1;
+                    g_cardFlipPhase = -1;
                     D_801D3340[1].field2 = 0;
                     D_801D3340[2].field2 = 0;
                     ctl->counter++;
                 }
-                if (D_801D30F8 < 0) return 0;
+                if (g_cardFlipPhase < 0) return 0;
                 ctl->state = 1;
                 ctl->counter = 0;
                 break;
             }
             case 1: {
                 if (ctl->counter == 0) {
-                    u8 playerType = D_801A2C70[D_801D30F8];
+                    u8 playerType = D_801A2C70[g_cardFlipPhase];
                     switch (playerType) {
-                        case 0: ctl->subHandler = (void *)spawnCardSelectCursor(D_801D30F8, 0); break;
-                        case 1: ctl->subHandler = (void *)spawnCardSelectCursor(D_801D30F8, 1); break;
-                        case 2: ctl->subHandler = (void *)spawnCardSelectCursor(D_801D30F8, 2); break;
-                        case 3: ctl->subHandler = (void *)spawnAiTurn(D_801D30F8); break;
+                        case 0: ctl->subHandler = (void *)spawnCardSelectCursor(g_cardFlipPhase, 0); break;
+                        case 1: ctl->subHandler = (void *)spawnCardSelectCursor(g_cardFlipPhase, 1); break;
+                        case 2: ctl->subHandler = (void *)spawnCardSelectCursor(g_cardFlipPhase, 2); break;
+                        case 3: ctl->subHandler = (void *)spawnAiTurn(g_cardFlipPhase); break;
                     }
                     ctl->counter++;
                     return 0;
@@ -221,7 +221,7 @@ s32 func_80099C78(HandlerNode *ctl) {
                 row = acc; /* reuse the dead counter for the test (IV/counter alloc) */
                 if (row == 0) ctl->state = 7;
                 else {
-                    D_801D30F8 ^= 1;
+                    g_cardFlipPhase ^= 1;
                     ctl->state = 1;
                 }
                 ctl->counter = 0;
@@ -262,8 +262,8 @@ s32 func_80099C78(HandlerNode *ctl) {
                 func_800A2054(3);
                 if (D_801D30FC == 2 && (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH)) {
                     if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
-                    func_8009953C();
-                    D_801D30F8 ^= 1;
+                    initCardHands();
+                    g_cardFlipPhase ^= 1;
                     ctl->state = 1;
                 } else {
                     ctl->state = 9;

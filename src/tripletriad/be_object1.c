@@ -120,12 +120,12 @@ void initGraphics(void) {
     screen1->w = TT_SCREEN_W;
     screen1->h = TT_SCREEN_H;
 
-    ClearImage(&D_800A45A8, 0, 0, 0);
-    D_800A45A8.x = TT_DRAW_W;
-    D_800A45A8.y = 0;
-    ClearImage(&D_800A45A8, 0, 0, 0);
+    ClearImage(&g_fbClearRect, 0, 0, 0);
+    g_fbClearRect.x = TT_DRAW_W;
+    g_fbClearRect.y = 0;
+    ClearImage(&g_fbClearRect, 0, 0, 0);
 
-    ClearImage(&D_800A45B0, 0xFF, 0xFF, 0xFF);
+    ClearImage(&g_texClearRect, 0xFF, 0xFF, 0xFF);
 
     g_drawBufferIndex = 0;
     g_otBase = &g_orderingTables[0][0];
@@ -899,7 +899,7 @@ void flipTextBuffer(void) {
  *       scheduling for the original source — natural order produces the
  *       wrong store sequence.
  */
-void func_8009953C(void) {
+void initCardHands(void) {
     s32 cnt[2];
     s32 i;
     s32 owner;
@@ -933,7 +933,7 @@ void func_8009953C(void) {
  *
  * Allocates a 24-byte scratch buffer (6 words: 4 packed sxy + p + flag),
  * batches the 4 model vertices through @c RotTransPers4 to project them
- * into screen space, then walks the 4 face descriptors in @c D_80182BB8.
+ * into screen space, then walks the 4 face descriptors in @c g_triadIconFaces.
  * For each face it picks 3 of the 4 transformed vertices, runs
  * @c NormalClip to drop back-facing triangles, and (if visible) writes a
  * @c POLY_G3 with the face's pre-packed colors + projected screen
@@ -946,29 +946,29 @@ void func_8009953C(void) {
  * @param prims  Output buffer for @c POLY_G3 primitives (up to 4 emitted).
  * @return Pointer to the next free slot after the last emitted primitive.
  */
-POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
+POLY_G3 *drawTriadIcon(void *ot, POLY_G3 *prims) {
     POLY_G3 *out;
     s32 i;
     TriadFaceDesc *face;
     s32 *ptr;
 
     ptr = (s32 *)scratchAlloc(0x18);
-    D_801D3008 = (u32 *)ptr;
+    g_triadIconScratch = (u32 *)ptr;
 
-    RotTransPers4(&D_80182B98[0], &D_80182B98[1], &D_80182B98[2], &D_80182B98[3],
+    RotTransPers4(&g_triadIconVerts[0], &g_triadIconVerts[1], &g_triadIconVerts[2], &g_triadIconVerts[3],
                   &ptr[0], &ptr[1], &ptr[2], &ptr[3], &ptr[4], &ptr[5]);
 
     out = prims;
     for (i = 0; i < 4; i++) {
-        face = &D_80182BB8[i];
-        if (NormalClip(D_801D3008[face->v0], D_801D3008[face->v1], D_801D3008[face->v2]) >= 0) {
+        face = &g_triadIconFaces[i];
+        if (NormalClip(g_triadIconScratch[face->v0], g_triadIconScratch[face->v1], g_triadIconScratch[face->v2]) >= 0) {
             out->tag = 0x06000000;
             *(u32 *)&out->r0 = face->color0Word;
             *(u32 *)&out->r1 = face->color1Word;
             *(u32 *)&out->r2 = face->color2Word;
-            *(u32 *)&out->x0 = D_801D3008[face->v0];
-            *(u32 *)&out->x1 = D_801D3008[face->v1];
-            *(u32 *)&out->x2 = D_801D3008[face->v2];
+            *(u32 *)&out->x0 = g_triadIconScratch[face->v0];
+            *(u32 *)&out->x1 = g_triadIconScratch[face->v1];
+            *(u32 *)&out->x2 = g_triadIconScratch[face->v2];
             AddPrim(ot, out);
             out++;
         }
@@ -981,26 +981,26 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
 /**
  * @brief Triple Triad card-flip animation handler (battle-state table @c g_tripleTriadStateHandlers).
  *
- * Allocates a per-frame ::TransformBuf (@c D_801D3010) and advances the card's
+ * Allocates a per-frame ::TransformBuf (@c g_cardFlipXform) and advances the card's
  * flip animation by @c node->state, then composes the GTE transform and emits
  * the card's @c POLY_G3 batch:
  *  - **State 0** (init): pick a random flip phase (0/1) via @c func_80023D04,
- *    set the spin delta @c D_801D300C (+/-0x400) and @c D_80182C00.vx (+/-0x8C)
- *    from the phase, seed the scratch vector from the +Z unit @c D_80182BF8,
+ *    set the spin delta @c g_cardFlipSpin (+/-0x400) and @c g_cardFlipTarget.vx (+/-0x8C)
+ *    from the phase, seed the scratch vector from the +Z unit @c g_cardFlipUpVec,
  *    call @c func_800A233C(0x70), advance to state 1.
  *  - **State 1** (entry arc): counter 0..59 = sine-driven X spin / Y dip,
- *    60..69 = hold, 70..84 = ease back toward @c D_80182C00 (a short-vector
+ *    60..69 = hold, 70..84 = ease back toward @c g_cardFlipTarget (a short-vector
  *    lerp via @c func_8003F884 with an oscillating Y dip); at >=85 latch the
- *    phase into @c D_801D30F8 and go to state 2.
- *  - **State 2** (idle): nudge @c D_80182C08.vy each frame and write the static
- *    pose; transition to state 3 when @c D_801D30F8 disagrees with the phase.
+ *    phase into @c g_cardFlipPhase and go to state 2.
+ *  - **State 2** (idle): nudge @c g_cardFlipAngles.vy each frame and write the static
+ *    pose; transition to state 3 when @c g_cardFlipPhase disagrees with the phase.
  *  - **State 3** (re-flip): a 10-frame sine swing, then toggle the phase bit
  *    and return to state 2.
  *
- * The common tail builds a YXZ rotation from @c D_80182C08, copies the scratch
+ * The common tail builds a YXZ rotation from @c g_cardFlipAngles, copies the scratch
  * vector into the matrix translation, applies a fixed +0x100 X tilt, loads the
  * GTE rotation/translation matrices, and emits one @c POLY_G3 batch via
- * @c func_800995F8 into the active OT.
+ * @c drawTriadIcon into the active OT.
  *
  * @param node Battle-state handler node (state/counter/phase at 0x10..0x12).
  * @return Always 0 (the handler keeps running).
@@ -1015,13 +1015,13 @@ s32 cardFlipHandler(HandlerNode *node) {
     s32 tmp;
     u32 *ot;
 
-    D_801D3010 = (TransformBuf *)scratchAlloc(0x28);
+    g_cardFlipXform = (TransformBuf *)scratchAlloc(0x28);
     switch (node->state) {
     case 0:
         node->phase = func_80023D04() % 2;
-        D_801D300C = !node->phase ? -0x400 : 0x400;
-        D_80182C00.vx = !node->phase ? -0x8C : 0x8C;
-        D_801D3010->vec = D_80182BF8;
+        g_cardFlipSpin = !node->phase ? -0x400 : 0x400;
+        g_cardFlipTarget.vx = !node->phase ? -0x8C : 0x8C;
+        g_cardFlipXform->vec = g_cardFlipUpVec;
         func_800A233C(0x70);
         node->state = 1;
         node->counter = 0;
@@ -1031,23 +1031,23 @@ s32 cardFlipHandler(HandlerNode *node) {
         if (c < 60) {
             s32 t = (c << 12) / 60;
             s32 sv = func_8003ED64(t / 4);
-            D_80182C08.vx = (u32)t >> 2;
-            D_80182C08.vy = ((D_801D300C + 0xA000) * sv) >> 12;
-            D_801D3010->vec = D_80182BF8;
+            g_cardFlipAngles.vx = (u32)t >> 2;
+            g_cardFlipAngles.vy = ((g_cardFlipSpin + 0xA000) * sv) >> 12;
+            g_cardFlipXform->vec = g_cardFlipUpVec;
         } else if ((c -= 60) < 10) {
-            D_801D3010->vec = D_80182BF8;
+            g_cardFlipXform->vec = g_cardFlipUpVec;
         } else if ((c -= 10) < 15) {
             s32 d = (c << 12) / 15;
             tmp = d;
-            D_80182C08.vx = (-(d << 10) >> 12) + 0x400;
-            D_80182C08.vy = D_801D300C + (((-D_801D300C) * d) >> 12);
-            func_8003F884(&D_80182BF8, &D_80182C00, 0x1000 - tmp, d, &D_801D3010->vec);
+            g_cardFlipAngles.vx = (-(d << 10) >> 12) + 0x400;
+            g_cardFlipAngles.vy = g_cardFlipSpin + (((-g_cardFlipSpin) * d) >> 12);
+            func_8003F884(&g_cardFlipUpVec, &g_cardFlipTarget, 0x1000 - tmp, d, &g_cardFlipXform->vec);
             d = (func_8003ED64(d / 2) << 4) >> 12;
-            D_801D3010->vec.vy -= d;
+            g_cardFlipXform->vec.vy -= d;
         } else {
-            D_80182C08.vx = 0;
-            D_801D3010->vec = D_80182C00;
-            D_801D30F8 = node->phase;
+            g_cardFlipAngles.vx = 0;
+            g_cardFlipXform->vec = g_cardFlipTarget;
+            g_cardFlipPhase = node->phase;
             node->state = 2;
             node->counter = 0;
         }
@@ -1056,12 +1056,12 @@ s32 cardFlipHandler(HandlerNode *node) {
     }
     case 2: {
         s32 xPos = 0x8C;
-        D_80182C08.vy += 0x10;
+        g_cardFlipAngles.vy += 0x10;
         xPos = !node->phase ? -0x8C : xPos;
-        D_801D3010->vec.vy = -0x5C;
-        D_801D3010->vec.vz = 0x200;
-        D_801D3010->vec.vx = xPos;
-        tmp = D_801D30F8 != node->phase;
+        g_cardFlipXform->vec.vy = -0x5C;
+        g_cardFlipXform->vec.vz = 0x200;
+        g_cardFlipXform->vec.vx = xPos;
+        tmp = g_cardFlipPhase != node->phase;
         if (tmp) {
             node->state = 3;
             node->counter = 0;
@@ -1074,9 +1074,9 @@ s32 cardFlipHandler(HandlerNode *node) {
         if (node->phase) {
             sinv = 0x1000 - sinv;
         }
-        D_801D3010->vec.vx = ((sinv * 0x118) >> 12) - 0x8C;
-        D_801D3010->vec.vy = -0x5C;
-        D_801D3010->vec.vz = (-(func_8003ED64(t / 2) << 6) >> 12) + 0x200;
+        g_cardFlipXform->vec.vx = ((sinv * 0x118) >> 12) - 0x8C;
+        g_cardFlipXform->vec.vy = -0x5C;
+        g_cardFlipXform->vec.vz = (-(func_8003ED64(t / 2) << 6) >> 12) + 0x200;
         node->counter++;
         if (node->counter >= 10) {
             node->state = 2;
@@ -1086,15 +1086,15 @@ s32 cardFlipHandler(HandlerNode *node) {
         break;
     }
     }
-    func_80041274(&D_80182C08, &D_801D3010->mat);
-    D_801D3010->mat.t[0] = D_801D3010->vec.vx;
-    D_801D3010->mat.t[1] = D_801D3010->vec.vy;
-    D_801D3010->mat.t[2] = D_801D3010->vec.vz;
-    func_80041794(0x100, &D_801D3010->mat);
-    SetRotMatrix(&D_801D3010->mat);
-    SetTransMatrix(&D_801D3010->mat);
+    func_80041274(&g_cardFlipAngles, &g_cardFlipXform->mat);
+    g_cardFlipXform->mat.t[0] = g_cardFlipXform->vec.vx;
+    g_cardFlipXform->mat.t[1] = g_cardFlipXform->vec.vy;
+    g_cardFlipXform->mat.t[2] = g_cardFlipXform->vec.vz;
+    func_80041794(0x100, &g_cardFlipXform->mat);
+    SetRotMatrix(&g_cardFlipXform->mat);
+    SetTransMatrix(&g_cardFlipXform->mat);
     ot = &g_otBase[4];
-    g_primCursor = func_800995F8(ot, g_primCursor);
+    g_primCursor = drawTriadIcon(ot, g_primCursor);
     scratchFree(0x28);
     return 0;
 }
