@@ -43,7 +43,7 @@ extern u8  D_801D30FC;              /* match winner (0/1) or 2 for draw */
 
 /* Functions defined in be_object1.c. */
 extern u8  *func_80098A1C(u8 *drawEnv, u8 *cb);
-extern void func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
+extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 capacity);
 extern s32  updateObjectList(u8 *sub);
 extern s32  cardFlipHandler(HandlerNode *node);
 extern void func_8009953C(void);
@@ -129,7 +129,7 @@ s32 func_80099C78(HandlerNode *ctl) {
         switch (ctl->state) {
             case 0: {
                 if (ctl->counter == 0) {
-                    HandlerNode *sub = (HandlerNode *)func_80098C44(D_801D3028, (s32)cardFlipHandler);
+                    HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (s32)cardFlipHandler);
                     sub->state = 0;
                     sub->counter = 0;
                     D_801D30F8 = -1;
@@ -501,14 +501,14 @@ u8 *initTripleTriadUpdateList(void) {
     u8 *node;
     resetTriadBoard();
     list = D_801D3028;
-    func_80098BC0(list, D_801D3038, 0x18, 8);
-    node = (u8 *)func_80098C44(list, (s32)func_80099C78);
+    initObjList(list, D_801D3038, 0x18, 8);
+    node = (u8 *)allocObjNode(list, (s32)func_80099C78);
     node[0x10] = 0;
     node[0x11] = 0;
     node[0x14] = 0;
-    func_80098C44(list, (s32)func_8009A2F4);
-    func_80098C44(list, (s32)func_8009A314);
-    func_80098C44(list, (s32)func_8009A508);
+    allocObjNode(list, (s32)func_8009A2F4);
+    allocObjNode(list, (s32)func_8009A314);
+    allocObjNode(list, (s32)func_8009A508);
     setupTripleTriadHands();
     return list;
 }

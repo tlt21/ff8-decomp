@@ -28,12 +28,12 @@ extern s32  func_800A0AD4();  /**< Post-claim handler (be_object3.c). */
 
 /* Pool/item helpers defined in other tripletriad TUs. */
 extern void markItemPresent(s32 cardId);
-extern void func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
+extern void initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 count);
 
 /**
  * @brief Per-frame state node for the card-claim transition controller (@c func_800A15C8).
  *
- * Allocated from a @c func_80098C44 pool. @c state at 0x0C selects the phase and
+ * Allocated from a @c allocObjNode pool. @c state at 0x0C selects the phase and
  * @c result at 0x10 carries the outcome code (2 or 6) staged into @c g_tripleTriadState
  * when the whole claim sequence finishes.
  */
@@ -117,18 +117,18 @@ s32 func_800A15C8(ClaimCtrlNode *node)
                 }
                 if (D_801D4448 < 5) {
                     if (D_801A2C70[D_801D30FC] < 3) {
-                        spawned = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A0B24);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A0B24);
                     } else {
-                        spawned = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A0F0C);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A0F0C);
                     }
                     goto fieldSetup;
                 }
                 goto spawn1260;
             spawn1080:
-                spawned = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A1080);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1080);
                 goto fieldSetup;
             spawn1260:
-                spawned = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A1260);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1260);
             fieldSetup:
                 seat = D_801D30FC;
                 spawned->state = 0;
@@ -145,7 +145,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
             break;
         case 2:
             if (node->subState == 0) {
-                spawned = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A1374);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1374);
                 actingSeat = D_801D4450;
                 spawned->state = 0;
                 spawned->field0D = 0;
@@ -265,8 +265,8 @@ s32 setupTripleTriadCardClaim(void)
         g_tripleTriadState = TT_STATE_EXIT;
         return 0;
     }
-    func_80098BC0(D_801D42F8, D_801D42A8, 0x14, 4);
-    node = (ScriptStateNode *)func_80098C44(D_801D42F8, (s32)func_800A15C8);
+    initObjList(D_801D42F8, D_801D42A8, 0x14, 4);
+    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A15C8);
     cell = D_801D4308;
     node->state = 0;
     node->field0D = 0;
@@ -296,8 +296,8 @@ s32 setupTripleTriadCardClaim(void)
             xpos += 0x40;
         }
     }
-    func_80098C44(D_801D42F8, (s32)func_800A03DC);
-    func_80098C44(D_801D42F8, (s32)func_800A0AD4);
+    allocObjNode(D_801D42F8, (s32)func_800A03DC);
+    allocObjNode(D_801D42F8, (s32)func_800A0AD4);
     return (s32)D_801D42F8;
 }
 

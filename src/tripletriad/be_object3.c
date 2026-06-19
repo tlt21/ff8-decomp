@@ -51,7 +51,7 @@ typedef struct {
 /**
  * @brief Callback context for state-machine handlers (e.g. func_8009FC90).
  *
- * Allocated via func_80098C44 / func_80098CC0 with state byte at +0x10.
+ * Allocated via allocObjNode / allocObjNodeFront with state byte at +0x10.
  */
 typedef struct {
     /* 0x00 */ u8 pad00[0x0C];
@@ -166,7 +166,7 @@ extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the
 /** @brief Allocate a tripletriad object from the @c D_801D3C58 pool with the
  *         given per-frame callback; returns the new object (0 if pool is full). */
 s32 func_8009E248(s32 a0) {
-    return func_80098C44(D_801D3C58, a0);
+    return allocObjNode(D_801D3C58, a0);
 }
 
 /**
@@ -541,12 +541,12 @@ s32 func_8009E904(ScriptStateNode *node) {
  * @brief Allocate a node in D_801D3C68 list with a callback from D_80182E4C.
  *
  * Looks up a callback pointer from the D_80182E4C table at index @p a0,
- * allocates a node via func_80098CC0, and initializes several fields.
+ * allocates a node via allocObjNodeFront, and initializes several fields.
  *
  * @param a0 Index into the D_80182E4C callback table.
  */
 void func_8009EB30(s32 a0) {
-    u8 *node = (u8 *)func_80098CC0(D_801D3C68, D_80182E4C[a0]);
+    u8 *node = (u8 *)allocObjNodeFront(D_801D3C68, D_80182E4C[a0]);
     if (node != 0) {
         node[0xE] = a0;
         *(s16 *)(node + 0x20) = 0;
@@ -572,7 +572,7 @@ void func_8009EB90(u8 *a0, s32 a1) {
  * Sets up a linked list with node size 0x24 and capacity 0x4.
  */
 void func_8009EB98(void) {
-    func_80098BC0(D_801D3C68, D_801D3C78, 0x24, 0x4);
+    initObjList(D_801D3C68, D_801D3C78, 0x24, 0x4);
 }
 
 /**
@@ -768,7 +768,7 @@ void func_8009EFD4(u8 *out, s32 base) {
  * message gate; state 3 runs the fade-out. The case-1, @c func_8009EF68 and @c r<0
  * "still waiting" paths share a single return via @c ret0.
  *
- * @param node State-machine node (allocated by func_80098C44 with state at +0x10).
+ * @param node State-machine node (allocated by allocObjNode with state at +0x10).
  * @return 0 while the sequence is still running; the state-3 expression once it ends.
  */
 s32 func_8009F17C(ScriptCtx *node) {
@@ -1066,23 +1066,23 @@ s32 func_8009F908(ScriptCtx *node) {
 s32 func_8009FAF8(s32 arg0) {
     ScriptCtx *node;
 
-    func_80098BC0(D_801D3EA0, D_801D3E80, 0x14, 1);
+    initObjList(D_801D3EA0, D_801D3E80, 0x14, 1);
 
     if (g_tripleTriadRules & 0x20000000) {
         func_8009F5F0(arg0, 0);
-        node = (ScriptCtx *)func_80098C44(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
     } else if (g_tripleTriadRules & 0x8) {
         if (D_801A2C70[arg0] >= 3) {
             func_8009F5F0(arg0, D_80082C95);
         } else {
             func_8009F844(arg0, D_80082C95);
         }
-        node = (ScriptCtx *)func_80098C44(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
     } else if (D_801A2C70[node->counter] >= 3) {
         func_8009F5F0(arg0, D_80082C95);
-        node = (ScriptCtx *)func_80098C44(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
     } else {
-        node = (ScriptCtx *)func_80098C44(D_801D3EA0, (s32)func_8009F17C);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F17C);
     }
 
     node->counter = arg0;
@@ -1312,11 +1312,11 @@ u8 *initTripleTriadScripts(void) {
     s32 col;
     s32 colOff;
 
-    func_80098BC0(D_801D3FA0, D_801D3FB0, 0x14, 0xA);
-    node = (ScriptCtx *)func_80098C44(D_801D3FA0, func_8009FC90);
+    initObjList(D_801D3FA0, D_801D3FB0, 0x14, 0xA);
+    node = (ScriptCtx *)allocObjNode(D_801D3FA0, func_8009FC90);
     node->state = 0;
     node->subState = 0;
-    func_80098C44(D_801D3FA0, func_8009EBF4);
+    allocObjNode(D_801D3FA0, func_8009EBF4);
     row = 0;
     base = (u8 *)D_801D3EC0;
     marker = 0xFF;
@@ -1339,8 +1339,8 @@ u8 *initTripleTriadScripts(void) {
         row++;
         rowOff += 0x6E;
     } while (row < 2);
-    func_80098C44(D_801D3FA0, func_8009FED0);
-    func_80098C44(D_801D3FA0, func_8009FC40);
+    allocObjNode(D_801D3FA0, func_8009FED0);
+    allocObjNode(D_801D3FA0, func_8009FC40);
     return D_801D3FA0;
 }
 

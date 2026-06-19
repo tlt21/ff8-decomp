@@ -43,7 +43,7 @@ typedef struct {
 /**
  * @brief AI turn/placement controller — a 0x14-byte callback list node.
  *
- * Allocated by @ref spawnAiTurn via @c func_80098C44 with @ref updateAiTurn
+ * Allocated by @ref spawnAiTurn via @c allocObjNode with @ref updateAiTurn
  * registered as its per-frame callback; the leading 0xC bytes are the list-node
  * header (links/callback managed by the @c func_80098Bxx pool routines).
  */
@@ -120,8 +120,8 @@ extern void func_800A26C8(void);
 /* Per-player Triple Triad match state (region starts at 0x801A2C40).
    D_801A2C48[2][5] (the two players' 5-card hands) now lives in tripletriad.h. */
 
-extern void  func_80098BC0(u8 *list, u8 *pool, s32 nodeSize, s32 count);
-extern void *func_80098C44(u8 *list, s32 callback);
+extern void  initObjList(u8 *list, u8 *pool, s32 nodeSize, s32 count);
+extern void *allocObjNode(u8 *list, s32 callback);
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern s32   func_8009A7A4(s32 a, s32 b, s32 c);
 extern void  func_8009A878(s32 a, s32 b);
@@ -232,7 +232,7 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
 /**
  * @brief Per-frame update for a @c TripleTriadCardObject — rotation, transform, render.
  *
- * Called by the be_object2 dispatch (registered via @c func_80098C44 in
+ * Called by the be_object2 dispatch (registered via @c allocObjNode in
  * @c setupTripleTriadHands). For one @c TripleTriadCardObject the function:
  *  - Advances @c angle toward 0x1000 (clockwise) or 0 (counter-clockwise)
  *    based on the @c CTRL_FLAG_02 bit, and clamps the result.
@@ -348,7 +348,7 @@ void setupTripleTriadHands(void) {
     BattleObjectCtl *node;
     u8 *hand;
 
-    func_80098BC0(D_801D3110, D_801D3120, 0x10, 0xA);
+    initObjList(D_801D3110, D_801D3120, 0x10, 0xA);
 
     entity = g_tripleTriadCardHands;
     for (player = 0; player < 2; player++) {
@@ -356,7 +356,7 @@ void setupTripleTriadHands(void) {
         hand = D_801A2C48[player];
         for (slot = 0; slot < 5; slot++) {
             playerType = &D_801A2C70[player];
-            node = (BattleObjectCtl *)func_80098C44(D_801D3110, (s32)updateCardObject);
+            node = (BattleObjectCtl *)allocObjNode(D_801D3110, (s32)updateCardObject);
             node->entry = entity;
             entity->cardId = hand[slot];
             entity->state      = 0;
@@ -1109,8 +1109,8 @@ u8 *spawnCardSelectCursor(s32 a0, s32 a1) {
     u8 *list = D_801D3380;
     u8 *node;
 
-    func_80098BC0(list, D_801D3360, 0x14, 1);
-    node = (u8 *)func_80098C44(list, (s32)updateCardSelectCursor);
+    initObjList(list, D_801D3360, 0x14, 1);
+    node = (u8 *)allocObjNode(list, (s32)updateCardSelectCursor);
     node[0xC] = 0;
     node[0xD] = a0;
     node[0xE] = a1;
@@ -2365,8 +2365,8 @@ u8 *spawnAiTurn(s32 seat) {
         }
     }
 
-    func_80098BC0(D_801D3560, D_801D3540, 0x14, 1);
-    node = (func_8009DBE8_arg0 *)func_80098C44(D_801D3560, (s32)updateAiTurn);
+    initObjList(D_801D3560, D_801D3540, 0x14, 1);
+    node = (func_8009DBE8_arg0 *)allocObjNode(D_801D3560, (s32)updateAiTurn);
     D_801D35C0 = seat;
     node->seat = seat;
     {
@@ -2397,7 +2397,7 @@ u8 *spawnAiTurn(s32 seat) {
  * Sets up a linked list with node size 0x4C and capacity 0x10.
  */
 void initTriadTaskPool(void) {
-    func_80098BC0(D_801D3C58, D_801D3798, 0x4C, 0x10);
+    initObjList(D_801D3C58, D_801D3798, 0x4C, 0x10);
 }
 
 /**

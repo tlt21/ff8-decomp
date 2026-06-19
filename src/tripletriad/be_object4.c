@@ -261,11 +261,11 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A279C);
 u8 *initTripleTriadRenderList(void) {
     u8 *list = D_801D4968;
     u8 *node;
-    func_80098BC0(list, D_801D4978, 0x10, 4);
-    node = (u8 *)func_80098C44(list, (s32)func_800A279C);
+    initObjList(list, D_801D4978, 0x10, 4);
+    node = (u8 *)allocObjNode(list, (s32)func_800A279C);
     node[0xC] = 0;
     node[0xD] = 0;
-    func_80098C44(list, (s32)func_800A274C);
+    allocObjNode(list, (s32)func_800A274C);
     return list;
 }
 

@@ -370,7 +370,7 @@ void func_80098BA0(s32 a0) {
  * @param stride  Size of each node in bytes.
  * @param count   Number of nodes in the pool.
  */
-void func_80098BC0(u8 *listMem, u8 *pool, s32 stride, s32 count) {
+void initObjList(u8 *listMem, u8 *pool, s32 stride, s32 count) {
     ObjList *list = (ObjList *)listMem;
     s32 i;
 
@@ -394,7 +394,7 @@ void func_80098BC0(u8 *listMem, u8 *pool, s32 stride, s32 count) {
  * @param listMem List header whose pool is scanned.
  * @return The first free node, or NULL if all nodes are in use.
  */
-void *func_80098BF8(u8 *listMem) {
+void *findFreeNode(u8 *listMem) {
     ObjList *list = (ObjList *)listMem;
     s32 count = list->count;
     u8 *node = list->pool;
@@ -426,8 +426,8 @@ void *func_80098BF8(u8 *listMem) {
  * @note The header is reached via @c (ObjList *)listMem rather than a cached
  *       local so gcc keeps it in the saved arg register across the alloc call.
  */
-void *func_80098C44(u8 *listMem, s32 callback) {
-    ObjListNode *node = func_80098BF8(listMem);
+void *allocObjNode(u8 *listMem, s32 callback) {
+    ObjListNode *node = findFreeNode(listMem);
 
     if (node != 0) {
         ObjListNode *tail;
@@ -453,9 +453,9 @@ void *func_80098C44(u8 *listMem, s32 callback) {
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
  */
-void *func_80098CC0(u8 *listMem, s32 callback) {
+void *allocObjNodeFront(u8 *listMem, s32 callback) {
     ObjList *list = (ObjList *)listMem;
-    ObjListNode *node = func_80098BF8(listMem);
+    ObjListNode *node = findFreeNode(listMem);
 
     if (node != 0) {
         node->flags |= 1;
