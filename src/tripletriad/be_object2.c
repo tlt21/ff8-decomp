@@ -124,7 +124,7 @@ extern void func_800A26C8(void);
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void  func_800A2114(u8 entityType);
 
-/* SVECTOR tables used by the card render path (func_8009AE6C). */
+/* SVECTOR tables used by the card render path (drawTriadCard). */
 extern SVECTOR D_80182C30[4];   /* main card-face quad corners */
 extern SVECTOR D_80182C50[4];   /* outer border quad corners */
 extern SVECTOR D_80182C70[4];   /* per-corner offsets used per rank digit */
@@ -233,7 +233,7 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
  *  - Advances @c angle toward 0x1000 (clockwise) or 0 (counter-clockwise)
  *    based on the @c CTRL_FLAG_02 bit, and clamps the result.
  *  - Allocates a 40-byte @c BattleAnimNode work buffer.
- *  - Runs the transform chain (@c func_8009C12C, @c layoutCardSlot,
+ *  - Runs the transform chain (@c animateCardEffect, @c layoutCardSlot,
  *    @c func_80041274) to populate the node's base position, then folds
  *    in @c offX/Y/Z and @c offSort to produce the world position.
  *  - Applies a small angle-driven X displacement
@@ -241,7 +241,7 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
  *  - For Triple-Triad cards (@c state==0, @c groupId==2), looks up the
  *    cell's @c elementMod in @c D_801D3398 — if non-zero, emits the
  *    elemental modifier overlay sprite via @c drawCardOverlaySprite.
- *  - Calls the per-frame render helpers (@c func_8009AE6C and
+ *  - Calls the per-frame render helpers (@c drawTriadCard and
  *    @c transformCardEffect) to draw the rest of the object.
  *  - Frees the @c BattleAnimNode.
  *
@@ -275,7 +275,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
         }
     }
 
-    func_8009C12C(entity);
+    animateCardEffect(entity);
     layoutCardSlot(&entity->groupId, &node->base);
     func_80041274(&entity->posData[0], node);
 
@@ -304,7 +304,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
     SetRotMatrix(&node->mat);
     SetTransMatrix(&node->mat);
 
-    g_primCursor = func_8009AE6C(entity->cardId, entity->initFlags,
+    g_primCursor = drawTriadCard(entity->cardId, entity->initFlags,
                                 &g_otBase[node->base.pad], g_primCursor);
     transformCardEffect(entity, node, &g_otBase[node->base.pad]);
 
@@ -404,7 +404,7 @@ void setupTripleTriadHands(void) {
  *       @c argP=gPrim reads are gcc-2.7.2 scheduling/allocation scaffolds that are
  *       load-bearing for the match — they are marked inline; don't simplify them.
  */
-void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
+void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
     CardRenderWork *work;
     POLY_FT4 *ftPrim;
     POLY_G4 *gPrim;
@@ -1158,7 +1158,7 @@ s32 anyCardEffectActive(void) {
  *
  * @param entity Battle object slot being driven this frame.
  */
-void func_8009C12C(TripleTriadCardObject *entity) {
+void animateCardEffect(TripleTriadCardObject *entity) {
     s32 state;
     s32 field02;
     s32 t;
@@ -1313,7 +1313,7 @@ extern const VECTOR func_80098154;
  * @brief Per-frame transform stage 2 for a card-effect @c TripleTriadCardObject.
  *
  * Dispatches on @c state, mirroring the small state machine in
- * @c func_8009C12C but handling the matrix transform + render side:
+ * @c animateCardEffect but handling the matrix transform + render side:
  *  - @b 0, @b 7+: nothing this frame.
  *  - @b 1..5 (slide-in trajectory): scale @c node's matrix by the constant
  *    @c cardScale, set @c worldZ to @c 0x200, push rotation/translation

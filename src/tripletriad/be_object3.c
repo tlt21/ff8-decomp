@@ -591,7 +591,7 @@ void updateFadeEffects(void) {
  * @c f6 toward 0xE0), status 2 slides it out, status 3 flips it (Y-rotation
  * ramp + Z-scale). Each finished slot resets to idle (@c status = @c field02 = 0).
  * Active slots build a rotation/translation matrix from the entry's rotation
- * vector + computed position and link a sprite via func_8009AE6C.
+ * vector + computed position and link a sprite via drawTriadCard.
  *
  * @return 0.
  */
@@ -666,7 +666,7 @@ s32 func_8009EBF4(void)
                 tmp->mtx.t[2] = e->posZ;
                 SetRotMatrix(&tmp->mtx);
                 SetTransMatrix(&tmp->mtx);
-                g_primCursor = func_8009AE6C(e->marker, e->row | 0x12,
+                g_primCursor = drawTriadCard(e->marker, e->row | 0x12,
                                            g_otBase + e->sort, g_primCursor);
             }
         }
@@ -1277,7 +1277,7 @@ s32 func_8009FED0(void) {
             }
             SetRotMatrix(node->subNode);
             SetTransMatrix(node->subNode);
-            g_primCursor = func_8009AE6C((u8)D_801D44FC, 0x13, &g_otBase[3], g_primCursor);
+            g_primCursor = drawTriadCard((u8)D_801D44FC, 0x13, &g_otBase[3], g_primCursor);
             scratchFree(0x28);
             D_80182E64 = D_801D44FC;
         } else {
@@ -1434,7 +1434,7 @@ void func_800A0370(s32 duration) {
  * @c fieldA owner at the half-way point, bobs @c baseZ); 3/4 = capture lift-and-fade
  * (rises, shows the captured card's name banner, then settles) for the two capture
  * directions. Cells with @c flags bit 0 set are transformed (@c SetRotMatrix /
- * @c SetTransMatrix) and drawn via @c func_8009AE6C into the OT at @c sort + 9.
+ * @c SetTransMatrix) and drawn via @c drawTriadCard into the OT at @c sort + 9.
  *
  * @return 0 (driven again next frame by the spawning handler).
  */
@@ -1588,7 +1588,7 @@ s32 func_800A03DC(void) {
         if (cell->flags & 1) {
             SetRotMatrix(m);
             SetTransMatrix(m);
-            g_primCursor = func_8009AE6C(cell->cardId, s7, g_otBase + (cell->sort + 9), g_primCursor);
+            g_primCursor = drawTriadCard(cell->cardId, s7, g_otBase + (cell->sort + 9), g_primCursor);
         }
     }
     scratchFree(0x20);

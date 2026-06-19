@@ -173,7 +173,7 @@ typedef struct {
 
 /**
  * @brief @c TripleTriadCardObject.state values — the per-card effect animation
- *        driven each frame by @c func_8009C12C / @c transformCardEffect.
+ *        driven each frame by @c animateCardEffect / @c transformCardEffect.
  *
  * The four @c CARD_FX_SLIDE_* directions are contiguous (2..5) because the
  * handler does @c state-=2 and indexes the @c D_80182D10 motion-vector table
@@ -276,12 +276,12 @@ typedef struct {
 } BattleObjectCtl;
 
 extern TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT *out);
-extern void   func_8009C12C(TripleTriadCardObject *entity);
+extern void   animateCardEffect(TripleTriadCardObject *entity);
 extern void   transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket);
 
 /**
  * @brief 60-byte work buffer staged by @c scratchAlloc for one card
- *        render pass (used by @c func_8009AE6C and related helpers).
+ *        render pass (used by @c drawTriadCard and related helpers).
  *
  * Holds the 4 digit-corner SVECTORs computed for each rank inside the
  * digit loop, the 4 transformed screen positions of the card outline

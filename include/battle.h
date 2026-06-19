@@ -276,7 +276,7 @@ typedef struct {
 /**
  * @brief 4-byte byte-aggregate used for unaligned struct-copy codegen.
  *
- * Used in @c func_8009C12C to copy the @c TripleTriadCardObject @c param0..pad13
+ * Used in @c animateCardEffect to copy the @c TripleTriadCardObject @c param0..pad13
  * quartet (offset 0x10) over the @c groupId..pad0F quartet (offset 0x0C)
  * as a single aggregate assignment. Cast a pointer to the first byte of
  * each block to @c Tetra4* and assign — gcc 2.7.2 emits the original's
@@ -284,7 +284,7 @@ typedef struct {
  */
 typedef struct { u8 a, b, c, d; } Tetra4;
 
-/** @brief 4-entry direction-vector table used by @c func_8009C12C (cases 2..5). */
+/** @brief 4-entry direction-vector table used by @c animateCardEffect (cases 2..5). */
 extern SVECTOR D_80182D10[];
 
 #define ENTITY_FLAG_1 1
@@ -1075,7 +1075,7 @@ extern void func_80041274();
 extern void func_80041794(s32 angle, MATRIX *m);
 extern s32  scratchAlloc(s32 size);
 extern void scratchFree(s32 size);
-extern void *func_8009AE6C(s32 a, s32 b, void *ot, void *out);
+extern void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out);
 
 /* --- Battle animation lifecycle --- */
 extern void activateBattleAnim(s32 idx);
