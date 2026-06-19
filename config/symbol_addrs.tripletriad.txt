@@ -923,5 +923,6 @@ g_padPressed = 0x801C2EC0;
 g_padHeld = 0x801C2EC8;
 g_vramQueue = 0x801C2ED0;
 g_vramQueueCount = 0x801C2FD0;
+g_scratchPtr = 0x801C2FD8;
 g_tripleTriadCardHands = 0x801D31C0;
 g_menuDisplayCfg = 0x801FAB00;

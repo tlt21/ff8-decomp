@@ -208,7 +208,7 @@ extern s32 D_801D35D8;    /**< Hand-card potential weight (cardValue * D_801D35D
 extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
 
 /**
- * @brief 40-byte animation work node allocated by @c func_80098B80.
+ * @brief 40-byte animation work node allocated by @c scratchAlloc.
  *
  * The first 0x20 bytes are a @c MATRIX (so the GTE setup calls take it
  * directly): @c func_80041274 fills the rotation @c mat.m, and the translation
@@ -244,7 +244,7 @@ extern void   func_8009C12C(TripleTriadCardObject *entity);
 extern void   transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket);
 
 /**
- * @brief 60-byte work buffer staged by @c func_80098B80 for one card
+ * @brief 60-byte work buffer staged by @c scratchAlloc for one card
  *        render pass (used by @c func_8009AE6C and related helpers).
  *
  * Holds the 4 digit-corner SVECTORs computed for each rank inside the

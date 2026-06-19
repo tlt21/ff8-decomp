@@ -43,7 +43,7 @@ typedef struct {
 
 /** @brief 0x28 per-frame transform scratch for the card-flip handler: a
  *  scratch position vector followed by the composed rotation+translation
- *  matrix handed to the GTE. Allocated/freed each frame (func_80098B80/BA0). */
+ *  matrix handed to the GTE. Allocated/freed each frame (scratchAlloc/BA0). */
 typedef struct {
     SVECTOR vec;   /* 0x00 — scratch position (morph target)        */
     MATRIX  mat;   /* 0x08 — composed YXZ rotation + translation     */
@@ -145,7 +145,7 @@ extern u8            g_tripleTriadCardCounts[];
 
 /* ── Debug text / misc state ──────────────────────────────────────────────── */
 extern s32           g_vramQueueCount;
-extern s32           D_801C2FD8;
+extern s32           g_scratchPtr;
 extern s16           D_80182B54;
 extern s16           D_80182B5A;
 extern s16           D_80182B58;

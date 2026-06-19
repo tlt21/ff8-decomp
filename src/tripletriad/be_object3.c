@@ -32,7 +32,7 @@ typedef struct {
 /**
  * @brief Scratch buffer for func_8009EBF4's per-card matrix build (0x2C bytes).
  *
- * Allocated each frame via func_80098B80; @c f0/@c f2 carry the card's row/col,
+ * Allocated each frame via scratchAlloc; @c f0/@c f2 carry the card's row/col,
  * func_8009A6EC fills @c f4..@c fA (position + sort), and @c mtx holds the
  * rotation/translation matrix passed to SetRotMatrix / SetTransMatrix.
  */
@@ -607,7 +607,7 @@ s32 func_8009EBF4(void)
     s32 s0;
     s32 scratch[2];
 
-    tmp = (TmpBuf *)func_80098B80(0x2C);
+    tmp = (TmpBuf *)scratchAlloc(0x2C);
     for (row = 0; row < 2; row++) {
         for (col = 0; col < 5; col++) {
             e = &D_801D3EC0[row][col];
@@ -673,7 +673,7 @@ s32 func_8009EBF4(void)
             }
         }
     }
-    func_80098BA0(0x2C);
+    scratchFree(0x2C);
     return 0;
 }
 
@@ -1212,7 +1212,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
  * @brief Per-frame display-node spawn for some D_801D44FC-driven animation.
  *
  * Validates the current slot index in D_801D44FC, allocates a 40-byte
- * @c DispNode via @c func_80098B80, and initializes it based on the
+ * @c DispNode via @c scratchAlloc, and initializes it based on the
  * current phase counter (@c D_801D3EB0 / @c D_801D3EB8):
  * - phase < 10:  rotating-arc setup, angle scaled via @c func_8003ED64
  * - phase < 300: simple static node (scale = 0x18)
@@ -1229,7 +1229,7 @@ s32 func_8009FED0(void) {
 
     if ((u32)D_801D44FC < 0x6E) {
         if (func_80023B14(D_801D44FC) >= 0) {
-            node = (DispNode *)func_80098B80(0x28);
+            node = (DispNode *)scratchAlloc(0x28);
             if (D_80182E64 != D_801D44FC) {
                 D_801D3EB8 = 0;
                 D_801D3EB0 = 0;
@@ -1280,7 +1280,7 @@ s32 func_8009FED0(void) {
             SetRotMatrix(node->subNode);
             SetTransMatrix(node->subNode);
             g_primCursor = func_8009AE6C((u8)D_801D44FC, 0x13, &g_otBase[3], g_primCursor);
-            func_80098BA0(0x28);
+            scratchFree(0x28);
             D_80182E64 = D_801D44FC;
         } else {
             D_80182E64 = -1;
@@ -1450,7 +1450,7 @@ s32 func_800A03DC(void) {
     s32 n;
     s32 inc;
 
-    m = (MATRIX *)func_80098B80(0x20);
+    m = (MATRIX *)scratchAlloc(0x20);
     for (i = 0; i < 10; i++) {
         cell = &D_801D4308[i];
         func_80041274(&cell->rotX, m);
@@ -1593,7 +1593,7 @@ s32 func_800A03DC(void) {
             g_primCursor = func_8009AE6C(cell->cardId, s7, g_otBase + (cell->sort + 9), g_primCursor);
         }
     }
-    func_80098BA0(0x20);
+    scratchFree(0x20);
     return 0;
 }
 

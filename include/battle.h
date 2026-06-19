@@ -1054,7 +1054,7 @@ extern s32 D_801D44FC;     /**< Current battle slot index (must be < 0x6E). */
 extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
 
 /**
- * @brief 40-byte display node allocated by @c func_80098B80 and chained
+ * @brief 40-byte display node allocated by @c scratchAlloc and chained
  * via @c func_80041274 / @c func_800406A4 / @c func_80040734.
  */
 typedef struct {
@@ -1073,8 +1073,8 @@ extern s32  func_8003ED64();
 extern void func_8003F884(SVECTOR *a, SVECTOR *b, s32 wa, s32 wb, SVECTOR *out);
 extern void func_80041274();
 extern void func_80041794(s32 angle, MATRIX *m);
-extern s32  func_80098B80(s32 size);
-extern void func_80098BA0(s32 size);
+extern s32  scratchAlloc(s32 size);
+extern void scratchFree(s32 size);
 extern void *func_8009AE6C(s32 a, s32 b, void *ot, void *out);
 extern u8 *func_8009A6EC(u8 *src, s16 *dst);
 

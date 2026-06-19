@@ -257,7 +257,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
     TripleTriadCardObject *entity;
     BattleAnimNode *node;
 
-    node = func_80098B80(0x28);
+    node = scratchAlloc(0x28);
     entity = ctl->entry;
 
     if (entity->flags & CTRL_FLAG_02) {
@@ -312,7 +312,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
                                 &g_otBase[node->base.pad], g_primCursor);
     transformCardEffect(entity, node, &g_otBase[node->base.pad]);
 
-    func_80098BA0(0x28);
+    scratchFree(0x28);
     return 0;
 }
 
@@ -436,7 +436,7 @@ void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
     u8 id;
 
     id = cardId;
-    work = (CardRenderWork *)func_80098B80(sizeof(CardRenderWork));
+    work = (CardRenderWork *)scratchAlloc(sizeof(CardRenderWork));
     baseColor = 0x2C404040;
     if ((flags & 0x20) == 0) {
         baseColor = 0x2C808080;
@@ -570,7 +570,7 @@ void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
         func_8004D584(ot, ftPrim);
         out = ftPrim + 1;
     }
-    func_80098BA0(sizeof(CardRenderWork));
+    scratchFree(sizeof(CardRenderWork));
     return out;
 }
 
@@ -592,7 +592,7 @@ void *func_8009AE6C(s32 cardId, s32 flags, void *ot, void *out) {
 POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
     CardRenderWork *work;
 
-    work = func_80098B80(0x3C);
+    work = scratchAlloc(0x3C);
     prim->tag = 0x05000000;
     *(u32 *)&prim->r0 = 0x2A000000;
 
@@ -602,7 +602,7 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
                   &work->P, &work->flag);
 
     AddPrim(ot, prim);
-    func_80098BA0(0x3C);
+    scratchFree(0x3C);
     return prim + 1;
 }
 
@@ -2062,7 +2062,7 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
  * Identical search to @ref searchBestMoveStack — same resumable time-sliced minimax
  * over the @c D_801D3460 ply workspace, same scoring, pruning and return codes —
  * but each recursion level draws its scratch board from the per-frame work pool
- * (@c func_80098B80) instead of the CPU stack, returning it (@c func_80098BA0)
+ * (@c scratchAlloc) instead of the CPU stack, returning it (@c scratchFree)
  * on every exit after the allocation. This is the variant @ref updateAiTurn
  * actually runs each AI turn; @ref searchBestMoveStack (stack-allocated copy, no
  * in-overlay caller) appears to be its unused sibling.
@@ -2091,7 +2091,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
     if (depth <= 0) {
         return 1;
     }
-    boardCopy = (TripleTriadBoard *)func_80098B80(sizeof(TripleTriadBoard));
+    boardCopy = (TripleTriadBoard *)scratchAlloc(sizeof(TripleTriadBoard));
     while (D_801D3538 > 0) {
         cardId = D_801D3570[player].cards[node->card].id;
         if (cardId != 0xFF) {
@@ -2127,7 +2127,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     break;
                 }
                 case 2:
-                    func_80098BA0(sizeof(TripleTriadBoard));
+                    scratchFree(sizeof(TripleTriadBoard));
                     return 2;
                 }
 
@@ -2185,17 +2185,17 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     } else {
                         node->bound = node->bestWeighted;
                     }
-                    func_80098BA0(sizeof(TripleTriadBoard));
+                    scratchFree(sizeof(TripleTriadBoard));
                     return 0;
                 }
                 if (node == D_801D3460) {
-                    func_80098BA0(sizeof(TripleTriadBoard));
+                    scratchFree(sizeof(TripleTriadBoard));
                     return 3;
                 }
             }
         }
     }
-    func_80098BA0(sizeof(TripleTriadBoard));
+    scratchFree(sizeof(TripleTriadBoard));
     return 2;
 }
 

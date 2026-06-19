@@ -16,7 +16,7 @@ void initTripleTriad(void) {
 
     func_800A2D34();
     func_800981BC();
-    func_80098B70();
+    initScratchHeap();
     initTriadTaskPool();
     func_80098B68();
     initGraphics();
@@ -330,36 +330,36 @@ void func_80098B68(void) {
 }
 
 /**
- * @brief Set D_801C2FD8 to 0x1F800000 (scratchpad RAM base address).
+ * @brief Set g_scratchPtr to 0x1F800000 (scratchpad RAM base address).
  */
-void func_80098B70(void) {
-    D_801C2FD8 = 0x1F800000;
+void initScratchHeap(void) {
+    g_scratchPtr = 0x1F800000;
 }
 
 /**
  * @brief Allocate aligned memory from the scratchpad heap and return the new pointer.
  *
- * Rounds @p a0 up to the next multiple of 4, then advances D_801C2FD8
- * by that amount. This is the counterpart of func_80098BA0 (which subtracts).
+ * Rounds @p a0 up to the next multiple of 4, then advances g_scratchPtr
+ * by that amount. This is the counterpart of scratchFree (which subtracts).
  *
  * @param a0 Size to allocate (will be aligned up to 4).
- * @return The previous value of D_801C2FD8 (start of allocated block).
+ * @return The previous value of g_scratchPtr (start of allocated block).
  */
-s32 func_80098B80(s32 a0) {
-    s32 old = D_801C2FD8;
-    D_801C2FD8 = old + ((a0 + 3) & ~3);
+s32 scratchAlloc(s32 a0) {
+    s32 old = g_scratchPtr;
+    g_scratchPtr = old + ((a0 + 3) & ~3);
     return old;
 }
 
 /**
  * @brief Align a size up to 4 bytes and subtract from the allocation pointer.
  *
- * Rounds a0 up to the next multiple of 4 and decrements D_801C2FD8 by that amount.
+ * Rounds a0 up to the next multiple of 4 and decrements g_scratchPtr by that amount.
  *
  * @param a0 Size to allocate (will be aligned up to 4).
  */
-void func_80098BA0(s32 a0) {
-    D_801C2FD8 -= (a0 + 3) & ~3;
+void scratchFree(s32 a0) {
+    g_scratchPtr -= (a0 + 3) & ~3;
 }
 
 /**
@@ -952,7 +952,7 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
     TriadFaceDesc *face;
     s32 *ptr;
 
-    ptr = (s32 *)func_80098B80(0x18);
+    ptr = (s32 *)scratchAlloc(0x18);
     D_801D3008 = (u32 *)ptr;
 
     RotTransPers4(&D_80182B98[0], &D_80182B98[1], &D_80182B98[2], &D_80182B98[3],
@@ -974,7 +974,7 @@ POLY_G3 *func_800995F8(void *ot, POLY_G3 *prims) {
         }
     }
 
-    func_80098BA0(0x18);
+    scratchFree(0x18);
     return out;
 }
 
@@ -1015,7 +1015,7 @@ s32 cardFlipHandler(HandlerNode *node) {
     s32 tmp;
     u32 *ot;
 
-    D_801D3010 = (TransformBuf *)func_80098B80(0x28);
+    D_801D3010 = (TransformBuf *)scratchAlloc(0x28);
     switch (node->state) {
     case 0:
         node->phase = func_80023D04() % 2;
@@ -1095,6 +1095,6 @@ s32 cardFlipHandler(HandlerNode *node) {
     SetTransMatrix(&D_801D3010->mat);
     ot = &g_otBase[4];
     g_primCursor = func_800995F8(ot, g_primCursor);
-    func_80098BA0(0x28);
+    scratchFree(0x28);
     return 0;
 }
