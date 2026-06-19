@@ -1076,7 +1076,24 @@ s32 func_8009E418(s32 arg0, s32 arg1, s32 arg2) {
     return var_a1;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E528);
+s32 func_8009E528(s32 arg0, s32 arg1, s32 arg2) {
+    s32 ret;
+    
+    if (func_8009D594(arg0, arg1) != 0) {
+        return 0;
+    }
+
+    ret = func_8009E33C(arg0, arg1, arg2);
+    if (ret != -100000) {
+        return ret;
+    }
+    
+    if (D_800ED148.entities[arg1].field2C == 0) {
+        return 1;
+    }
+    
+    return D_800ED148.entities[arg1].field2C;
+}
 
 void func_8009E5C0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     u8 sp10;
