@@ -35,7 +35,7 @@ typedef struct {
  * @brief Scratch buffer for func_8009EBF4's per-card matrix build (0x2C bytes).
  *
  * Allocated each frame via scratchAlloc; @c f0/@c f2 carry the card's row/col,
- * func_8009A6EC fills @c f4..@c fA (position + sort), and @c mtx holds the
+ * layoutCardSlot fills @c f4..@c fA (position + sort), and @c mtx holds the
  * rotation/translation matrix passed to SetRotMatrix / SetTransMatrix.
  */
 typedef struct {
@@ -625,7 +625,7 @@ s32 func_8009EBF4(void)
                 s0 = func_8003ED64(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
-                func_8009A6EC((u8 *)tmp, &tmp->f4);
+                layoutCardSlot((u8 *)tmp, &tmp->f4);
                 e->posX = tmp->f4;
                 e->posY = ((tmp->f6 - 0xE0) * s0 >> 12) + 0xE0;
                 e->posZ = tmp->f8;
@@ -641,7 +641,7 @@ s32 func_8009EBF4(void)
                 s0 = func_8003ED64(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
-                func_8009A6EC((u8 *)tmp, &tmp->f4);
+                layoutCardSlot((u8 *)tmp, &tmp->f4);
                 e->posX = tmp->f4;
                 e->posY = ((0xE0 - tmp->f6) * s0 >> 12) + tmp->f6;
                 e->posZ = tmp->f8;

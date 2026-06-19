@@ -24,12 +24,12 @@ typedef struct {
 extern u8 *initTripleTriadUpdateList(void);
 
 /** @brief Fill an animation RECT from an entity descriptor (type/col/row). */
-extern u8 *func_8009A6EC(u8 *src, s16 *dst);
+extern u8 *layoutCardSlot(u8 *src, s16 *dst);
 
 /** @brief Find the @c g_tripleTriadCardHands slot matching a search key, or -1. */
-extern s32 func_8009A7A4(s32 groupId, s32 fieldD, s32 priority);
+extern s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority);
 
 /** @brief Flag the matching card object (sets bit 1 of its @c flags). */
-extern void func_8009A878(s32 groupId, s32 priority);
+extern void highlightCardSlot(s32 groupId, s32 priority);
 
 #endif /* TRIPLETRIAD_BE_OBJECT1B_H */

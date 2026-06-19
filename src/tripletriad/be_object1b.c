@@ -8,17 +8,17 @@
 #include "gamestate.h"
 
 /*
- * be_object1b.c — tail of be_object1 (func_80099C78 onward), split into its own
- * translation unit so func_80099C78's jump table is the FIRST .rodata in this
+ * be_object1b.c — tail of be_object1 (matchFlowHandler onward), split into its own
+ * translation unit so matchFlowHandler's jump table is the FIRST .rodata in this
  * object. gcc emits each jtbl in a fresh ".section .rodata / .align 3" block;
  * when two jtbls share one object the second is 8-aligned, inserting a 4-byte
- * pad. The original places func_80099C78's table at 0xDC (4-aligned, no pad)
+ * pad. The original places matchFlowHandler's table at 0xDC (4-aligned, no pad)
  * directly after formatString's 55-entry table that fills 0x00..0xDC. Keeping
  * this table first in its own object (placed by the linker's SUBALIGN(2)) lands
  * it at 0xDC with no pad. See [[func_80099C78_state]] / the be_object3b split.
  */
 
-/* func_80099C78 (Triple Triad match flow) hold-frame durations + result-screen input bit. */
+/* matchFlowHandler (Triple Triad match flow) hold-frame durations + result-screen input bit. */
 #define TT_HOLD_FRAMES_RULE  0x1E  /**< Frames to hold after a combo capture (case 4). */
 #define TT_HOLD_FRAMES_TALLY 0x0C  /**< Frames to hold on the card-count tally (case 7). */
 #define TT_HOLD_FRAMES_FADE  0x0F  /**< Frames to hold during the result fade (case 9). */
@@ -121,7 +121,7 @@ extern void setupTripleTriadHands(void);
  *       @c state @c >= @c 10 falls out of gcc's switch bounds check (no
  *       @c default case).
  */
-s32 func_80099C78(HandlerNode *ctl) {
+s32 matchFlowHandler(HandlerNode *ctl) {
     s32 acc;
     while (1) {
         switch (ctl->state) {
@@ -303,7 +303,7 @@ s32 func_80099C78(HandlerNode *ctl) {
  * @param a0 Entity or context pointer passed to processCardObjects.
  * @return Always 0.
  */
-s32 func_8009A2F4(s32 a0) {
+s32 updateCardObjects(s32 a0) {
     processCardObjects(a0);
     return 0;
 }
@@ -347,7 +347,7 @@ s32 func_8009A2F4(s32 a0) {
  *       (7) @c rowByteOffset = pixelY chains the init so gcc emits
  *       @c addu s6, s5, $0 (matching target's @c addu s6, s5, zero).
  */
-s32 func_8009A314(void) {
+s32 drawBoardElements(void) {
     TripleTriadCellPrim *prim = (TripleTriadCellPrim *)g_primCursor;
     s32 row = 1;
     u8 *boardBase = (u8 *)&D_801D3398;
@@ -409,7 +409,7 @@ s32 func_8009A314(void) {
  * Calls @c updateObjectList on the node's @c listPtr (a list-head pointer at
  * offset 0x0C) and returns @c 2 when that returns 0 (empty list), else 0.
  */
-s32 func_8009A4E0(CallbackNode *node) {
+s32 updateChildList(CallbackNode *node) {
     return (updateObjectList(node->listPtr) == 0) << 1;
 }
 
@@ -430,7 +430,7 @@ s32 func_8009A4E0(CallbackNode *node) {
  *
  * @note Matching tricks: (1) @c cnt[1] = 0 then @c cnt[0] = 0 (reversed
  *       init order) matches the target's @c sw zero sequence — same trick
- *       used in @c func_80099C78's case 7. (2) The branch form
+ *       used in @c matchFlowHandler's case 7. (2) The branch form
  *       @c if (!(i & 1)) ... else ... — with the @c i==0 (player 0) path
  *       in the @c if body — drives gcc to emit @c bnez to the player-1
  *       (@c 0x140) branch and fall through (in delay slot) to the
@@ -438,7 +438,7 @@ s32 func_8009A4E0(CallbackNode *node) {
  *       The @c & 1 mask is reused for both the @c x0 branch and the
  *       @c cnt[i & 1] lookup so gcc CSEs the @c andi.
  */
-s32 func_8009A508(void) {
+s32 drawScoreDigits(void) {
     s32 i = 0;
     s32 cnt[2];
     TripleTriadCellPrim *prim;
@@ -490,13 +490,13 @@ u8 *initTripleTriadUpdateList(void) {
     resetTriadBoard();
     list = D_801D3028;
     initObjList(list, D_801D3038, 0x18, 8);
-    node = (u8 *)allocObjNode(list, (s32)func_80099C78);
+    node = (u8 *)allocObjNode(list, (s32)matchFlowHandler);
     node[0x10] = 0;
     node[0x11] = 0;
     node[0x14] = 0;
-    allocObjNode(list, (s32)func_8009A2F4);
-    allocObjNode(list, (s32)func_8009A314);
-    allocObjNode(list, (s32)func_8009A508);
+    allocObjNode(list, (s32)updateCardObjects);
+    allocObjNode(list, (s32)drawBoardElements);
+    allocObjNode(list, (s32)drawScoreDigits);
     setupTripleTriadHands();
     return list;
 }
@@ -512,7 +512,7 @@ u8 *initTripleTriadUpdateList(void) {
  * @param a1 Pointer to output rectangle (4 s16 values: x, y, w, h).
  * @return Pointer to the output rectangle, or a1 unchanged if type is unknown.
  */
-u8 *func_8009A6EC(u8 *a0, s16 *a1) {
+u8 *layoutCardSlot(u8 *a0, s16 *a1) {
     u8 type = a0[0];
 
     switch (type) {
@@ -572,7 +572,7 @@ u8 *func_8009A6EC(u8 *a0, s16 *a1) {
  * @return Slot index @c 0..9 of the first matching entry, or @c -1 if
  *         none found / invalid mode.
  */
-s32 func_8009A7A4(s32 groupId, s32 fieldD, s32 priority) {
+s32 findCardSlot(s32 groupId, s32 fieldD, s32 priority) {
     s32 i;
 
     if (groupId < 0) return -1;
@@ -610,15 +610,15 @@ s32 func_8009A7A4(s32 groupId, s32 fieldD, s32 priority) {
 /**
  * @brief Mark a battle entity's flags with bit 2.
  *
- * Looks up an entity index via func_8009A7A4, then sets bit 1 (0x2)
+ * Looks up an entity index via findCardSlot, then sets bit 1 (0x2)
  * in the flags halfword at offset +4 of the entity's 36-byte entry
  * in g_tripleTriadCardHands.
  *
- * @param a0 Entity search key passed to func_8009A7A4.
- * @param a1 Secondary parameter passed as third arg to func_8009A7A4.
+ * @param a0 Entity search key passed to findCardSlot.
+ * @param a1 Secondary parameter passed as third arg to findCardSlot.
  */
-void func_8009A878(s32 a0, s32 a1) {
-    s32 idx = func_8009A7A4(a0, 0, a1);
+void highlightCardSlot(s32 a0, s32 a1) {
+    s32 idx = findCardSlot(a0, 0, a1);
     if (idx >= 0) {
         g_tripleTriadCardHands[idx].flags |= 2;
     }

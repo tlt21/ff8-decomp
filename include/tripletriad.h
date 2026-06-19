@@ -215,14 +215,14 @@ extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
  * @c mat.t[0..2] holds the element's world X/Y/Z. The low 16 bits of
  * @c mat.t[0]/@c mat.t[1] double as the screen-space sprite anchor read by
  * @c drawCardOverlaySprite. The trailing @c base is the pre-transform position written
- * by @c func_8009A6EC (its @c pad slot carries the display-list sort key).
+ * by @c layoutCardSlot (its @c pad slot carries the display-list sort key).
  *
- * Per-frame: @c func_8009A6EC writes @c base, then the caller adds
+ * Per-frame: @c layoutCardSlot writes @c base, then the caller adds
  * @c TripleTriadCardObject.offX/Y/Z into @c mat.t[0..2] and @c offSort into @c base.pad.
  */
 typedef struct {
     /* 0x00 */ MATRIX  mat;   /**< Transform: rotation + translation (t[0..2] = world X/Y/Z). */
-    /* 0x20 */ SVECTOR base;  /**< Base position from @c func_8009A6EC; @c pad = OT sort key. */
+    /* 0x20 */ SVECTOR base;  /**< Base position from @c layoutCardSlot; @c pad = OT sort key. */
 } BattleAnimNode;             /* 40 bytes */
 
 /**

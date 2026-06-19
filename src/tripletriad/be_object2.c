@@ -235,7 +235,7 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
  *  - Advances @c angle toward 0x1000 (clockwise) or 0 (counter-clockwise)
  *    based on the @c CTRL_FLAG_02 bit, and clamps the result.
  *  - Allocates a 40-byte @c BattleAnimNode work buffer.
- *  - Runs the transform chain (@c func_8009C12C, @c func_8009A6EC,
+ *  - Runs the transform chain (@c func_8009C12C, @c layoutCardSlot,
  *    @c func_80041274) to populate the node's base position, then folds
  *    in @c offX/Y/Z and @c offSort to produce the world position.
  *  - Applies a small angle-driven X displacement
@@ -278,7 +278,7 @@ s32 updateCardObject(BattleObjectCtl *ctl) {
     }
 
     func_8009C12C(entity);
-    func_8009A6EC(&entity->groupId, &node->base.vx);
+    layoutCardSlot(&entity->groupId, &node->base.vx);
     func_80041274(&entity->posData[0], node);
 
     node->mat.t[0]  = node->base.vx + entity->offX;
@@ -675,17 +675,17 @@ void drawMenuPrim(s32 mode, SubstateSlot *slot) {
 /**
  * @brief Look up the active object and initialize its handler.
  *
- * Forwards @p a / @p b / @p c through to @c func_8009A7A4 (the function
+ * Forwards @p a / @p b / @p c through to @c findCardSlot (the function
  * never touches a-regs itself, so the args land in the helper unchanged).
  * If the helper returns a valid index, passes the slot's @c cardId
  * byte to @c func_800A2114.
  *
- * @param a Search key (passed through to @c func_8009A7A4 as arg 0).
+ * @param a Search key (passed through to @c findCardSlot as arg 0).
  * @param b Filter mask (passed through as arg 1).
  * @param c Row/column key (passed through as arg 2).
  */
 void initMenuObjectHandler(s32 a, s32 b, s32 c) {
-    s32 idx = func_8009A7A4(a, b, c);
+    s32 idx = findCardSlot(a, b, c);
     if (idx >= 0) {
         func_800A2114(g_tripleTriadCardHands[idx].cardId);
     }
@@ -698,7 +698,7 @@ void initMenuObjectHandler(s32 a, s32 b, s32 c) {
  * @c D_801D3328 to update @c slot->field2 (the row cursor) and/or queue a
  * sub-dispatch:
  *
- *  - bit 0x1000 (left) : tries @c func_8009A7A4 with @c field2-1; if the
+ *  - bit 0x1000 (left) : tries @c findCardSlot with @c field2-1; if the
  *    candidate is valid (returns @c >= 0), plays the move SFX via
  *    @c func_800A233C(1), decrements @c field2, and falls through to the
  *    common dispatch.
@@ -708,19 +708,19 @@ void initMenuObjectHandler(s32 a, s32 b, s32 c) {
  *  - bit 0x2000 (select) AND @c D_801D3328 has bit 0x4 set → store
  *    @c 2 into @c D_801D3358 and return.
  *
- * The common dispatch at the bottom calls @c func_8009A878(0, field2) and
+ * The common dispatch at the bottom calls @c highlightCardSlot(0, field2) and
  * @c initMenuObjectHandler(0, 0, field2) — the latter forwards its three args
- * through to @c func_8009A7A4 inside the helper.
+ * through to @c findCardSlot inside the helper.
  *
  * @param slot Substate parameter slot — @c field2 is the row cursor.
  * @param idx  Substate index (unused here; preserved for the dispatcher
  *             callback signature).
  */
 void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
-    if ((D_801D332E & 0x1000) && func_8009A7A4(0, 0, slot->field2 - 1) >= 0) {
+    if ((D_801D332E & 0x1000) && findCardSlot(0, 0, slot->field2 - 1) >= 0) {
         func_800A233C(1);
         slot->field2 = slot->field2 - 1;
-    } else if ((D_801D332E & 0x4000) && func_8009A7A4(0, 0, slot->field2 + 1) >= 0) {
+    } else if ((D_801D332E & 0x4000) && findCardSlot(0, 0, slot->field2 + 1) >= 0) {
         func_800A233C(1);
         slot->field2 = slot->field2 + 1;
     } else if (D_801D332E & 0x2000) {
@@ -734,7 +734,7 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
         }
     }
 
-    func_8009A878(0, slot->field2);
+    highlightCardSlot(0, slot->field2);
     initMenuObjectHandler(0, 0, slot->field2);
 }
 
@@ -746,7 +746,7 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
  * the controller mask @c D_801D3328 to update @c slot->field2 (column
  * cursor) and/or queue a sub-dispatch:
  *
- *  - bit 0x1000 (left) : tries @c func_8009A7A4(1, 0, field2-1); if valid,
+ *  - bit 0x1000 (left) : tries @c findCardSlot(1, 0, field2-1); if valid,
  *    play move SFX and decrement @c field2.
  *  - bit 0x4000 (right): same pattern, with @c field2+1.
  *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x8 set → @c D_801D3358
@@ -754,7 +754,7 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
  *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x2 set → @c D_801D3358
  *    = 1 and return.
  *
- * Common dispatch: @c func_8009A878(1, field2) and
+ * Common dispatch: @c highlightCardSlot(1, field2) and
  * @c initMenuObjectHandler(1, 0, field2).
  *
  * @param slot Substate parameter slot — @c field2 is the column cursor.
@@ -762,10 +762,10 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
  *             callback signature).
  */
 void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
-    if ((D_801D332E & 0x1000) && func_8009A7A4(1, 0, slot->field2 - 1) >= 0) {
+    if ((D_801D332E & 0x1000) && findCardSlot(1, 0, slot->field2 - 1) >= 0) {
         func_800A233C(1);
         slot->field2 = slot->field2 - 1;
-    } else if ((D_801D332E & 0x4000) && func_8009A7A4(1, 0, slot->field2 + 1) >= 0) {
+    } else if ((D_801D332E & 0x4000) && findCardSlot(1, 0, slot->field2 + 1) >= 0) {
         func_800A233C(1);
         slot->field2 = slot->field2 + 1;
     } else if (D_801D332E & 0x8000) {
@@ -779,7 +779,7 @@ void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
         }
     }
 
-    func_8009A878(1, slot->field2);
+    highlightCardSlot(1, slot->field2);
     initMenuObjectHandler(1, 0, slot->field2);
 }
 
@@ -954,7 +954,7 @@ void updateTriadMenu(void) {
  * Latches the substate index and per-call control fields into the global
  * tick state, OR-merging @p mask into @c D_801D3328 with the new
  * substate's mask bit set. Then, for substates 1 and 2, the active column
- * cursor (@c D_801D3340[idx].field2) is probed via @c func_8009A7A4 — if
+ * cursor (@c D_801D3340[idx].field2) is probed via @c findCardSlot — if
  * the current position is not valid, it's nudged by +1 to find a valid
  * candidate.
  *
@@ -982,7 +982,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
     if (idx >= 3) return;
     if (idx <= 0) return;
 
-    if (func_8009A7A4(idx - 1, 0, D_801D3340[idx].field2) < 0) {
+    if (findCardSlot(idx - 1, 0, D_801D3340[idx].field2) < 0) {
         D_801D3340[idx].field2 = D_801D3340[idx].field2 + 1;
     }
 }
@@ -999,7 +999,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
  *  - state 1 : if @c D_801D3359 already equals the current state (= 1),
  *              the selection has already been committed — bail with @c 0.
  *              Otherwise probe the snapshot's column at @c D_801D335C.field2
- *              via @ref func_8009A7A4: on success, copy
+ *              via @ref findCardSlot: on success, copy
  *              @c D_801D335C into the node's @c snapshot field, advance to
  *              state 2 and play SFX 1; on failure, fall back to state 0.
  *  - state 2 : arm row-cursor substate 3 via @ref activateMenuSubstate, advance
@@ -1007,7 +1007,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
  *  - state 3 : per-frame display tick:
  *              - if @c g_drawBufferIndex is set, draw the snapshot via
  *                @ref drawMenuPrim.
- *              - update the active cursor entity via @ref func_8009A878.
+ *              - update the active cursor entity via @ref highlightCardSlot.
  *              - inspect @c D_801D3359 (= a UI trigger code):
  *                  * @c 2 : commit the chosen card. If the destination
  *                          board slot is already occupied (returned >= 0),
@@ -1045,7 +1045,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             break;
         case 1:
             if (D_801D3359 == s1) return 0;
-            if (func_8009A7A4(p->fieldD, 0, D_801D335C.field2) >= 0) {
+            if (findCardSlot(p->fieldD, 0, D_801D335C.field2) >= 0) {
                 p->snapshot = D_801D335C;
                 p->state = 2;
                 func_800A233C(1);
@@ -1062,12 +1062,12 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             if (g_drawBufferIndex != 0) {
                 drawMenuPrim(p->fieldD + 1, &p->snapshot);
             }
-            func_8009A878(p->fieldD, p->snapshot.field2);
+            highlightCardSlot(p->fieldD, p->snapshot.field2);
             trig = D_801D3359;
             switch (trig) {
             case 2:
-                if (func_8009A7A4(2, D_801D335C.field0, D_801D335C.field2) < 0) {
-                    s32 entIdx = func_8009A7A4(p->fieldD, 0, p->snapshot.field2);
+                if (findCardSlot(2, D_801D335C.field0, D_801D335C.field2) < 0) {
+                    s32 entIdx = findCardSlot(p->fieldD, 0, p->snapshot.field2);
                     setBattleObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
                     commitCardToBoard(&D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
                     func_800A233C(1);
@@ -2208,7 +2208,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
  *  - @b State @b 1 — three sub-steps:
  *      - @e sub @e 0: arm the search timer (@c D_801D353C = 10), latch the chosen
  *        card slot (@c D_801D3462) into @p a, advance.
- *      - @e sub @e 1: highlight the card (@ref func_8009A878), refill the minimax
+ *      - @e sub @e 1: highlight the card (@ref highlightCardSlot), refill the minimax
  *        placement budget (@c D_801D3538 = 100) and run the move search
  *        (@ref searchBestMove). If it reports busy (result 2 — budget exhausted)
  *        tick the search timer and yield; otherwise, if the chosen card is
@@ -2256,7 +2256,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
                 a->sub++;
                 break;
             case AI_SEARCH_RUN:
-                func_8009A878(D_801D35C0, a->cardSlot);
+                highlightCardSlot(D_801D35C0, a->cardSlot);
                 D_801D3538 = 100;
                 a->result = searchBestMove(&D_801D3398, D_801D35C0, D_801D3460, a->unk10);
                 if ((a->result & 0xFF) == 2) {
@@ -2269,7 +2269,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
                 a->sub++;
                 break;
             case AI_SEARCH_WAIT:
-                func_8009A878(D_801D35C0, a->cardSlot);
+                highlightCardSlot(D_801D35C0, a->cardSlot);
                 if (D_801D353C > 0) {
                     D_801D353C--;
                     return 0;
@@ -2287,7 +2287,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
             break;
         }
         case AI_TURN_ANIMATE:
-            func_8009A878(D_801D35C0, D_801D3466);
+            highlightCardSlot(D_801D35C0, D_801D3466);
             a->sub++;
             if ((a->sub & 0xFF) < AI_ANIM_FRAMES) {
                 return 0;
@@ -2312,7 +2312,7 @@ s32 updateAiTurn(func_8009DBE8_arg0 *a) {
  *
  * Runs once when it becomes seat @p seat's turn:
  *  1. Builds both players' working search hands @c D_801D3570 from the live card
- *     objects @c g_tripleTriadCardHands (via @ref func_8009A7A4): each slot's
+ *     objects @c g_tripleTriadCardHands (via @ref findCardSlot): each slot's
  *     @c entityIdx is the object index and @c id its card id (@c 0xFF if the slot
  *     holds no card); @c slotCount tracks how many cards remain in play.
  *  2. If the Open rule is off (@c g_tripleTriadRules bit 0) and the matching
@@ -2340,7 +2340,7 @@ u8 *spawnAiTurn(s32 seat) {
     for (player = 0; player < 2; player++) {
         for (card = 0; card < 5; card++) {
             s32 entity;
-            entity = func_8009A7A4(player, 0, card);
+            entity = findCardSlot(player, 0, card);
             D_801D3570[player].cards[card].entityIdx = entity;
             if (entity < 0) {
                 slotCount--;
