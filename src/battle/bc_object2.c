@@ -1273,7 +1273,32 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009ED2C);
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EE44);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EF64);
+s32 func_8009EF64(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    BattleEntityData* curr;
+
+    curr = D_800ED148.entities[arg0].linkedPtr->data;
+    switch (D_800EE9E8.subEntries[arg0 - 3].unkE) {
+    case 0:
+        arg3 = curr->unkFB;
+        break;
+    case 1:
+        arg3 = curr->unkFC;
+        break;
+    case 2:
+        arg3 = curr->unkFD;
+        break;
+    }
+    
+    if (arg3 == 255) {
+       D_800EE46E = 0;
+        return 0; 
+    }
+    
+    D_800ED148.unk1326 = 1;
+    D_800ED148.unk1327 = arg3;
+    D_800ED148.unk1328 = curr->unkFF;
+    return 1; 
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F040);
 
@@ -1423,7 +1448,34 @@ s32 func_8009F6F4(s32 idx) {
     return entry[0x228];
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F718);
+s32 func_8009F718(s32 arg0, s32 arg1, s32 arg2) {
+    s32 temp_s3;
+    s32 temp_s4;
+    s32 result;
+    s32 temp;
+    s32 var;
+    s32 var2;
+    s32 var3;
+    
+    temp_s4 = func_8009B7BC(32);
+    temp_s3 = func_8009F6F4(arg2);
+    temp = func_8009F65C(arg1, arg2);
+    var = 10;
+    
+    var2 = D_800ED148.entities[arg0].unkCC - (D_800ED148.entities[arg1].unkCC - var);
+    var3 = (var2 >> 1) + temp_s4 + D_800ED148.entities[arg0].fieldCF;
+    result = ((var3 - temp_s3) / 5) - temp;
+    
+    if (result < 0) {
+        result = 0;
+    }
+    
+    if (result > 9) {
+        result = 9;
+    }
+    
+    return result;
+}
 
 void func_8009F824(void) {
     if (D_800EE4C0.flags6 & 4) {

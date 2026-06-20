@@ -259,7 +259,13 @@ typedef enum {
 typedef struct {
     u8 unk00[0xF7];
     u8 immunityFlags;   /* 0xF7: bit 0 forces status bit 0x40 clear, bit 1 forces flags bit 0x2000 clear (read by @c func_8009AFF0). */
-    u8 padF8[0x57];
+    u8 padF8[0x3];
+    u8 unkFB;
+    u8 unkFC;
+    u8 unkFD;
+    u8 unkFE;
+    u8 unkFF;
+    u8 pad100[0x4F];
     u8 unk14F;          /* 0x14F: byte read by func_800AF988. */
 } BattleEntityData;
 
@@ -510,7 +516,9 @@ typedef struct {
 /** @brief 0x47-byte sub-entry in @c BattleAnimTable.subEntries. */
 typedef struct {
     u8 charId;          /* 0x00: char/scene byte, mirrored from g_gameState[+0xAF4..]. */
-    u8 unk01[0x46];     /* 0x01..0x46: unknown. */
+    u8 unk01[0x42];     /* 0x01..0x46: unknown. */
+    u8 unkE;
+    u8 pad02[0x3];     /* 0x01..0x46: unknown. */
 } BattleAnimSubEntry;   /* 0x47 */
 
 /** @brief Battle anim/scene lookup table at @c D_800EE9E8. */
@@ -848,6 +856,7 @@ extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
 extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456;     /**< 0x800EE456: status flags byte. */
+extern u8 D_800EE46E;
 extern u8 D_800EE476;     /**< 0x800EE476: entity index latch. */
 
 /**
