@@ -744,6 +744,19 @@ typedef struct {
     u8 unk02[6];        /**< 0x02..0x07: unknown. */
 } BattleSceneRow8;      /* 8 bytes */
 
+
+/**
+ * this struct must be 0xC size, flags and maxHP must be accessed 
+ * at address 0x4C16 and 0x4C17 (func_8009F168) 
+ */
+typedef struct {
+    u8 pad0[0xA]; 
+    u8 flags; /* 0xA */
+    u8 maxHP; /* 0xB */
+    
+} Struct_4C0A; /* 0xC */
+
+
 /**
  * @brief Battle scene data buffer at D_80078E00 (loaded from disc, ~0x9E08 bytes).
  *
@@ -772,7 +785,9 @@ typedef struct {
     /* 0x3EE0 */ BattleSceneEntry entriesA0[1]; /**< stride 20 (size unknown, index past). */
     /* 0x3EF4 */ u8 pad3EF4[0xB6A];
     /* 0x4A5E */ BattleSceneRow8 rows8[1];      /**< stride 8 (size unknown, index past). */
-    /* 0x4A66 */ u8 pad4A66[614];
+    /* 0x4A66 */ u8 pad4A66[422];
+    /* 0x4C0A */ Struct_4C0A unk4C0A[1];
+    /* 0x4C18 */ u8 pad4C18[180];
     /* 0x4CCC */ u8 unk_4CCC[14];
 } BattleSceneData;
 

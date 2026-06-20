@@ -1277,7 +1277,36 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EF64);
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F040);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F168);
+void func_8009F168(s32 arg0, s32 arg1) {
+    u8 temp_s0;
+     
+    temp_s0 = D_80078E00.unk4C0A[arg1].flags;
+    if (temp_s0 & 1) {
+        func_8002153C(arg0, 0);
+    }
+    
+    if (temp_s0 & 2) {
+        func_8002153C(arg0, 1);
+    }
+
+    if (temp_s0 & 4) {
+        func_8002153C(arg0, 2);
+    }
+
+    if (temp_s0 & 8) {
+        func_8002153C(arg0, 3);
+    }
+
+    if (temp_s0 & CTRL_FLAG_10) {
+        func_8002153C(arg0, 4);
+    }
+
+    if (temp_s0 & CTRL_FLAG_20) {
+        func_8002153C(arg0, 5);
+    }
+
+    addCharMaxHp(arg0, D_80078E00.unk4C0A[arg1].maxHP);
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F23C);
 
