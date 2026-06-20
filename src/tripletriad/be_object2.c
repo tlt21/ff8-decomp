@@ -790,7 +790,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
  * @return The cursor list head.
  */
 u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
-    u8 *list = D_801D3380;
+    ObjList *list = D_801D3380;
     SubstateMachineNode *node;
 
     initObjList(list, D_801D3360, 0x14, 1);

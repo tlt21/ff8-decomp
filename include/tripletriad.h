@@ -342,6 +342,37 @@ extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats t
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
 
+/* ── Object-list system ──────────────────────────────────────────────────────
+ * A per-frame callback list whose nodes are carved from a fixed pool. Every
+ * be_objectN TU drives its objects through this (initObjList / allocObjNode /
+ * updateObjectList in be_object1.c); the type-specific node structs all extend
+ * @c ObjListNode. */
+
+/** @brief Per-frame node callback; a return value with bit 1 set unlinks the node.
+ *  Concrete callbacks take their own node-struct pointer type, so call sites cast
+ *  to this canonical type when storing them. */
+typedef s32 (*ObjNodeFn)(struct ObjListNode *node);
+
+/** @brief Generic pool-backed list-node header (0xC bytes). Type-specific nodes
+ *  (e.g. @c HandlerNode) extend this; the pool allocator/iterator only touches
+ *  this header. */
+typedef struct ObjListNode {
+    u16                 flags;     /* 0x0 — bit 0 = active/allocated */
+    u16                 field02;   /* 0x2 — cleared on allocation */
+    struct ObjListNode *next;      /* 0x4 — next node in the list */
+    ObjNodeFn           callback;  /* 0x8 — per-frame callback */
+} ObjListNode;
+
+/** @brief Pool-backed singly-linked list header (0x10 bytes). Nodes are carved
+ *  from a fixed @c pool of @c count entries, each @c stride bytes. */
+typedef struct {
+    ObjListNode *head;    /* 0x0 */
+    ObjListNode *tail;    /* 0x4 */
+    void        *pool;    /* 0x8 — node-pool base */
+    s16          stride;  /* 0xC — node size in bytes */
+    s16          count;   /* 0xE — node count */
+} ObjList;
+
 /* ── Shared overlay globals ──────────────────────────────────────────────────
  * Referenced across the be_objectN translation units of the tripletriad overlay. */
 extern s32           g_cardFlipPhase;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
@@ -351,13 +382,13 @@ extern u8            g_tripleTriadState;        /**< Current phase / next handle
 extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
 extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
-extern u8            D_801D3028[];      /**< Battle-update callback list header. */
+extern ObjList            D_801D3028[];      /**< Battle-update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
 extern u16           D_801C2EC4;        /**< Result-screen pad input. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
-extern u8            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
+extern ObjList            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
 
 /* Cross-TU function prototypes live in the owning module's header
    (be_object1.h .. be_object4.h), not here. */

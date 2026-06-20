@@ -355,8 +355,7 @@ void scratchFree(s32 size) {
  * @param stride  Size of each node in bytes.
  * @param count   Number of nodes in the pool.
  */
-void initObjList(u8 *listMem, u8 *pool, s32 stride, s32 count) {
-    ObjList *list = (ObjList *)listMem;
+void initObjList(ObjList *list, u8 *pool, s32 stride, s32 count) {
     s32 i;
 
     list->head = 0;
@@ -379,8 +378,7 @@ void initObjList(u8 *listMem, u8 *pool, s32 stride, s32 count) {
  * @param listMem List header whose pool is scanned.
  * @return The first free node, or NULL if all nodes are in use.
  */
-void *findFreeNode(u8 *listMem) {
-    ObjList *list = (ObjList *)listMem;
+void *findFreeNode(ObjList *list) {
     s32 count = list->count;
     u8 *node = list->pool;
     s32 i = 0;
@@ -405,8 +403,8 @@ void *findFreeNode(u8 *listMem) {
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
  */
-void *allocObjNode(u8 *listMem, ObjNodeFn callback) {
-    ObjListNode *node = findFreeNode(listMem);
+void *allocObjNode(ObjList *list, ObjNodeFn callback) {
+    ObjListNode *node = findFreeNode(list);
 
     if (node != 0) {
         ObjListNode *tail;
@@ -414,13 +412,13 @@ void *allocObjNode(u8 *listMem, ObjNodeFn callback) {
         node->field02 = 0;
         node->next = 0;
         node->callback = callback;
-        tail = ((ObjList *)listMem)->tail;
+        tail = list->tail;
         if (tail != 0) {
             tail->next = node;
         } else {
-            ((ObjList *)listMem)->head = node;
+            list->head = node;
         }
-        ((ObjList *)listMem)->tail = node;
+        list->tail = node;
     }
     return node;
 }
@@ -432,9 +430,8 @@ void *allocObjNode(u8 *listMem, ObjNodeFn callback) {
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
  */
-void *allocObjNodeFront(u8 *listMem, ObjNodeFn callback) {
-    ObjList *list = (ObjList *)listMem;
-    ObjListNode *node = findFreeNode(listMem);
+void *allocObjNodeFront(ObjList *list, ObjNodeFn callback) {
+    ObjListNode *node = findFreeNode(list);
 
     if (node != 0) {
         node->flags |= 1;
@@ -456,8 +453,7 @@ void *allocObjNodeFront(u8 *listMem, ObjNodeFn callback) {
  * @param listMem List header.
  * @return Number of nodes still live.
  */
-s32 updateObjectList(u8 *listMem) {
-    ObjList *list = (ObjList *)listMem;
+s32 updateObjectList(ObjList *list) {
     ObjListNode *prev = 0;
     ObjListNode *node = list->head;
     s32 count = 0;

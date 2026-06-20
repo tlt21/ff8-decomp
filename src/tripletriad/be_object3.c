@@ -64,12 +64,12 @@ typedef struct {
     /* 0x13 */ u8 field13;   /**< Cleared to 0 when func_8009F17C (re)inits the sequence. */
 } ScriptCtx;
 
-extern u8 D_801D3C68[];
+extern ObjList D_801D3C68[];
 extern u8 D_801D3C78[];
 extern ScriptEntry D_801D3EC0[2][5];
-extern u8 D_801D3FA0[];   /**< Script-handler object pool. */
+extern ObjList D_801D3FA0[];   /**< Script-handler object pool. */
 extern u8 D_801D3FB0[];   /**< Backing element storage for the D_801D3FA0 pool. */
-extern u8 D_801D3EA0[];   /**< Setup-handler object pool (func_8009FAF8). */
+extern ObjList D_801D3EA0[];   /**< Setup-handler object pool (func_8009FAF8). */
 extern u8 D_801D3E80[];   /**< Backing element storage for the D_801D3EA0 pool. */
 extern u8 D_80082C95;     /**< Card-config byte; the owned-quantity delta for built hands. */
 extern u8 D_80078658[];   /**< Card rarity/type table (cards 0x4D+); used to draw rarity-filtered hands. */

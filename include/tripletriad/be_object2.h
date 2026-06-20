@@ -147,10 +147,10 @@ typedef struct {
 } SubstateMachineNode;
 
 /* Data — list pools / heads */
-extern u8 D_801D3110[];
+extern ObjList D_801D3110[];
 extern u8 D_801D3120[];
 extern u8 D_801D3360[];
-extern u8 D_801D3380[];
+extern ObjList D_801D3380[];
 extern u8 D_801D3798[];
 extern s32 D_801D3328;
 
@@ -165,7 +165,7 @@ extern u8        D_80182D64[8][9]; /* [difficulty][cards-left] → AI search-dep
 extern WeightSet D_80182DAC[8];    /* per-difficulty AI evaluation-weight rows */
 extern u8        D_80082C97;       /* = D_80082C90.field_07 (distinct splat symbol) */
 extern u8        D_801D3540[];     /* AI turn-node pool */
-extern u8        D_801D3560[];     /* AI turn-node list head */
+extern ObjList        D_801D3560[];     /* AI turn-node list head */
 
 /* Data — card render path (drawTriadCard) */
 extern SVECTOR D_80182C30[4];   /* main card-face quad corners */

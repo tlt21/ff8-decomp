@@ -260,7 +260,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A279C);
  * @return Pointer to D_801D4968 list header.
  */
 u8 *initTripleTriadRenderList(void) {
-    u8 *list = D_801D4968;
+    ObjList *list = D_801D4968;
     u8 *node;
     initObjList(list, D_801D4978, 0x10, 4);
     node = (u8 *)allocObjNode(list, (ObjNodeFn)func_800A279C);

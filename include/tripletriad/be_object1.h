@@ -73,30 +73,8 @@ typedef struct { u8 r, g, b; } RGB;
 /** @brief Triple Triad top-level state-handler signature (entries of @c g_tripleTriadStateHandlers). */
 typedef u8 *(*TripleTriadStateFn)(void);
 
-/** @brief Per-frame node callback; a return value with bit 1 set unlinks the node.
- *  Concrete callbacks take their own node-struct pointer type, so call sites cast
- *  to this canonical type when storing them. */
-typedef s32 (*ObjNodeFn)(struct ObjListNode *node);
-
-/** @brief Generic pool-backed list-node header (0xC bytes). Type-specific nodes
- *  (e.g. @c HandlerNode) extend this; the pool allocator/iterator only touches
- *  this header. */
-typedef struct ObjListNode {
-    u16                 flags;     /* 0x0 — bit 0 = active/allocated */
-    u16                 field02;   /* 0x2 — cleared on allocation */
-    struct ObjListNode *next;      /* 0x4 — next node in the list */
-    ObjNodeFn           callback;  /* 0x8 — per-frame callback */
-} ObjListNode;
-
-/** @brief Pool-backed singly-linked list header (0x10 bytes). Nodes are carved
- *  from a fixed @c pool of @c count entries, each @c stride bytes. */
-typedef struct {
-    ObjListNode *head;    /* 0x0 */
-    ObjListNode *tail;    /* 0x4 */
-    void        *pool;    /* 0x8 — node-pool base */
-    s16          stride;  /* 0xC — node size in bytes */
-    s16          count;   /* 0xE — node count */
-} ObjList;
+/* ObjListNode / ObjNodeFn / ObjList (the shared object-list system) live in
+   tripletriad.h, since every be_objectN TU uses them. */
 
 /** @brief Triple Triad state-handler node: sub-state selector, frame counter, and
  *  phase bit (which side the card is showing). Shared between the card-flip
@@ -178,11 +156,11 @@ extern void queueStoreImage(RECT *rect, void *dst);
 extern void queueMoveImage(RECT *rect, s16 dstX, u16 dstY);
 
 /* Pool-backed object list (nodes carved from a fixed pool; see ObjList). */
-extern void  initObjList(u8 *listMem, u8 *pool, s32 stride, s32 count);
-extern void *findFreeNode(u8 *listMem);
-extern void *allocObjNode(u8 *listMem, ObjNodeFn callback);
-extern void *allocObjNodeFront(u8 *listMem, ObjNodeFn callback);
-extern s32   updateObjectList(u8 *listMem);
+extern void  initObjList(ObjList *list, u8 *pool, s32 stride, s32 count);
+extern void *findFreeNode(ObjList *list);
+extern void *allocObjNode(ObjList *list, ObjNodeFn callback);
+extern void *allocObjNodeFront(ObjList *list, ObjNodeFn callback);
+extern s32   updateObjectList(ObjList *list);
 
 /* Card-flip animation handler + per-match card setup. */
 extern s32  cardFlipHandler(HandlerNode *node);
