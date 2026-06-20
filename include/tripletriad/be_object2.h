@@ -180,10 +180,9 @@ extern void handleCursorSubstate1(SubstateSlot *slot, s32 idx);
 extern void handleCursorSubstate2(SubstateSlot *slot, s32 idx);
 extern void handleCursorSubstate3(SubstateSlot *slot, s32 idx);
 
-/* Private prototypes — imported from sibling TUs */
+/* Private prototypes — imported from sibling TUs.
+   (func_800A2114 / func_800A26C8 prototypes live in tripletriad.h.) */
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
-extern void  func_800A2114(u8 entityType);
-extern void  func_800A26C8(void);
 extern void  func_80040ED4(SVECTOR *v0, SVECTOR *v1, SVECTOR *v2, SVECTOR *v3,
                            s32 *sxy0, s32 *sxy1, s32 *sxy2, s32 *sxy3, s32 *p, s32 *flag);
 extern s32   func_80040EA4(s32 sxy0, s32 sxy1, s32 sxy2);

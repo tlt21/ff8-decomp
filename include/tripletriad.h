@@ -374,5 +374,9 @@ extern void func_800A2214(void);
 extern void clearAllSfx(void);
 /** @brief Enter an interactive card-selection substate (defined in be_object2.c). */
 extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
+/** @brief Show a card's name, or build its detail popup buffer (defined in be_object4.c). */
+extern void func_800A2114(s32 cardId);
+/** @brief Card-claim helper (defined in be_object4.c). */
+extern void func_800A26C8(void);
 
 #endif /* TRIPLETRIAD_H */
