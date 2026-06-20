@@ -337,7 +337,7 @@ typedef enum {
     TT_STATE_IDLE       = 0,  /**< No pending handler. */
     TT_STATE_INIT       = 1,  /**< Startup render-list init (set only by initTripleTriad). */
     TT_STATE_SCRIPT     = 2,  /**< Script-handler phase; replay re-entry point. */
-    TT_STATE_PLAY       = 3,  /**< Match play (battle-update callbacks). */
+    TT_STATE_PLAY       = 3,  /**< Match play (per-frame update callbacks). */
     TT_STATE_CARD_CLAIM = 4,  /**< Post-match card claim (set after the win/loss tally). */
     TT_STATE_RESTART    = 5,  /**< Redirects to TT_STATE_SCRIPT; no decompiled setter found. */
     TT_STATE_EXIT       = 6   /**< Terminate the main loop. */
@@ -387,7 +387,7 @@ extern u8            g_tripleTriadState;        /**< Current phase / next handle
 extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
 extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
-extern ObjList            D_801D3028[];      /**< Battle-update callback list header. */
+extern ObjList            D_801D3028[];      /**< Per-frame update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */

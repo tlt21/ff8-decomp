@@ -65,7 +65,7 @@ extern s32 func_800A279C();
 extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
 
 /**
- * @brief Reset and reconfigure the seven battle SFX channels.
+ * @brief Reset and reconfigure the seven SFX channels.
  *
  * Resets all sound effects, runs a (60, 32) init via @c func_800A4504, then for
  * each of the seven channels applies the per-channel settings from the
@@ -742,7 +742,7 @@ s32 func_800A443C(s32 a0) {
 }
 
 /**
- * @brief Compute and store a packed color/brightness value for the battle camera.
+ * @brief Compute and store a packed color/brightness value for the camera.
  *
  * Stores @p a0 to @ref CursorState::brightness, then computes a packed 32-bit
  * value by dividing a0 by 32 (rounding toward zero) and replicating the result
@@ -796,7 +796,7 @@ void func_800A44CC(void) {
 }
 
 /**
- * @brief Initialize D_801D49C8 battle camera structure.
+ * @brief Initialize the D_801D49C8 camera structure.
  *
  * Sets position, dimensions, mode fields, clears various flags,
  * then calls func_800A4478 and func_800A2F78 for further init.

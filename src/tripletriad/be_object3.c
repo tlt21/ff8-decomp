@@ -558,7 +558,7 @@ void buildCardListString(u8 *out, s32 base) {
 /**
  * @brief Per-frame interactive card-claim sequencer (state machine, @c node->state 0-3).
  *
- * Drives the post-battle "build your hand from the claimed cards" flow. State 0 clears
+ * Drives the post-match "build your hand from the claimed cards" flow. State 0 clears
  * the hand slots and arms the UI; state 1 adds a card (on the @c g_addCardEdge 0x40/0x80
  * input edge) or removes one (on the @c g_removeCardEdge 0x10 edge), one per frame, into
  * @c g_scriptActions / @c D_801A2C48 until the hand holds five; state 2 polls a confirmation
@@ -905,7 +905,7 @@ s32 reloadSetupBuffer(void) {
 }
 
 /**
- * @brief Battle-script callback: 5-state machine driving an intro/setup sequence.
+ * @brief Triple Triad script callback: 5-state machine driving an intro/setup sequence.
  *
  * Registered via initTripleTriadScripts. Each invocation advances the state machine
  * one tick; returns 0 while running, returns from any case.

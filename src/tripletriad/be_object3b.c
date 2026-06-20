@@ -264,7 +264,7 @@ s32 setupTripleTriadCardClaim(void)
 /**
  * @brief Unconditional hang.
  *
- * @note Not referenced by the @c g_tripleTriadStateHandlers battle-state table or any caller —
+ * @note Not referenced by the @c g_tripleTriadStateHandlers state-handler table or any caller —
  *       appears to be an unused/stub state that simply spins forever.
  */
 void hangForever(void) {
@@ -272,7 +272,7 @@ void hangForever(void) {
 }
 
 /**
- * @brief Battle state-5 handler (@c g_tripleTriadStateHandlers[5]).
+ * @brief Triple Triad state-5 handler (@c g_tripleTriadStateHandlers[5]).
  *
  * Sets the next state to @c TT_STATE_SCRIPT and returns 0 so the
  * state-dispatch loop keeps running.

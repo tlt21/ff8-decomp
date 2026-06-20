@@ -785,7 +785,7 @@ end:
  * @param fmt Format string, followed by its values.
  * @return Length of the result, excluding the null terminator.
  */
-s32 btlSprintf(s32 dst, s32 fmt, ...) {
+s32 ttSprintf(s32 dst, s32 fmt, ...) {
     return formatString((char *)dst, &fmt);
 }
 
