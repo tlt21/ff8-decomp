@@ -6,6 +6,7 @@
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object1b.h"
 #include "tripletriad/be_object2.h"
+#include "tripletriad/be_object4.h"
 #include "gamestate.h"
 
 /* Private prototypes (functions local to this translation unit). */

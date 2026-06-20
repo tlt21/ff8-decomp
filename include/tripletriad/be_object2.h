@@ -45,6 +45,17 @@ extern void processCardObjects(s32 arg);
 extern void resetTriadBoard(void);
 extern void setupTripleTriadHands(void);
 
+/* Menu / cursor sub-machine. */
+extern void updateTriadMenu(void);
+extern void processTriadTasks(void);
+/** @brief Enter an interactive card-selection substate. */
+extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
+
+/* Card render / per-frame effect. */
+extern TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT *out);
+extern void   animateCardEffect(TripleTriadCardObject *entity);
+extern void   transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket);
+
 /* ───────── Private (only used in be_object2.c; may move into the .c) ─────── */
 
 /* Enums / defines / consts */

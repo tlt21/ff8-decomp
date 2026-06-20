@@ -1,9 +1,11 @@
 #include "common.h"
 #include "battle.h"
+#include "item.h"
 #include "tripletriad.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object1b.h"
 #include "tripletriad/be_object2.h"
+#include "tripletriad/be_object4.h"
 
 /**
  * @brief Set up a battle object slot and cancel lower-priority siblings in its group.

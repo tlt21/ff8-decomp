@@ -208,11 +208,7 @@ extern TripleTriadCardObject g_tripleTriadCardHands[10];
 
 /** @brief The two players' 5-card hands as raw card ids (match-state region @ 0x801A2C40). */
 extern u8 D_801A2C48[2][5];
-
-/** @brief PRNG used throughout the Triple Triad code; returns a fresh random word. */
-extern s32 func_80023D04(void);
-/** @brief Add @p delta to the owned quantity of card/item @p itemId; returns the new count. */
-extern s32 modifyItemQuantity(s32 itemId, s32 delta);
+/* func_80023D04 / modifyItemQuantity prototypes live in item.h (their owner). */
 
 /**
  * @brief One slot of a player's working hand for the AI search (8 bytes).
@@ -275,9 +271,8 @@ typedef struct {
     /* 0x0C */ TripleTriadCardObject *entry;
 } BattleObjectCtl;
 
-extern TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT *out);
-extern void   animateCardEffect(TripleTriadCardObject *entity);
-extern void   transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket);
+/* drawCardOverlaySprite / animateCardEffect / transformCardEffect prototypes
+   live in be_object2.h (their owner). */
 
 /**
  * @brief 60-byte work buffer staged by @c scratchAlloc for one card
@@ -363,20 +358,7 @@ extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); al
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
 extern u8            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
 
-/* ── Cross-TU entry points (defined in sibling be_objectN TUs) ─────────────── */
-extern void func_800A233C(s32 a);
-extern void closeMenu(void);
-extern void processTriadTasks(void);
-extern void updateFadeEffects(void);
-extern void updateTriadMenu(void);
-extern void func_800A1C6C(void);
-extern void func_800A2214(void);
-extern void clearAllSfx(void);
-/** @brief Enter an interactive card-selection substate (defined in be_object2.c). */
-extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
-/** @brief Show a card's name, or build its detail popup buffer (defined in be_object4.c). */
-extern void func_800A2114(s32 cardId);
-/** @brief Card-claim helper (defined in be_object4.c). */
-extern void func_800A26C8(void);
+/* Cross-TU function prototypes live in the owning module's header
+   (be_object1.h .. be_object4.h), not here. */
 
 #endif /* TRIPLETRIAD_H */

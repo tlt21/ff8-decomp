@@ -1,11 +1,14 @@
 #include "common.h"
 #include "battle.h"
+#include "item.h"
 #include "tripletriad.h"
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libc.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object1b.h"
+#include "tripletriad/be_object2.h"
 #include "tripletriad/be_object3.h"
+#include "tripletriad/be_object4.h"
 
 /**
  * @brief Script-action entry in the D_801D3EC0 2x5 table.

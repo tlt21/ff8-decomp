@@ -46,4 +46,7 @@ typedef struct {
 
 extern ActiveObj D_801D4308[]; /**< Active card-display object array. */
 
+/* Public prototypes */
+extern void updateFadeEffects(void);
+
 #endif /* TRIPLETRIAD_BE_OBJECT3_H */
