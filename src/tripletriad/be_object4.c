@@ -200,7 +200,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A238C);
 void func_800A247C(void) {
     u8 *node;
     sndProcessAudio(D_80182EC8, 0);
-    node = (u8 *)func_8009E248((ObjNodeFn)func_800A238C);
+    node = (u8 *)spawnTaskNode((ObjNodeFn)func_800A238C);
     *(s16 *)(node + 0xC) = 0;
     *(s16 *)(node + 0xE) = 0;
 }

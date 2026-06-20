@@ -73,10 +73,10 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                         s32 row, col;
                         acc = 0; /* combo cell-mask */
                         if (rules & TT_RESULT_SAME_FIRED) {
-                            func_8009EB30(acc);
+                            spawnGradientFade(acc);
                             acc = TT_CELL_SAME_MATCHED;
                         } else if (rules & TT_RESULT_PLUS_FIRED) {
-                            func_8009EB30(1);
+                            spawnGradientFade(1);
                             acc = TT_CELL_PLUS_COMBO;
                         }
                         for (row = 1; row <= 3; row++) {
@@ -106,7 +106,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 {
                     u8 next = applyCardRules(&g_tripleTriadBoard, ctl->rulesFlags);
                     ctl->rulesFlags = next;
-                    if (next != 0 && ctl->retryFlag != 0) func_8009EB30(5);
+                    if (next != 0 && ctl->retryFlag != 0) spawnGradientFade(5);
                     resolveCaptures(&g_tripleTriadBoard);
                 }
                 break;
@@ -154,17 +154,17 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     if (D_801D30FC == TT_WINNER_DRAW) mode = 4;
                     else if (D_801A2C70[D_801D30FC] >= 3) mode = 3;
                     else { mode = 3; func_800A247C(mode); mode = 2; }
-                    D_801D3018 = func_8009EB30(mode);
+                    D_801D3018 = spawnGradientFade(mode);
                     ctl->counter++;
                 }
                 if (g_padPressed[2] & PAD_UP) {
-                    if (D_801D3018 != 0) { func_8009EB90(D_801D3018, 1); D_801D3018 = 0; }
+                    if (D_801D3018 != 0) { setNodeDoneFlag(D_801D3018, 1); D_801D3018 = 0; }
                     return 0;
                 }
                 if (g_padPressed[2] == 0) return 0;
                 func_800A2054(3);
                 if (D_801D30FC == TT_WINNER_DRAW && (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH)) {
-                    if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
+                    if (D_801D3018 != 0) setNodeDoneFlag(D_801D3018, 1);
                     initCardHands();
                     g_cardFlipPhase ^= 1;
                     ctl->state = MATCH_FLOW_TURN;
@@ -175,10 +175,10 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 break;
             }
             case MATCH_FLOW_FADE: {
-                if (ctl->counter == 0) func_800A0370(TT_HOLD_FRAMES_FADE);
+                if (ctl->counter == 0) startFadeToWhite(TT_HOLD_FRAMES_FADE);
                 ctl->counter++;
                 if ((u8)ctl->counter < TT_HOLD_FRAMES_FADE) return 0;
-                if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);
+                if (D_801D3018 != 0) setNodeDoneFlag(D_801D3018, 1);
                 {
                     TripleTriadData *inv = getTripleTriadData();
                     /* do/while(0) pins each bump after its D_80082C9C store — a

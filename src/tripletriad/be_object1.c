@@ -28,7 +28,7 @@ void initTripleTriad(void) {
     func_800A1BE0();
     func_800A2208();
     initTextBuffer();
-    func_8009EB98();
+    initGradientFadeList();
     queueTimUpload(&g_tripleTriadCardArt);
     queueTimUpload(&g_tripleTriadCardFrames);
 

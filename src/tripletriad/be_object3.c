@@ -11,7 +11,7 @@
 
 /** @brief Allocate a tripletriad object from the @c g_taskList pool with the
  *         given per-frame callback; returns the new object (0 if pool is full). */
-s32 func_8009E248(ObjNodeFn a0) {
+s32 spawnTaskNode(ObjNodeFn a0) {
     return allocObjNode(g_taskList, a0);
 }
 
@@ -26,7 +26,7 @@ s32 func_8009E248(ObjNodeFn a0) {
  * @param node State-machine driver node (@c field0E selects the 0x3802/0x3842 sprite variant).
  * @return 2 once the scale-out completes (state 2), else 0.
  */
-s32 func_8009E270(ScriptStateNode *node) {
+s32 updateCardScaleSprite(ScriptStateNode *node) {
     CardScaleSprite *prim;
     s32 q;
 
@@ -77,7 +77,7 @@ s32 func_8009E270(ScriptStateNode *node) {
 /**
  * @brief Per-frame card scale animation variant: scale in, hold, scale out.
  *
- * Twin of @c func_8009E270 with a shorter hold (state 1 lasts 0x19 frames) and a
+ * Twin of @c updateCardScaleSprite with a shorter hold (state 1 lasts 0x19 frames) and a
  * fixed sprite variant (no @c field0E branch — always @c field11=0x80 /
  * @c field12=0x3882). Each frame it rebuilds the @c CardScaleSprite at the
  * @c g_primCursor cursor and links it into @c g_otBase[3].
@@ -86,13 +86,13 @@ s32 func_8009E270(ScriptStateNode *node) {
  * @return 2 once the scale-out completes (state 2), else 0.
  *
  * @note The @c color store uses a @c volatile cast as a scheduling barrier: unlike
- *       @c func_8009E270 (whose @c field0E if/else creates a basic-block boundary
+ *       @c updateCardScaleSprite (whose @c field0E if/else creates a basic-block boundary
  *       after @c field10), this function stores the sprite fields unconditionally,
  *       so without the barrier cc1 floats the @c color store down past @c field10
  *       to fill the @c g_otBase load-delay shadow. The barrier keeps it in source
  *       order, matching the original.
  */
-s32 func_8009E464(ScriptStateNode *node) {
+s32 updateCardScaleSpriteShort(ScriptStateNode *node) {
     CardScaleSprite *prim;
     s32 q;
 
@@ -151,7 +151,7 @@ s32 func_8009E464(ScriptStateNode *node) {
  *       barrier: it stops cc1 pulling that store into the @c AddPrim jal delay slot, so
  *       the slot instead holds the @c g_otBase+3 pointer arithmetic, matching the original.
  */
-s32 func_8009E640(GradientFadeNode *node) {
+s32 buildGradientFade(GradientFadeNode *node) {
     GradientFadeQuad *prim;
     s32 colors[4];
     s32 i;
@@ -253,7 +253,7 @@ s32 func_8009E640(GradientFadeNode *node) {
 /**
  * @brief Per-frame card colour fade-in / fade-out sprite builder.
  *
- * Sibling of @c func_8009E270 / @c func_8009E464: each frame it rebuilds a
+ * Sibling of @c updateCardScaleSprite / @c updateCardScaleSpriteShort: each frame it rebuilds a
  * @c CardScaleSprite at the @c g_primCursor cursor and links it into @c g_otBase[3],
  * animating the sprite's @c color. A two-state machine drives it:
  *  - state 0 fades the colour up: @c alpha = (v*255)>>12 with
@@ -271,7 +271,7 @@ s32 func_8009E640(GradientFadeNode *node) {
  * @return 2 when finished (@c node->field22 already 1, or while @c g_gradFadeCount gates
  *         it off returns 0), else 0.
  */
-s32 func_8009E904(ScriptStateNode *node) {
+s32 updateCardColorFade(ScriptStateNode *node) {
     CardScaleSprite *prim;
     s32 v;
     s32 a;
@@ -344,7 +344,7 @@ s32 func_8009E904(ScriptStateNode *node) {
  *
  * @param a0 Index into the g_gradFadeCallbacks callback table.
  */
-void func_8009EB30(s32 a0) {
+void spawnGradientFade(s32 a0) {
     u8 *node = (u8 *)allocObjNodeFront(g_gradFadeList, g_gradFadeCallbacks[a0]);
     if (node != 0) {
         node[0xE] = a0;
@@ -361,7 +361,7 @@ void func_8009EB30(s32 a0) {
  * @param a0 Pointer to structure base.
  * @param a1 Byte value to store at offset 0x22.
  */
-void func_8009EB90(u8 *a0, s32 a1) {
+void setNodeDoneFlag(u8 *a0, s32 a1) {
     a0[0x22] = a1;
 }
 
@@ -370,7 +370,7 @@ void func_8009EB90(u8 *a0, s32 a1) {
  *
  * Sets up a linked list with node size 0x24 and capacity 0x4.
  */
-void func_8009EB98(void) {
+void initGradientFadeList(void) {
     initObjList(g_gradFadeList, g_gradFadePool, 0x24, 0x4);
 }
 
@@ -396,7 +396,7 @@ void updateFadeEffects(void) {
  *
  * @return 0.
  */
-s32 func_8009EBF4(void)
+s32 updateScriptCardAnims(void)
 {
     s32 col;
     s32 row;
@@ -485,7 +485,7 @@ s32 func_8009EBF4(void)
  *
  * @return 1 if a pending action was found, 0 otherwise.
  */
-s32 func_8009EF68(void) {
+s32 hasPendingScriptAction(void) {
     s32 row = 0;
     u8 *base = (u8 *)g_scriptActions;
     s32 marker = 0xFF;
@@ -523,7 +523,7 @@ s32 func_8009EF68(void) {
  * @param out  Destination string buffer.
  * @param base First card index.
  */
-void func_8009EFD4(u8 *out, s32 base) {
+void buildCardListString(u8 *out, s32 base) {
     s32 i;
     s32 count;
     u8 *name;
@@ -562,13 +562,13 @@ void func_8009EFD4(u8 *out, s32 base) {
  * the hand slots and arms the UI; state 1 adds a card (on the @c g_addCardEdge 0x40/0x80
  * input edge) or removes one (on the @c g_removeCardEdge 0x10 edge), one per frame, into
  * @c g_scriptActions / @c D_801A2C48 until the hand holds five; state 2 polls a confirmation
- * message gate; state 3 runs the fade-out. The case-1, @c func_8009EF68 and @c r<0
+ * message gate; state 3 runs the fade-out. The case-1, @c hasPendingScriptAction and @c r<0
  * "still waiting" paths share a single return via @c ret0.
  *
  * @param node State-machine node (allocated by allocObjNode with state at +0x10).
  * @return 0 while the sequence is still running; the state-3 expression once it ends.
  */
-s32 func_8009F17C(ScriptCtx *node) {
+s32 runHandBuildSequencer(ScriptCtx *node) {
     s32 i;
     u8 card;
     s32 r;
@@ -645,7 +645,7 @@ s32 func_8009F17C(ScriptCtx *node) {
             return 0;
         case 2:
             if (node->subState == 0) {
-                if (func_8009EF68() != 0) {
+                if (hasPendingScriptAction() != 0) {
                 ret0:
                     return 0;
                 }
@@ -696,7 +696,7 @@ s32 func_8009F17C(ScriptCtx *node) {
  *       The rarity probe uses @c *((rarity + i) + 0x4D) — the @c rarity[i + 0x4D] form
  *       reassociates the offset and does not match.
  */
-void func_8009F5F0(s32 player, s32 arg1) {
+void dealRarityHand(s32 player, s32 arg1) {
     s32 count;
     s32 i;
     s32 threshold;
@@ -774,7 +774,7 @@ void func_8009F5F0(s32 player, s32 arg1) {
  * @param hand Player index (0 or 1); selects the 5-slot row in @c D_801A2C48.
  * @param arg1 Quantity delta passed to @c modifyItemQuantity for each drawn card.
  */
-void func_8009F844(s32 hand, s32 arg1) {
+void buildRandomOwnedHand(s32 hand, s32 arg1) {
     u8 *row;
     u8 *b;
     s32 i;
@@ -807,7 +807,7 @@ loop:
  * card id as the @c marker, and an @c actionId selected by the layout type
  * (@c 0x800 for the offset-hand layout @c D_801A2C70 >= 3, else 0). After 5
  * frames it advances to the next slot. Once all slots are done (@c state >= 5)
- * it returns 2 if no queued actions remain (@c func_8009EF68 == 0), else 0.
+ * it returns 2 if no queued actions remain (@c hasPendingScriptAction == 0), else 0.
  *
  * @param node Handler context (state/slot at 0x10, subState at 0x11, player at 0x12).
  * @return 2 when all hands are queued and drained, else 0.
@@ -817,11 +817,11 @@ loop:
  *       register (row-major codegen); the @c marker / @c actionId stores keep the
  *       array form, matching the original register allocation.
  */
-s32 func_8009F908(ScriptCtx *node) {
+s32 updateHandToScriptTable(ScriptCtx *node) {
     u8 card;
 
     if (node->state >= 5) {
-        return (func_8009EF68() == 0) << 1;
+        return (hasPendingScriptAction() == 0) << 1;
     }
     if (node->subState == 0) {
         card = D_801A2C48[node->counter][node->state];
@@ -847,11 +847,11 @@ s32 func_8009F908(ScriptCtx *node) {
  *
  * Initialises the @c g_setupHandlerList pool, then (by @c g_tripleTriadRules) builds the
  * player's hand and chooses the per-frame handler:
- *  - rule bit @c 0x20000000: random hand (@c func_8009F5F0, delta 0) + @c func_8009F908.
- *  - rule bit @c 0x8: open hand — @c func_8009F5F0 if this player uses the offset-hand
- *    layout (@c D_801A2C70 >= 3) else @c func_8009F844 — + @c func_8009F908.
- *  - otherwise: @c func_8009F5F0 + @c func_8009F908 for the offset-hand layout, else the
- *    interactive @c func_8009F17C.
+ *  - rule bit @c 0x20000000: random hand (@c dealRarityHand, delta 0) + @c updateHandToScriptTable.
+ *  - rule bit @c 0x8: open hand — @c dealRarityHand if this player uses the offset-hand
+ *    layout (@c D_801A2C70 >= 3) else @c buildRandomOwnedHand — + @c updateHandToScriptTable.
+ *  - otherwise: @c dealRarityHand + @c updateHandToScriptTable for the offset-hand layout, else the
+ *    interactive @c runHandBuildSequencer.
  *
  * The spawned node's @c counter is set to @p arg0 and its state cleared.
  *
@@ -860,26 +860,26 @@ s32 func_8009F908(ScriptCtx *node) {
  * @note The third branch's @c D_801A2C70[node->counter] test reads @c node before it is
  *       assigned (the original relies on the stale register value); preserved to match.
  */
-s32 func_8009FAF8(s32 arg0) {
+s32 setupPlayerHand(s32 arg0) {
     ScriptCtx *node;
 
     initObjList(g_setupHandlerList, g_setupHandlerPool, 0x14, 1);
 
     if (g_tripleTriadRules & 0x20000000) {
-        func_8009F5F0(arg0, 0);
-        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
+        dealRarityHand(arg0, 0);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)updateHandToScriptTable);
     } else if (g_tripleTriadRules & 0x8) {
         if (D_801A2C70[arg0] >= 3) {
-            func_8009F5F0(arg0, D_80082C95);
+            dealRarityHand(arg0, D_80082C95);
         } else {
-            func_8009F844(arg0, D_80082C95);
+            buildRandomOwnedHand(arg0, D_80082C95);
         }
-        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)updateHandToScriptTable);
     } else if (D_801A2C70[node->counter] >= 3) {
-        func_8009F5F0(arg0, D_80082C95);
-        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
+        dealRarityHand(arg0, D_80082C95);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)updateHandToScriptTable);
     } else {
-        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F17C);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)runHandBuildSequencer);
     }
 
     node->counter = arg0;
@@ -898,7 +898,7 @@ s32 func_8009FAF8(s32 arg0) {
  *
  * @return Always 0.
  */
-s32 func_8009FC40(void) {
+s32 reloadSetupBuffer(void) {
     s32 idx = g_drawBufferIndex ^ 1;
     queueLoadImage(&g_drawEnvs[idx].clip, D_8012E66C);
     return 0;
@@ -910,25 +910,25 @@ s32 func_8009FC40(void) {
  * Registered via initTripleTriadScripts. Each invocation advances the state machine
  * one tick; returns 0 while running, returns from any case.
  *
- * State 0: warmup. Calls func_800A030C(0xF) once, ticks 15 frames.
- * State 1: setup. Calls func_8009FAF8(counter) per counter, polls
+ * State 0: warmup. Calls startFadeToBlack(0xF) once, ticks 15 frames.
+ * State 1: setup. Calls setupPlayerHand(counter) per counter, polls
  *          updateObjectList until ready; tries counter 0..1, then branches
  *          to state 2 (if g_tripleTriadRules & 1) or state 4.
  * State 2: clear sweep. Every 5 ticks, marks queued actions in
  *          g_scriptActions[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
- * State 3: wait. Calls func_8009EF68 once, idles 0x1E frames.
+ * State 3: wait. Calls hasPendingScriptAction once, idles 0x1E frames.
  * State 4: done. Sets g_tripleTriadState = TT_STATE_PLAY and exits.
  *
  * @param ctx Callback context (state at +0x10, subState at +0x11).
  * @return 0 while progressing, 0 on completion.
  */
-s32 func_8009FC90(ScriptCtx *ctx) {
+s32 runTriadSetupSequence(ScriptCtx *ctx) {
     while (1) {
         switch (ctx->state) {
         case 0:
             if (ctx->subState == 0) {
-                func_800A030C(0xF);
+                startFadeToBlack(0xF);
             }
             ctx->subState++;
             if (ctx->subState < 0xF) {
@@ -941,7 +941,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
 
         case 1:
             if (ctx->subState == 0) {
-                ctx->cachedResult = func_8009FAF8(ctx->counter);
+                ctx->cachedResult = setupPlayerHand(ctx->counter);
                 ctx->subState++;
             }
             if (updateObjectList((u8 *)ctx->cachedResult) != 0) {
@@ -984,7 +984,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
 
         case 3:
             if (ctx->subState == 0) {
-                if (func_8009EF68() != 0) {
+                if (hasPendingScriptAction() != 0) {
                     return 0;
                 }
             }
@@ -1018,7 +1018,7 @@ s32 func_8009FC90(ScriptCtx *ctx) {
  *
  * @return Always 0.
  */
-s32 func_8009FED0(void) {
+s32 updateCardDisplaySpawn(void) {
     DispNode *node;
     s32 cur;
 
@@ -1090,8 +1090,8 @@ s32 func_8009FED0(void) {
  * @brief Initialise the script-handler subsystem and its object pool.
  *
  * Sets up the @c g_scriptHandlerList pool (10 entries of 0x14 bytes), spawns the
- * persistent handler nodes (state machine @c func_8009FC90, @c func_8009EBF4,
- * @c func_8009FED0, @c func_8009FC40), and clears the @c g_scriptActions 2x5
+ * persistent handler nodes (state machine @c runTriadSetupSequence, @c updateScriptCardAnims,
+ * @c updateCardDisplaySpawn, @c reloadSetupBuffer), and clears the @c g_scriptActions 2x5
  * @c ScriptEntry table (each entry tagged with @c marker 0xFF and its
  * row/column cached).
  *
@@ -1108,10 +1108,10 @@ u8 *initTripleTriadScripts(void) {
     s32 colOff;
 
     initObjList(g_scriptHandlerList, g_scriptHandlerPool, 0x14, 0xA);
-    node = (ScriptCtx *)allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FC90);
+    node = (ScriptCtx *)allocObjNode(g_scriptHandlerList, (ObjNodeFn)runTriadSetupSequence);
     node->state = 0;
     node->subState = 0;
-    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009EBF4);
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)updateScriptCardAnims);
     row = 0;
     base = (u8 *)g_scriptActions;
     marker = 0xFF;
@@ -1134,8 +1134,8 @@ u8 *initTripleTriadScripts(void) {
         row++;
         rowOff += 0x6E;
     } while (row < 2);
-    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FED0);
-    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FC40);
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)updateCardDisplaySpawn);
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)reloadSetupBuffer);
     return g_scriptHandlerList;
 }
 
@@ -1151,7 +1151,7 @@ u8 *initTripleTriadScripts(void) {
  * @param obj The fade object.
  * @return 0 while in progress, 2 when complete.
  */
-s32 func_800A01DC(FadeObject *obj) {
+s32 updateScreenFade(FadeObject *obj) {
     TILE *prim;
     s32 progress;
     s32 frame;
@@ -1182,16 +1182,16 @@ s32 func_800A01DC(FadeObject *obj) {
 /**
  * @brief Start a full-screen fade to black over @p duration frames.
  *
- * Spawns a @c FadeObject driven by @c func_800A01DC. The fade begins from the
+ * Spawns a @c FadeObject driven by @c updateScreenFade. The fade begins from the
  * currently-staged color (@c g_stagedFadeColor) and ends at black; black is then
  * staged so any following fade starts from black.
  *
  * @param duration Fade length in frames.
  */
-void func_800A030C(s32 duration) {
+void startFadeToBlack(s32 duration) {
     FadeObject *obj;
 
-    obj = (FadeObject *)func_8009E248((ObjNodeFn)func_800A01DC);
+    obj = (FadeObject *)spawnTaskNode((ObjNodeFn)updateScreenFade);
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;
@@ -1204,15 +1204,15 @@ void func_800A030C(s32 duration) {
 /**
  * @brief Start a full-screen fade to white over @p duration frames.
  *
- * Identical to @c func_800A030C but ends at white (0xFFFFFF), which is also
+ * Identical to @c startFadeToBlack but ends at white (0xFFFFFF), which is also
  * staged into @c g_stagedFadeColor for the next fade.
  *
  * @param duration Fade length in frames.
  */
-void func_800A0370(s32 duration) {
+void startFadeToWhite(s32 duration) {
     FadeObject *obj;
 
-    obj = (FadeObject *)func_8009E248((ObjNodeFn)func_800A01DC);
+    obj = (FadeObject *)spawnTaskNode((ObjNodeFn)updateScreenFade);
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;
@@ -1235,7 +1235,7 @@ void func_800A0370(s32 duration) {
  *
  * @return 0 (driven again next frame by the spawning handler).
  */
-s32 func_800A03DC(void) {
+s32 updateClaimBoard(void) {
     MATRIX *m;
     s32 i;
     s32 s0;
@@ -1401,7 +1401,7 @@ s32 func_800A03DC(void) {
  *
  * @return 1 if any active object has a pending action, 0 otherwise.
  */
-s32 func_800A0A88(void) {
+s32 hasPendingCardObj(void) {
     s32 i = 0;
     u8 *entry = g_activeCardObjs;
 
@@ -1425,7 +1425,7 @@ s32 func_800A0A88(void) {
  *
  * @return Always 0.
  */
-s32 func_800A0AD4(void) {
+s32 reloadClaimBuffer(void) {
     s32 idx = g_drawBufferIndex ^ 1;
     queueLoadImage(&g_drawEnvs[idx].clip, D_80158680);
     return 0;
@@ -1445,7 +1445,7 @@ s32 func_800A0AD4(void) {
  * @param node State node (state 0x0C, per-pass guard 0x0D, acting seat 0x0E).
  * @return 2 once the selection is confirmed, else 0.
  */
-s32 func_800A0B24(ScriptStateNode *node) {
+s32 runKeepCardSelect(ScriptStateNode *node) {
     /* 8 bytes of stack the original reserves (frame vars=8); unreferenced on every
        path. Purpose uncertain — likely leftover scratch from the string build above. */
     u8 scratch[4];
@@ -1482,7 +1482,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
             break;
         case 1:
             if (node->field0D == 0) {
-                if (func_800A0A88() != 0) {
+                if (hasPendingCardObj() != 0) {
                     return 0;
                 }
                 activateMenuSubstate((node->field0E ^ 1) + 4, 0, 2, 0);
@@ -1541,7 +1541,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
             break;
         case 2:
             if (node->field0D == 0) {
-                if (func_800A0A88() != 0) {
+                if (hasPendingCardObj() != 0) {
                     return 0;
                 }
                 node->field0D++;
@@ -1574,7 +1574,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
  * @brief Per-frame AI move-selection state machine.
  *
  * State 0 resets the placed-count (@c g_sweepProcessed). State 1 alternates between a
- * gate tick (waits while @c func_800A0A88 reports a pending action; finishes with
+ * gate tick (waits while @c hasPendingCardObj reports a pending action; finishes with
  * @c D_801D444C=1, return 2 once @c g_sweepProcessed reaches @c g_sweepTarget) and a scan
  * tick that picks the capturable object (owner != @c node->field0E, @c flags bit 0
  * set) with the highest card level (@c g_tripleTriadCardStats[cardId] level byte),
@@ -1583,7 +1583,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
  * @param node The driver node.
  * @return 0 while blocked, 2 when the move sweep completes.
  */
-s32 func_800A0F0C(ScriptStateNode *node) {
+s32 runAiCaptureSelect(ScriptStateNode *node) {
     s32 bestVal;
     s32 bestIdx;
     s32 i;
@@ -1597,7 +1597,7 @@ s32 func_800A0F0C(ScriptStateNode *node) {
             break;
         case 1:
             if (node->field0D == 0) {
-                if (func_800A0A88() != 0) {
+                if (hasPendingCardObj() != 0) {
                     return 0;
                 }
                 if (g_sweepProcessed == g_sweepTarget) {
@@ -1635,7 +1635,7 @@ s32 func_800A0F0C(ScriptStateNode *node) {
  * hands @c D_801A2C48 (2 players x 5 cards), then advances to state 1.
  *
  * State 1 walks @c g_tripleTriadCardHands one move at a time (index @c node->index,
- * advanced each pass while @c func_800A0A88 reports no pending action). For the
+ * advanced each pass while @c hasPendingCardObj reports no pending action). For the
  * current move it takes the card id and owning seat (bit 0 of @c initFlags) and
  * marks that card consumed: if the card is still in the owner's working hand
  * @c g_handBuildHands[owner] it is stamped @c 0xFF; otherwise the matching board cell in
@@ -1643,10 +1643,10 @@ s32 func_800A0F0C(ScriptStateNode *node) {
  * to trigger its flip.
  *
  * @param node State-machine driver node.
- * @return 0 while @c func_800A0A88 reports a pending action; 2 once all 10 moves
+ * @return 0 while @c hasPendingCardObj reports a pending action; 2 once all 10 moves
  *         have been processed (also sets @c D_801D444C = 1).
  */
-s32 func_800A1080(ScriptStateNode *node) {
+s32 replayHandMoves(ScriptStateNode *node) {
     s32 i;
     s32 col;
     s32 owner;
@@ -1666,7 +1666,7 @@ s32 func_800A1080(ScriptStateNode *node) {
             break;
         case 1:
             if (node->field0D == 0) {
-                if (func_800A0A88() != 0) {
+                if (hasPendingCardObj() != 0) {
                     return 0;
                 }
                 if (node->index >= 10) {
@@ -1707,12 +1707,12 @@ s32 func_800A1080(ScriptStateNode *node) {
  * State 0 resets the scan (index = 0). State 1 walks one cell per tick:
  * if the cell's 0x0A field equals @c node->field0E XOR 1, the cell is marked
  * (0x08 = 2, 0x09 = 0). When all 10 cells are processed it sets @c D_801D444C
- * and returns 2; if @c func_800A0A88 reports a pending action it returns 0.
+ * and returns 2; if @c hasPendingCardObj reports a pending action it returns 0.
  *
  * @param node The driver node.
  * @return 0 if blocked by a pending action, 2 when the sweep completes.
  */
-s32 func_800A1260(ScriptStateNode *node) {
+s32 runOpponentSideSweep(ScriptStateNode *node) {
     while (1) {
         switch (node->state) {
         case 0:
@@ -1722,7 +1722,7 @@ s32 func_800A1260(ScriptStateNode *node) {
             break;
         case 1:
             if (node->field0D == 0) {
-                if (func_800A0A88() != 0) {
+                if (hasPendingCardObj() != 0) {
                     return 0;
                 }
                 if (node->index >= 10) {
@@ -1746,7 +1746,7 @@ s32 func_800A1260(ScriptStateNode *node) {
 /**
  * @brief Post-round capture/cleanup sweep over the board.
  *
- * State machine (one cell advanced per pass while @c func_800A0A88 reports no pending
+ * State machine (one cell advanced per pass while @c hasPendingCardObj reports no pending
  * action). State 0 waits for the action gate. State 1 sweeps the opponent row
  * (@c g_claimSeat ^ 1): each card owned by the acting seat is flagged @c field8 = 3.
  * State 2 sweeps the acting seat's row (@c g_claimSeat): each card NOT owned by it is
@@ -1757,14 +1757,14 @@ s32 func_800A1260(ScriptStateNode *node) {
  * @param node State node (state 0x0C, per-pass guard 0x0D, cell index 0x0F).
  * @return 0 while a pass is pending or gated; 2 once the cleanup completes.
  */
-s32 func_800A1374(ScriptStateNode *node) {
+s32 runCaptureCleanupSweep(ScriptStateNode *node) {
     s32 i;
     ActiveObj *c;
 
     while (1) {
         switch (node->state) {
         case 0:
-            if (func_800A0A88() != 0) {
+            if (hasPendingCardObj() != 0) {
                 return 0;
             }
             node->state = 1;
@@ -1788,7 +1788,7 @@ s32 func_800A1374(ScriptStateNode *node) {
                     break;
                 }
             }
-            if (func_800A0A88() != 0) {
+            if (hasPendingCardObj() != 0) {
                 return 0;
             }
             node->field0D = 0;
@@ -1810,7 +1810,7 @@ s32 func_800A1374(ScriptStateNode *node) {
                     break;
                 }
             }
-            if (func_800A0A88() != 0) {
+            if (hasPendingCardObj() != 0) {
                 return 0;
             }
             node->field0D = 0;
