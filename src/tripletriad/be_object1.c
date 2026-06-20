@@ -929,7 +929,7 @@ s32 cardFlipHandler(HandlerNode *node) {
         g_cardFlipSpin = !node->phase ? -0x400 : 0x400;
         g_cardFlipTarget.vx = !node->phase ? -0x8C : 0x8C;
         g_cardFlipXform->vec = g_cardFlipUpVec;
-        func_800A233C(0x70);
+        playTriadSfx(0x70);
         node->state = CARD_FLIP_ENTER;
         node->counter = 0;
         break;

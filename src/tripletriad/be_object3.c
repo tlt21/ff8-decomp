@@ -157,7 +157,7 @@ extern void markItemPresent(s32 cardId);                  /**< Return a card to 
 extern void func_800A1D68(s32 a0, u8 *a1, s32 a2);        /**< Show a banner/message string. */
 extern void func_800A2054(s32 a0);                        /**< Acknowledge/advance a message gate. */
 extern s32  func_800A20F4(s32 a0);                        /**< Poll a message gate (>0 = result, <0 = pending). */
-/* func_800A2114 / activateMenuSubstate prototypes now live in tripletriad.h */
+/* showCardDetail / activateMenuSubstate prototypes now live in tripletriad.h */
 extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new claim sequence. */
 extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */
 extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the sequence. */
@@ -615,7 +615,7 @@ s32 func_8009EBF4(void)
                 break;
             case 1:
                 if (e->field02 == 0) {
-                    func_800A233C(0x59);
+                    playTriadSfx(0x59);
                 }
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
@@ -820,7 +820,7 @@ s32 func_8009F17C(ScriptCtx *node) {
                     hand[idx] = card;
                     D_801D3E78 = ++idx;
                     modifyItemQuantity(card, D_80082C95);
-                    func_800A233C(1);
+                    playTriadSfx(1);
                     if (D_801D3E78 != 5) {
                         node->state = 1;
                         node->subState = 0;
@@ -842,7 +842,7 @@ s32 func_8009F17C(ScriptCtx *node) {
                 node->subState = 0;
                 (D_801D3EC0[node->counter] + D_801D3E78)->status = 2;
                 (D_801D3EC0[node->counter] + D_801D3E78)->field02 = 0;
-                func_800A233C(9);
+                playTriadSfx(9);
             }
             return 0;
         case 2:
@@ -1475,7 +1475,7 @@ s32 func_800A03DC(void) {
         case 2:
             if (cell->field9 == 0) {
                 cell->sort -= 5;
-                func_800A233C(0x5A);
+                playTriadSfx(0x5A);
             }
             inc = cell->field9 + 1;
             cell->field9 = inc;
@@ -1498,7 +1498,7 @@ s32 func_800A03DC(void) {
             if (s0 < 0x1E) {
                 if (s0 == 0) {
                     cell->sort = 0;
-                    func_800A233C(0x59);
+                    playTriadSfx(0x59);
                 }
                 s0 = (s0 << 12) / 30;
                 t = func_8003ED64(s0 / 2);
@@ -1520,7 +1520,7 @@ s32 func_800A03DC(void) {
                     } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
                         func_800A2054(1);
-                        func_800A233C(isItemPresent(cell->cardId) ? 0x59 : 0x12);
+                        playTriadSfx(isItemPresent(cell->cardId) ? 0x59 : 0x12);
                         cell->field9++;
                     }
                 } else {
@@ -1544,7 +1544,7 @@ s32 func_800A03DC(void) {
             if (s0 < 0x1E) {
                 if (s0 == 0) {
                     cell->sort = 0;
-                    func_800A233C(0x59);
+                    playTriadSfx(0x59);
                 }
                 s0 = (s0 << 12) / 30;
                 t = func_8003ED64(s0 / 2);
@@ -1566,7 +1566,7 @@ s32 func_800A03DC(void) {
                     } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
                         func_800A2054(1);
-                        func_800A233C(0x59);
+                        playTriadSfx(0x59);
                         cell->field9++;
                     }
                 } else {
@@ -1695,7 +1695,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
             }
             switch (D_801D3359) {
             case 1:
-                func_800A2114(D_801D4308[D_801D335C.field0].cardId);
+                showCardDetail(D_801D4308[D_801D335C.field0].cardId);
                 return 0;
             case 2:
                 cell = &D_801D4308[D_801D335C.field0];
@@ -1703,12 +1703,12 @@ s32 func_800A0B24(ScriptStateNode *node) {
                     if (D_801D4178 < D_801D4448) {
                         cell->field8 = 2;
                         D_801D4308[D_801D335C.field0].field9 = 0;
-                        func_800A233C(1);
+                        playTriadSfx(1);
                         D_801D4178++;
                     } else {
                         node->state = 1;
                         node->field0D = 0;
-                        func_800A233C(0x10);
+                        playTriadSfx(0x10);
                         continue;
                     }
                 } else {
@@ -1717,7 +1717,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
                     }
                     cell->field8 = 2;
                     D_801D4308[D_801D335C.field0].field9 = 0;
-                    func_800A233C(9);
+                    playTriadSfx(9);
                     D_801D4178--;
                 }
                 if (D_801D4178 == D_801D4448) {
@@ -1733,7 +1733,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
                 if (cell->fieldA == node->field0E) {
                     cell->field8 = 2;
                     D_801D4308[D_801D335C.field0].field9 = 0;
-                    func_800A233C(9);
+                    playTriadSfx(9);
                     D_801D4178--;
                 }
                 break;

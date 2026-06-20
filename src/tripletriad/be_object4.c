@@ -130,7 +130,7 @@ void func_800A20F4(void) {
     func_8002CE84();
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2114);
+INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", showCardDetail);
 
 /**
  * @brief Clear all 7 SFX entries by calling setSfxEntryParams with zero params.
@@ -155,39 +155,37 @@ void func_800A2208(void) {
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2214);
 
 /**
- * @brief Add an entry to the D_801D4500 effects queue if not full.
+ * @brief Push a sound effect onto the Triple Triad SFX queue (if not full).
  *
- * The queue holds up to 8 entries (index 0..7), tracked by D_801D4560.
- * Each entry is 12 bytes: byte[0]=active, byte[1]=a1, byte[2]=a2,
- * byte[3]=a0, word[4]=a3.
+ * The queue holds up to 7 pending effects, drained later by the SFX subsystem.
  *
- * @param a0 Effect type (stored at byte 3).
- * @param a1 Parameter 1 (stored at byte 1).
- * @param a2 Parameter 2 (stored at byte 2).
- * @param a3 Parameter 3 (stored at word offset 4).
+ * @param sfxId  Sound-effect id.
+ * @param pan    Stereo pan (callers pass center, 0x80).
+ * @param volume Volume (callers pass full, 0x7F).
+ * @param param  Per-effect parameter word.
  */
-void func_800A22E8(s32 a0, s32 a1, s32 a2, s32 a3) {
+void queueTriadSfx(s32 sfxId, s32 pan, s32 volume, s32 param) {
     s32 count = D_801D4560;
     if (count < 7) {
         u8 *entry;
         D_801D4560 = count + 1;
         entry = D_801D4500 + count * 12;
         entry[0] = 1;
-        entry[3] = a0;
-        entry[1] = a1;
-        entry[2] = a2;
-        *(s32 *)(entry + 4) = a3;
+        entry[3] = sfxId;
+        entry[1] = pan;
+        entry[2] = volume;
+        *(s32 *)(entry + 4) = param;
     }
 }
 
-/** @brief Call func_800A22E8 with a0, 0x80, 0x7F, 0. */
-void func_800A233C(s32 a0) {
-    func_800A22E8(a0, 0x80, 0x7F, 0);
+/** @brief Queue a Triple Triad sound effect at center pan / full volume. */
+void playTriadSfx(s32 sfxId) {
+    queueTriadSfx(sfxId, 0x80, 0x7F, 0);
 }
 
-/** @brief Call func_800A22E8 with a0, 0x80, 0x7F, a1. */
-void func_800A2364(s32 a0, s32 a1) {
-    func_800A22E8(a0, 0x80, 0x7F, a1);
+/** @brief Queue a Triple Triad sound effect with a per-effect @p param. */
+void playTriadSfxParam(s32 sfxId, s32 param) {
+    queueTriadSfx(sfxId, 0x80, 0x7F, param);
 }
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A238C);
@@ -210,12 +208,12 @@ void func_800A247C(void) {
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A24B4);
 
 /**
- * @brief Initialize D_801D4568 and set flag bit 2 in g_tripleTriadInputFlags.
+ * @brief Open the Triple Triad in-game menu and freeze card input.
  *
- * Calls func_800A24B4 to initialize D_801D4568, then func_800A1D68
- * with mode 4. Finally sets bit 2 (0x4) in g_tripleTriadInputFlags.
+ * Sets up the menu object @c D_801D4568, spawns its handler, and sets
+ * @c TT_INPUT_DISABLED so the card-select cursors pause while the menu is up.
  */
-void func_800A26C8(void) {
+void openTriadMenu(void) {
     u8 *base = D_801D4568;
     func_800A24B4(base);
     func_800A1D68(4, base, 0);
@@ -226,7 +224,7 @@ void func_800A26C8(void) {
  * @brief Close the in-match menu overlay and re-enable card input.
  *
  * Tears down the menu object @c D_801D4568 and clears @c TT_INPUT_DISABLED so
- * card input resumes. Counterpart to the menu-open handler @c func_800A26C8.
+ * card input resumes. Counterpart to the menu-open handler @c openTriadMenu.
  */
 void closeMenu(void) {
     func_800A2054(4);

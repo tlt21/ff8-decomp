@@ -467,7 +467,7 @@ void drawMenuPrim(s32 mode, SubstateSlot *slot) {
  * @brief Show the card-detail popup for the card object matching a search key.
  *
  * Looks up the slot via @c findCardSlot and, if found, passes its @c cardId to
- * @c func_800A2114.
+ * @c showCardDetail.
  *
  * @param groupId  Search group — @c findCardSlot arg 0.
  * @param fieldD   Secondary key — @c findCardSlot arg 1.
@@ -476,7 +476,7 @@ void drawMenuPrim(s32 mode, SubstateSlot *slot) {
 void initMenuObjectHandler(s32 groupId, s32 fieldD, s32 priority) {
     s32 idx = findCardSlot(groupId, fieldD, priority);
     if (idx >= 0) {
-        func_800A2114(g_tripleTriadCardHands[idx].cardId);
+        showCardDetail(g_tripleTriadCardHands[idx].cardId);
     }
 }
 
@@ -493,10 +493,10 @@ void initMenuObjectHandler(s32 groupId, s32 fieldD, s32 priority) {
  */
 void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
     if ((D_801D332E & 0x1000) && findCardSlot(0, 0, slot->field2 - 1) >= 0) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
     } else if ((D_801D332E & 0x4000) && findCardSlot(0, 0, slot->field2 + 1) >= 0) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
     } else if (D_801D332E & 0x2000) {
         if (D_801D3328 & 0x8) {
@@ -525,10 +525,10 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
  */
 void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
     if ((D_801D332E & 0x1000) && findCardSlot(1, 0, slot->field2 - 1) >= 0) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
     } else if ((D_801D332E & 0x4000) && findCardSlot(1, 0, slot->field2 + 1) >= 0) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
     } else if (D_801D332E & 0x8000) {
         if (D_801D3328 & 0x8) {
@@ -560,18 +560,18 @@ void handleCursorSubstate3(SubstateSlot *slot, s32 idx) {
     if (D_801D332E & 0x8000) {
         slot->field0 = slot->field0 - 1;
         if (slot->field0 >= 0) {
-            func_800A233C(1);
+            playTriadSfx(1);
         }
     } else if (D_801D332E & 0x2000) {
         slot->field0 = slot->field0 + 1;
         if (slot->field0 < 3) {
-            func_800A233C(1);
+            playTriadSfx(1);
         }
     } else if ((D_801D332E & 0x1000) && slot->field2 > 0) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
     } else if ((D_801D332E & 0x4000) && slot->field2 < 2) {
-        func_800A233C(1);
+        playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
     }
 
@@ -603,7 +603,7 @@ void adjustConfigParam(u16 *param) {
 
     if (D_801D332E & 0x8000) {
         if (*(s16 *)param > 0) {
-            func_800A233C(1);
+            playTriadSfx(1);
             val = *param - 1;
             *param = val;
             goto store;
@@ -611,7 +611,7 @@ void adjustConfigParam(u16 *param) {
     }
     if (D_801D332E & 0x2000) {
         if (*(s16 *)param < 4) {
-            func_800A233C(1);
+            playTriadSfx(1);
             val = *param + 1;
             *param = val;
             goto store;
@@ -720,7 +720,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
     s32 s1;
 
     if (!(g_tripleTriadInputFlags & TT_INPUT_DISABLED) && (D_801C2EC4 & 0x20)) {
-        func_800A26C8();
+        openTriadMenu();
         return 0;
     }
 
@@ -736,7 +736,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             if (findCardSlot(p->fieldD, 0, D_801D335C.field2) >= 0) {
                 p->snapshot = D_801D335C;
                 p->state = 2;
-                func_800A233C(1);
+                playTriadSfx(1);
             } else {
                 p->state = 0;
             }
@@ -758,17 +758,17 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
                     s32 entIdx = findCardSlot(p->fieldD, 0, p->snapshot.field2);
                     setCardObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
                     commitCardToBoard(&D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
-                    func_800A233C(1);
+                    playTriadSfx(1);
                     return 2;
                 }
-                func_800A233C(0x10);
+                playTriadSfx(0x10);
                 p->state = trig;
                 break;
             case 1:
                 return 0;
             case 3:
                 if (trig == s1) {
-                    func_800A233C(9);
+                    playTriadSfx(9);
                     p->state = 0;
                 }
                 break;
@@ -818,7 +818,7 @@ void setCardEntityType(s32 entityIdx, s32 type) {
     entry->field02 = 0;
     if (type <= CARD_FX_SLIDE_RIGHT) {
         if (type >= CARD_FX_SLIDE_LEFT) {
-            func_800A2364(0x5A, 1);
+            playTriadSfxParam(0x5A, 1);
         }
     }
 }
@@ -871,7 +871,7 @@ void animateCardEffect(TripleTriadCardObject *entity) {
     case CARD_FX_FLIP:
         if (field02 < 20) {
             if (field02 == 0) {
-                func_800A233C(0x59);
+                playTriadSfx(0x59);
             }
             t = ((field02 + 1) * 4096) / 20;
             entity->offY = -(rsin(t / 4) * 224) >> 12;
@@ -1005,7 +1005,7 @@ u8 *drawCardEffectQuad(CardAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
  * @param otBucket OT layer the slide-in primitive links into.
  */
 void transformCardEffect(TripleTriadCardObject *entity, CardAnimNode *node, void *otBucket) {
-    VECTOR scaleVec = func_80098154;
+    VECTOR scaleVec = g_cardScaleVec;
     s32 state = entity->state;
     u8 stateCopy;
     s32 field02 = entity->field02;

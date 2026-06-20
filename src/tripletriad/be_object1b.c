@@ -86,7 +86,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                                     setCardEntityType(D_801D3398.cells[row][col].entityIdx, CARD_FX_FLASH);
                             }
                         }
-                        func_800A233C(TT_HOLD_FRAMES_RULE);
+                        playTriadSfx(TT_HOLD_FRAMES_RULE);
                     }
                     ctl->counter++;
                 } else {
