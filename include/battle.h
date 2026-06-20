@@ -350,7 +350,9 @@ typedef struct {
     u16 status;
     u16 statusBackup;
     u16 hpDisplay;     /* 0x94: HP value mirrored from BattleCharData.currentHp. */
-    u8 pad96[0x21];
+    u8 pad96[0x03];
+    u8 unk99;
+    u8 pad9A[0x1D];
     u8 unkB7;
     u8 padB8[0x03];
     u8 linkedIdx2;
@@ -453,7 +455,9 @@ typedef struct {
     /* 0x12EC */ u8 unk12EC;                    /**< Misc state byte (init to 0xFF). */
     /* 0x12ED */ u8 unk12ED;                    /**< Misc state byte. */
     /* 0x12EE */ u8 unk12EE;                    /**< Misc state byte. */
-    /* 0x12EF */ u8 pad12EF[0x7];               /**< Misc state. */
+    /* 0x12EF */ u8 pad12EF[0x4];               /**< Misc state. */
+    /* 0x12F3 */ u8 unk12F3;                    /* used as index in func_8009F824 */
+    /* 0x12F4 */ u8 pad12F4[0x2];               /**< Misc state. */
     /* 0x12F6 */ u8 taskHead;                   /**< Head index of the task queue linked list. */
     /* 0x12F7 */ u8 pad12F7[0x1];               /**< Pad. */
     /* 0x12F8 */ u8 unk12F8;                    /**< Misc state counter. */
