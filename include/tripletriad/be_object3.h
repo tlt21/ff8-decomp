@@ -52,11 +52,12 @@ typedef struct {
 extern ActiveObj g_activeCardObjs[]; /**< Active card-display object array. */
 
 /* Shared by the be_object3b tail (the card-claim controller/setup). */
-extern s32 g_sweepTarget;   /**< Target object count; the sweep completes when g_sweepProcessed reaches it. */
-extern u8  D_801D444C;
-extern u8  g_sweepDone;    /**< Set to 1 when runCaptureCleanupSweep's capture/cleanup sweep finishes. */
-extern s32 g_claimSeat;    /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
-extern s32 D_801D4454;
+extern s32 g_sweepTarget;   /**< Claim selector set at setup (>=0 normal, -1 capture-only, <-1 skip);
+                                 also the sweep's target object count (it completes when g_sweepProcessed reaches it). */
+extern u8  D_801D444C;      /**< Set when the phase-1 claim handler finishes. */
+extern u8  g_sweepDone;     /**< Set when the phase-2 cleanup handler finishes. */
+extern s32 g_claimSeat;     /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
+extern s32 D_801D4454;      /**< Cleared at the start of each card-claim setup. */
 extern u8  g_claimSetupPool[];  /**< Backing element storage for the D_801D42F8 pool. */
 
 /* Public prototypes */

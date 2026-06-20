@@ -1,47 +1,8 @@
 #include "common.h"
+#include "item.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
-
-/* Card-claim flow globals (defined in the tripletriad data segments). */
-extern s32 g_sweepTarget;   /**< Claim selector: >=0 normal, -1 capture-only, <-1 skip. */
-extern u8  D_801D444C;   /**< Set when the phase-1 claim handler finishes. */
-extern u8  g_sweepDone;   /**< Set when the phase-2 cleanup handler finishes. */
-extern u8  D_801A2C44;   /**< Rule/mode selector for the post-game card-claim flow. */
-extern s32 g_claimSeat;   /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
-extern ObjList  D_801D42F8[]; /**< Card-claim handler object pool. */
-extern u8  g_claimSetupPool[]; /**< Backing element storage for the D_801D42F8 pool. */
-extern s32 D_801D4454;   /**< Cleared at the start of each card-claim setup. */
-
-/* Fade spawners and claim handlers (defined in be_object3.c). */
-extern void startFadeToBlack(s32 duration);
-extern void startFadeToWhite(s32 duration);
-extern void func_800A2054(s32 a0);
-extern s32  func_800A20F4(s32 a0);
-extern s32  runKeepCardSelect();
-extern s32  runAiCaptureSelect();
-extern s32  replayHandMoves();
-extern s32  runOpponentSideSweep();
-extern s32  runCaptureCleanupSweep();
-extern s32  updateClaimBoard();  /**< Per-frame board render/update loop (be_object3.c). */
-extern s32  reloadClaimBuffer();  /**< Post-claim handler (be_object3.c). */
-
-/* Pool/item helpers defined in other tripletriad TUs. */
-extern void markItemPresent(s32 cardId);
-
-/**
- * @brief Per-frame state node for the card-claim transition controller (@c func_800A15C8).
- *
- * Allocated from a @c allocObjNode pool. @c state at 0x0C selects the phase and
- * @c result at 0x10 carries the outcome code (2 or 6) staged into @c g_tripleTriadState
- * when the whole claim sequence finishes.
- */
-typedef struct {
-    /* 0x00 */ u8  pad00[0x0C];
-    /* 0x0C */ u8  state;     /**< Phase: 0 warmup, 1/2 spawn handlers, 3 poll gate, 4 fade-out. */
-    /* 0x0D */ u8  subState;  /**< Per-phase frame counter / sub-step. */
-    /* 0x0E */ u8  pad0E[2];
-    /* 0x10 */ s32 result;    /**< Outcome code (2 or 6) staged into g_tripleTriadState on completion. */
-} ClaimCtrlNode;
+#include "tripletriad/be_object3b.h"
 
 /**
  * @brief Per-frame card-claim transition controller.
