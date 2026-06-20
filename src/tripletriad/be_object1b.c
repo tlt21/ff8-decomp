@@ -68,7 +68,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
             case MATCH_FLOW_RULES: {
                 if (anyCardEffectActive()) return 0;
                 if (ctl->counter == 0) {
-                    u8 rules = applyCardRules(&D_801D3398, 1);
+                    u8 rules = applyCardRules(&g_tripleTriadBoard, 1);
                     ctl->rulesFlags = rules;
                     if (rules & TT_RESULT_COMBO_MASK) {
                         s32 row, col;
@@ -82,8 +82,8 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                         }
                         for (row = 1; row <= 3; row++) {
                             for (col = 1; col <= 3; col++) {
-                                if (D_801D3398.cells[row][col].flags & acc)
-                                    setCardEntityType(D_801D3398.cells[row][col].entityIdx, CARD_FX_FLASH);
+                                if (g_tripleTriadBoard.cells[row][col].flags & acc)
+                                    setCardEntityType(g_tripleTriadBoard.cells[row][col].entityIdx, CARD_FX_FLASH);
                             }
                         }
                         playTriadSfx(TT_HOLD_FRAMES_RULE);
@@ -91,7 +91,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     ctl->counter++;
                 } else {
                     ctl->retryFlag = 1;
-                    resolveCaptures(&D_801D3398);
+                    resolveCaptures(&g_tripleTriadBoard);
                     ctl->state = MATCH_FLOW_CHAIN;
                     ctl->counter = 0;
                 }
@@ -105,10 +105,10 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     break;
                 }
                 {
-                    u8 next = applyCardRules(&D_801D3398, ctl->rulesFlags);
+                    u8 next = applyCardRules(&g_tripleTriadBoard, ctl->rulesFlags);
                     ctl->rulesFlags = next;
                     if (next != 0 && ctl->retryFlag != 0) func_8009EB30(5);
-                    resolveCaptures(&D_801D3398);
+                    resolveCaptures(&g_tripleTriadBoard);
                 }
                 break;
             }
@@ -118,7 +118,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 for (row = 1; row <= 3; row++) {
                     s32 col;
                     for (col = 1; col <= 3; col++) {
-                        if (!(D_801D3398.cells[row][col].flags & TT_CELL_OCCUPIED))
+                        if (!(g_tripleTriadBoard.cells[row][col].flags & TT_CELL_OCCUPIED))
                             acc++;
                     }
                 }
@@ -231,7 +231,7 @@ s32 drawBoardElements(void) {
     s32 row = 1;
     /* Cells are addressed by byte offset (mirroring the original's hand-coded
        walk) and read through TripleTriadBoardSlot once the address is formed. */
-    s32 boardBase = (s32)&D_801D3398;
+    s32 boardBase = (s32)&g_tripleTriadBoard;
     s32 pixelY = 0x28;
     s32 rowByteOffset = TT_ROW_BYTES;
 

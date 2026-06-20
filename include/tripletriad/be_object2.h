@@ -16,7 +16,7 @@
  * @brief Capture-direction descriptor — maps a captured-from direction to a
  *        card slide-in animation.
  *
- * @c D_80182D54 holds four entries (captured-from UP, LEFT, RIGHT, DOWN). For a
+ * @c g_captureDirs holds four entries (captured-from UP, LEFT, RIGHT, DOWN). For a
  * cell captured this turn, @c resolveCaptures matches the cell's
  * @c TT_CELL_CAP_FROM_* bit against @c capBit, then plays the matching
  * @c animType slide animation via @c setCardEntityType.
@@ -27,7 +27,7 @@ typedef struct {
 } CaptureDir;      /* 0x04 */
 
 /* Public data */
-extern CaptureDir D_80182D54[4];
+extern CaptureDir g_captureDirs[4];
 
 /* Public prototypes */
 
@@ -69,7 +69,7 @@ extern void   transformCardEffect(TripleTriadCardObject *entity, CardAnimNode *n
 
 /** @brief Outer state machine driven by @ref updateAiTurn (@c AiTurnNode.state). */
 enum AiTurnState {
-    AI_TURN_INIT    = 0,  /**< Reset the move-search workspace @c D_801D3460, then SEARCH. */
+    AI_TURN_INIT    = 0,  /**< Reset the move-search workspace @c g_aiSearchStack, then SEARCH. */
     AI_TURN_SEARCH  = 1,  /**< Run the move search (@ref AiSearchPhase sub-machine). */
     AI_TURN_ANIMATE = 2,  /**< Play the card-selection animation, then PLACE. */
     AI_TURN_PLACE   = 3   /**< Commit the chosen card to the board, then return 2. */
@@ -90,13 +90,13 @@ enum AiSearchPhase {
 /**
  * @brief Per-ply state of the AI move search (one node of @ref searchBestMoveStack).
  *
- * @c D_801D3460 holds 9 of these — one per search ply. Each node carries the
+ * @c g_aiSearchStack holds 9 of these — one per search ply. Each node carries the
  * (card, row, col) iterators the resumable minimax is currently trying at that
  * ply, the best move found so far, and its scores. Entry @c [0] is the root:
  * once the search completes its @c bestCol / @c bestRow give the chosen board
  * cell and @c bestCard the chosen hand slot.
  * @note @c D_801D3462 / @c D_801D3466 are separate splat symbols that alias
- *       @c D_801D3460[0].card / @c D_801D3460[0].bestCard.
+ *       @c g_aiSearchStack[0].card / @c g_aiSearchStack[0].bestCard.
  */
 typedef struct {
     /* 0x00 */ u8 col;          /* board column currently being tried (0..2) */
@@ -132,7 +132,7 @@ typedef struct {
     /* 0x12 */ u8 pad12[2];
 } AiTurnNode;          /* 0x14 */
 
-/** @brief One row of the AI evaluation-weight table (@ref D_80182DAC). */
+/** @brief One row of the AI evaluation-weight table (@ref g_aiWeightTable). */
 typedef struct { s32 w0, w1, w2, w3, w4; } WeightSet;  /* 0x14 */
 
 /**
@@ -162,25 +162,25 @@ extern u8 D_801D3798[];
 extern s32 D_801D3328;
 
 /* Data — AI move search */
-extern AiMove    D_801D3460[9];   /* AI move-search workspace (root = [0], one entry per ply) */
-extern u8        D_801D3462;      /* = D_801D3460[0].card (root card iterator / latched slot) */
-extern u8        D_801D3466;      /* = D_801D3460[0].bestCard (chosen placement card) */
-extern s32       D_801D3538;      /* minimax placement budget per search slice (see searchBestMoveStack) */
-extern s32       D_801D353C;      /* search-phase frame timer */
-extern s32       D_801D35C0;      /* current player / seat index */
-extern u8        D_80182D64[8][9]; /* [difficulty][cards-left] → AI search-depth param */
-extern WeightSet D_80182DAC[8];    /* per-difficulty AI evaluation-weight rows */
+extern AiMove    g_aiSearchStack[9];   /* AI move-search workspace (root = [0], one entry per ply) */
+extern u8        D_801D3462;      /* = g_aiSearchStack[0].card (root card iterator / latched slot) */
+extern u8        D_801D3466;      /* = g_aiSearchStack[0].bestCard (chosen placement card) */
+extern s32       g_aiPlacementBudget;      /* minimax placement budget per search slice (see searchBestMoveStack) */
+extern s32       g_aiSearchTimer;      /* search-phase frame timer */
+extern s32       g_tripleTriadCurrentSeat;      /* current player / seat index */
+extern u8        g_aiSearchDepthTable[8][9]; /* [difficulty][cards-left] → AI search-depth param */
+extern WeightSet g_aiWeightTable[8];    /* per-difficulty AI evaluation-weight rows */
 extern u8        D_80082C97;       /* = D_80082C90.field_07 (distinct splat symbol) */
 extern u8        D_801D3540[];     /* AI turn-node pool */
 extern ObjList        D_801D3560[];     /* AI turn-node list head */
 
 /* Data — card render path (drawTriadCard) */
-extern SVECTOR D_80182C30[4];   /* main card-face quad corners */
-extern SVECTOR D_80182C50[4];   /* outer border quad corners */
-extern SVECTOR D_80182C70[4];   /* per-corner offsets used per rank digit */
-extern SVECTOR D_80182C90[4];   /* per-rank digit center positions */
-extern SVECTOR D_80182CD0[4];   /* element marker quad corners */
-extern SVECTOR D_80182CF0[4];   /* shadow quad corners (card drop-shadow) */
+extern SVECTOR g_cardFaceQuad[4];   /* main card-face quad corners */
+extern SVECTOR g_cardBorderQuad[4];   /* outer border quad corners */
+extern SVECTOR g_cardDigitOffsets[4];   /* per-corner offsets used per rank digit */
+extern SVECTOR g_cardDigitCenters[4];   /* per-rank digit center positions */
+extern SVECTOR g_cardElementQuad[4];   /* element marker quad corners */
+extern SVECTOR g_cardShadowQuad[4];   /* shadow quad corners (card drop-shadow) */
 
 /* Data — card-effect gouraud quad (drawCardEffectQuad) */
 extern s32     D_80182D30[];    /**< Per-corner phase offsets for the gouraud flicker. */

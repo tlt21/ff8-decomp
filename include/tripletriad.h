@@ -131,7 +131,7 @@ typedef struct {
 #define TT_ROW_BYTES  (TT_SLOT_BYTES * TT_BOARD_COLS)        /**< One board row. */
 
 /** @brief Global 5x5 Triple Triad board (sentinel-padded). */
-extern TripleTriadBoard D_801D3398;
+extern TripleTriadBoard g_tripleTriadBoard;
 
 /**
  * @brief A Triple Triad card in play (36 bytes) — one entry of
@@ -231,15 +231,15 @@ typedef struct {
 } PlayerHand;                /* 0x28 */
 
 /** @brief The two players' working card-id hands for the AI search. */
-extern PlayerHand D_801D3570[2];
+extern PlayerHand g_tripleTriadPlayerHands[2];
 
 /* Triple Triad AI board-evaluation weights (read by @ref evaluateBoard). */
-extern s32 D_801D35C8;    /**< Base weight added to each placed card's value. */
-extern s32 D_801D35CC;    /**< Per-card value scale: D_801D35E0[i] = level*this/200 >> 12. */
-extern s32 D_801D35D0;    /**< Random-tiebreaker range: score += rand() % (D_801D35D0 + 1). */
-extern s32 D_801D35D4;    /**< AI difficulty weight (set from the per-level weight table). */
-extern s32 D_801D35D8;    /**< Hand-card potential weight (cardValue * D_801D35D8 >> 12). */
-extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
+extern s32 g_evalCardBaseWeight;    /**< Base weight added to each placed card's value. */
+extern s32 g_evalCardValueScale;    /**< Per-card value scale: g_tripleTriadCardValues[i] = level*this/200 >> 12. */
+extern s32 g_evalRandomRange;    /**< Random-tiebreaker range: score += rand() % (g_evalRandomRange + 1). */
+extern s32 g_evalDifficultyWeight;    /**< AI difficulty weight (set from the per-level weight table). */
+extern s32 g_evalHandPotentialWeight;    /**< Hand-card potential weight (cardValue * g_evalHandPotentialWeight >> 12). */
+extern s32 g_tripleTriadCardValues[];  /**< Per-card value table, indexed by card id. */
 
 /**
  * @brief 40-byte animation work node allocated by @c scratchAlloc.

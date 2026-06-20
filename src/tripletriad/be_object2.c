@@ -135,7 +135,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
 
     if (entity->state == CARD_FX_IDLE && entity->groupId == 2) {
         s32 col = entity->fieldD + 1;
-        s8 elementMod = D_801D3398.cells[entity->priority + 1][col].elementMod;
+        s8 elementMod = g_tripleTriadBoard.cells[entity->priority + 1][col].elementMod;
         if (elementMod != 0) {
             g_primCursor = drawCardOverlaySprite(node, elementMod,
                                         &g_otBase[node->base.pad], g_primCursor);
@@ -255,7 +255,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
         transBit = 0;
     }
     card = &g_tripleTriadCardStats[id];
-    RotTransPers4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
+    RotTransPers4(&g_cardFaceQuad[0], &g_cardFaceQuad[1], &g_cardFaceQuad[2], &g_cardFaceQuad[3],
                   &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3], &work->P, &work->flag);
     if (NormalClip(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
         if (flags & TT_USE_STATS) {
@@ -264,12 +264,12 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
             s32 j;
             POLY_FT4 *anchor = (POLY_FT4 *)out;
             for (i = 0; i < 4; i++) {
-                rowAddr = &D_80182C90[i];
+                rowAddr = &g_cardDigitCenters[i];
                 for (j = 0; j < 4; j++) {
                     argP = gPrim; /* dead read: amplifies gPrim refs to split the %hi temp (see note) */
-                    work->digitVerts[j].vx = rowAddr->vx + D_80182C70[j].vx;
-                    work->digitVerts[j].vy = rowAddr->vy + D_80182C70[j].vy;
-                    work->digitVerts[j].vz = rowAddr->vz + D_80182C70[j].vz;
+                    work->digitVerts[j].vx = rowAddr->vx + g_cardDigitOffsets[j].vx;
+                    work->digitVerts[j].vy = rowAddr->vy + g_cardDigitOffsets[j].vy;
+                    work->digitVerts[j].vz = rowAddr->vz + g_cardDigitOffsets[j].vz;
                 }
 
                 RotTransPers4(&work->digitVerts[0], &work->digitVerts[1], &work->digitVerts[2], &work->digitVerts[3],
@@ -307,7 +307,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                 ftPrim = (POLY_FT4 *)out;
                 ftPrim->tag = 0x09000000;
                 *(u32 *)&ftPrim->r0 = 0x2C808080;
-                RotTransPers4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
+                RotTransPers4(&g_cardElementQuad[0], &g_cardElementQuad[1], &g_cardElementQuad[2], &g_cardElementQuad[3],
                               (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1, (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
                               &work->P, &work->flag);
                 ftPrim->tpage = 0xC;
@@ -337,7 +337,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
             u32 color0;
             u32 color1;
             u32 color2;
-            RotTransPers4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
+            RotTransPers4(&g_cardBorderQuad[0], &g_cardBorderQuad[1], &g_cardBorderQuad[2], &g_cardBorderQuad[3],
                           (s32 *)&((POLY_G4 *)out)->x0, (s32 *)&((POLY_G4 *)out)->x1,
                           (s32 *)&((POLY_G4 *)out)->x2, (s32 *)&((POLY_G4 *)out)->x3, &work->P, &work->flag);
             ((POLY_G4 *)out)->tag = 0x08000000;
@@ -398,7 +398,7 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
     prim->tag = 0x05000000;
     *(u32 *)&prim->r0 = 0x2A000000;
 
-    RotTransPers4(&D_80182CF0[0], &D_80182CF0[1], &D_80182CF0[2], &D_80182CF0[3],
+    RotTransPers4(&g_cardShadowQuad[0], &g_cardShadowQuad[1], &g_cardShadowQuad[2], &g_cardShadowQuad[3],
                   (s32 *)&prim->x0, (s32 *)&prim->x1,
                   (s32 *)&prim->x2, (s32 *)&prim->x3,
                   &work->P, &work->flag);
@@ -759,7 +759,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
                 if (findCardSlot(2, D_801D335C.field0, D_801D335C.field2) < 0) {
                     s32 entIdx = findCardSlot(p->fieldD, 0, p->snapshot.field2);
                     setCardObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
-                    commitCardToBoard(&D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
+                    commitCardToBoard(&g_tripleTriadBoard, entIdx, D_801D335C.field0, D_801D335C.field2);
                     playTriadSfx(1);
                     return 2;
                 }
@@ -1055,27 +1055,27 @@ void resetTriadBoard(void) {
 
     for (row = 0; row < 5; row++) {
         for (col = 0; col < 5; col++) {
-            D_801D3398.cells[row][col].flags = 0;
-            D_801D3398.cells[row][col].element = 0;
-            D_801D3398.cells[row][col].elementMod = 0;
+            g_tripleTriadBoard.cells[row][col].flags = 0;
+            g_tripleTriadBoard.cells[row][col].element = 0;
+            g_tripleTriadBoard.cells[row][col].elementMod = 0;
         }
     }
 
     for (col = 0; col < 5; col++) {
-        D_801D3398.cells[0][col].flags |= TT_CELL_WALL;
-        D_801D3398.cells[4][col].flags |= TT_CELL_WALL;
+        g_tripleTriadBoard.cells[0][col].flags |= TT_CELL_WALL;
+        g_tripleTriadBoard.cells[4][col].flags |= TT_CELL_WALL;
     }
 
     for (row = 1; row < 4; row++) {
-        D_801D3398.cells[row][0].flags |= TT_CELL_WALL;
-        D_801D3398.cells[row][4].flags |= TT_CELL_WALL;
+        g_tripleTriadBoard.cells[row][0].flags |= TT_CELL_WALL;
+        g_tripleTriadBoard.cells[row][4].flags |= TT_CELL_WALL;
     }
 
     if (g_tripleTriadRules & TT_RULE_ELEMENTAL) {
         for (row = 1; row < 4; row++) {
             for (col = 1; col < 4; col++) {
                 if (func_80023D04() % 100 < 30) {
-                    D_801D3398.cells[row][col].element = 1 << (func_80023D04() % 8);
+                    g_tripleTriadBoard.cells[row][col].element = 1 << (func_80023D04() % 8);
                 }
             }
         }
@@ -1465,7 +1465,7 @@ s32 applyCardRules(TripleTriadBoard *board, s32 mode) {
  *
  * Walks the playable 3x3 cells. For each cell that was captured this turn
  * (any @c TT_CELL_CAP_FROM_* bit set), finds the capture direction via the
- * @c D_80182D54 table (matching the cell's captured-from bit against
+ * @c g_captureDirs table (matching the cell's captured-from bit against
  * @c CaptureDir.capBit) and drives that cell entity's flip animation with
  * @c setCardEntityType. It then clears the captured-from bits and marks the cell
  * @c TT_CELL_JUST_PLACED so the next rule pass re-evaluates it.
@@ -1480,8 +1480,8 @@ void resolveCaptures(TripleTriadBoard *board) {
             s32 flags = board->cells[row][col].flags;
             if (flags & TT_CELL_CAP_FROM_MASK) {
                 for (dir = 0; dir < 4; dir++) {
-                    if (flags & D_80182D54[dir].capBit) {
-                        setCardEntityType(board->cells[row][col].entityIdx, D_80182D54[dir].animType);
+                    if (flags & g_captureDirs[dir].capBit) {
+                        setCardEntityType(board->cells[row][col].entityIdx, g_captureDirs[dir].animType);
                         break;
                     }
                 }
@@ -1518,7 +1518,7 @@ s32 evaluateBoard(TripleTriadBoard *board, s32 player) {
         for (col = 0; col < 3; col++) {
             TripleTriadBoardSlot *cell = &board->cells[row + 1][col + 1];
             if (cell->flags & TT_CELL_OCCUPIED) {
-                s32 val = D_801D35C8 + D_801D35E0[cell->cardId];
+                s32 val = g_evalCardBaseWeight + g_tripleTriadCardValues[cell->cardId];
                 if (cell->owner == player) {
                     score += val;
                 } else {
@@ -1529,13 +1529,13 @@ s32 evaluateBoard(TripleTriadBoard *board, s32 player) {
     }
 
     for (slot = 0; slot < 5; slot++) {
-        if (D_801D3570[player].cards[slot].id != 0xFF) {
-            score += (D_801D35E0[D_801D3570[player].cards[slot].id] * D_801D35D8) >> 12;
+        if (g_tripleTriadPlayerHands[player].cards[slot].id != 0xFF) {
+            score += (g_tripleTriadCardValues[g_tripleTriadPlayerHands[player].cards[slot].id] * g_evalHandPotentialWeight) >> 12;
         }
     }
 
-    if (D_801D35D0 != 0) {
-        return score + func_80023D04() % (D_801D35D0 + 1);
+    if (g_evalRandomRange != 0) {
+        return score + func_80023D04() % (g_evalRandomRange + 1);
     }
 
     return score;
@@ -1576,11 +1576,11 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
     if (depth <= 0) {
         return 1;
     }
-    while (D_801D3538 > 0) {
-        cardId = D_801D3570[player].cards[node->card].id;
+    while (g_aiPlacementBudget > 0) {
+        cardId = g_tripleTriadPlayerHands[player].cards[node->card].id;
         if (cardId != 0xFF) {
             if (!(board->cells[node->row + 1][node->col + 1].flags & TT_CELL_OCCUPIED)) {
-                D_801D3538--;
+                g_aiPlacementBudget--;
                 boardCopy = *board;
 
                 placeCard(&boardCopy, cardId, player, node->col, node->row);
@@ -1588,14 +1588,14 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                 weight = 0x1000;
                 while (applyCardRules(&boardCopy, ruleMode) != 0) {
                     ruleMode &= -2;
-                    if (player == D_801D35C0) {
-                        weight = D_801D35D4;
+                    if (player == g_tripleTriadCurrentSeat) {
+                        weight = g_evalDifficultyWeight;
                     }
                 }
 
-                D_801D3570[player].cards[node->card].id = 0xFF;
+                g_tripleTriadPlayerHands[player].cards[node->card].id = 0xFF;
                 result = searchBestMoveStack(&boardCopy, player ^ 1, &node[1], depth - 1);
-                D_801D3570[player].cards[node->card].id = cardId;
+                g_tripleTriadPlayerHands[player].cards[node->card].id = cardId;
 
                 switch (result) {
                 case 0:
@@ -1604,7 +1604,7 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                     weighted = product >> 12;
                     break;
                 case 1: {
-                    s32 eval = evaluateBoard(&boardCopy, D_801D35C0);
+                    s32 eval = evaluateBoard(&boardCopy, g_tripleTriadCurrentSeat);
                     product = eval * weight;
                     score = eval;
                     weighted = product >> 12;
@@ -1614,7 +1614,7 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                     return 2;
                 }
 
-                if (player == D_801D35C0) {
+                if (player == g_tripleTriadCurrentSeat) {
                     if (node->noBest || node->bestWeighted < weighted) {
                         node->bestWeighted = weighted;
                         node->bestScore = score;
@@ -1635,7 +1635,7 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                 }
 
                 if (node->checkBound) {
-                    if (player == D_801D35C0) {
+                    if (player == g_tripleTriadCurrentSeat) {
                         if (node->bound < score) {
                             node->col = 2;
                             node->row = 2;
@@ -1663,14 +1663,14 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                     node->card = 0;
                     node->noBest = 1;
                     node->checkBound = 1;
-                    if (player == D_801D35C0) {
+                    if (player == g_tripleTriadCurrentSeat) {
                         node->bound = node->bestScore;
                     } else {
                         node->bound = node->bestWeighted;
                     }
                     return 0;
                 }
-                if (node == D_801D3460) {
+                if (node == g_aiSearchStack) {
                     return 3;
                 }
             }
@@ -1712,11 +1712,11 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
         return 1;
     }
     boardCopy = (TripleTriadBoard *)scratchAlloc(sizeof(TripleTriadBoard));
-    while (D_801D3538 > 0) {
-        cardId = D_801D3570[player].cards[node->card].id;
+    while (g_aiPlacementBudget > 0) {
+        cardId = g_tripleTriadPlayerHands[player].cards[node->card].id;
         if (cardId != 0xFF) {
             if (!(board->cells[node->row + 1][node->col + 1].flags & TT_CELL_OCCUPIED)) {
-                D_801D3538--;
+                g_aiPlacementBudget--;
                 *boardCopy = *board;
 
                 placeCard(boardCopy, cardId, player, node->col, node->row);
@@ -1724,14 +1724,14 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                 weight = 0x1000;
                 while (applyCardRules(boardCopy, ruleMode) != 0) {
                     ruleMode &= -2;
-                    if (player == D_801D35C0) {
-                        weight = D_801D35D4;
+                    if (player == g_tripleTriadCurrentSeat) {
+                        weight = g_evalDifficultyWeight;
                     }
                 }
 
-                D_801D3570[player].cards[node->card].id = 0xFF;
+                g_tripleTriadPlayerHands[player].cards[node->card].id = 0xFF;
                 result = searchBestMove(boardCopy, player ^ 1, &node[1], depth - 1);
-                D_801D3570[player].cards[node->card].id = cardId;
+                g_tripleTriadPlayerHands[player].cards[node->card].id = cardId;
 
                 switch (result) {
                 case 0:
@@ -1740,7 +1740,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     weighted = product >> 12;
                     break;
                 case 1: {
-                    s32 eval = evaluateBoard(boardCopy, D_801D35C0);
+                    s32 eval = evaluateBoard(boardCopy, g_tripleTriadCurrentSeat);
                     product = eval * weight;
                     score = eval;
                     weighted = product >> 12;
@@ -1751,7 +1751,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     return 2;
                 }
 
-                if (player == D_801D35C0) {
+                if (player == g_tripleTriadCurrentSeat) {
                     if (node->noBest || node->bestWeighted < weighted) {
                         node->bestWeighted = weighted;
                         node->bestScore = score;
@@ -1772,7 +1772,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                 }
 
                 if (node->checkBound) {
-                    if (player == D_801D35C0) {
+                    if (player == g_tripleTriadCurrentSeat) {
                         if (node->bound < score) {
                             node->col = 2;
                             node->row = 2;
@@ -1800,7 +1800,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     node->card = 0;
                     node->noBest = 1;
                     node->checkBound = 1;
-                    if (player == D_801D35C0) {
+                    if (player == g_tripleTriadCurrentSeat) {
                         node->bound = node->bestScore;
                     } else {
                         node->bound = node->bestWeighted;
@@ -1808,7 +1808,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                     scratchFree(sizeof(TripleTriadBoard));
                     return 0;
                 }
-                if (node == D_801D3460) {
+                if (node == g_aiSearchStack) {
                     scratchFree(sizeof(TripleTriadBoard));
                     return 3;
                 }
@@ -1847,11 +1847,11 @@ s32 updateAiTurn(AiTurnNode *node) {
         case AI_TURN_INIT: {
             s32 i;
             for (i = 0; i < 9; i++) {
-                D_801D3460[i].col = 0;
-                D_801D3460[i].row = 0;
-                D_801D3460[i].card = 0;
-                D_801D3460[i].noBest = 1;
-                D_801D3460[i].checkBound = 0;
+                g_aiSearchStack[i].col = 0;
+                g_aiSearchStack[i].row = 0;
+                g_aiSearchStack[i].card = 0;
+                g_aiSearchStack[i].noBest = 1;
+                g_aiSearchStack[i].checkBound = 0;
             }
             node->state = AI_TURN_SEARCH;
             node->sub = AI_SEARCH_PREP;
@@ -1861,27 +1861,27 @@ s32 updateAiTurn(AiTurnNode *node) {
             s32 sub = node->sub;
             switch (sub) {
             case AI_SEARCH_PREP:
-                D_801D353C = 10;
+                g_aiSearchTimer = 10;
                 node->cardSlot = D_801D3462;
                 node->sub++;
                 break;
             case AI_SEARCH_RUN:
-                highlightCardSlot(D_801D35C0, node->cardSlot);
-                D_801D3538 = 100;
-                node->result = searchBestMove(&D_801D3398, D_801D35C0, D_801D3460, node->unk10);
+                highlightCardSlot(g_tripleTriadCurrentSeat, node->cardSlot);
+                g_aiPlacementBudget = 100;
+                node->result = searchBestMove(&g_tripleTriadBoard, g_tripleTriadCurrentSeat, g_aiSearchStack, node->unk10);
                 if ((node->result & 0xFF) == 2) {
-                    D_801D353C--;
+                    g_aiSearchTimer--;
                     return 0;
                 }
-                if (D_801D3570[D_801D35C0].cards[node->cardSlot].id == 0xFF) {
-                    D_801D353C = 0;
+                if (g_tripleTriadPlayerHands[g_tripleTriadCurrentSeat].cards[node->cardSlot].id == 0xFF) {
+                    g_aiSearchTimer = 0;
                 }
                 node->sub++;
                 break;
             case AI_SEARCH_WAIT:
-                highlightCardSlot(D_801D35C0, node->cardSlot);
-                if (D_801D353C > 0) {
-                    D_801D353C--;
+                highlightCardSlot(g_tripleTriadCurrentSeat, node->cardSlot);
+                if (g_aiSearchTimer > 0) {
+                    g_aiSearchTimer--;
                     return 0;
                 }
                 if (node->result == 3) {
@@ -1897,7 +1897,7 @@ s32 updateAiTurn(AiTurnNode *node) {
             break;
         }
         case AI_TURN_ANIMATE:
-            highlightCardSlot(D_801D35C0, D_801D3466);
+            highlightCardSlot(g_tripleTriadCurrentSeat, D_801D3466);
             node->sub++;
             if ((node->sub & 0xFF) < AI_ANIM_FRAMES) {
                 return 0;
@@ -1907,11 +1907,11 @@ s32 updateAiTurn(AiTurnNode *node) {
             break;
         case AI_TURN_PLACE:
             setCardObjectAction(
-                D_801D3570[D_801D35C0].cards[D_801D3460[0].bestCard].entityIdx, 2,
-                D_801D3460[0].bestCol, D_801D3460[0].bestRow);
-            commitCardToBoard(&D_801D3398,
-                D_801D3570[D_801D35C0].cards[D_801D3460[0].bestCard].entityIdx,
-                D_801D3460[0].bestCol, D_801D3460[0].bestRow);
+                g_tripleTriadPlayerHands[g_tripleTriadCurrentSeat].cards[g_aiSearchStack[0].bestCard].entityIdx, 2,
+                g_aiSearchStack[0].bestCol, g_aiSearchStack[0].bestRow);
+            commitCardToBoard(&g_tripleTriadBoard,
+                g_tripleTriadPlayerHands[g_tripleTriadCurrentSeat].cards[g_aiSearchStack[0].bestCard].entityIdx,
+                g_aiSearchStack[0].bestCol, g_aiSearchStack[0].bestRow);
             return 2;
         }
     }
@@ -1944,12 +1944,12 @@ u8 *spawnAiTurn(s32 seat) {
         for (card = 0; card < 5; card++) {
             s32 entity;
             entity = findCardSlot(player, 0, card);
-            D_801D3570[player].cards[card].entityIdx = entity;
+            g_tripleTriadPlayerHands[player].cards[card].entityIdx = entity;
             if (entity < 0) {
                 slotCount--;
-                D_801D3570[player].cards[card].id = 0xFF;
+                g_tripleTriadPlayerHands[player].cards[card].id = 0xFF;
             } else {
-                D_801D3570[player].cards[card].id = g_tripleTriadCardHands[entity].cardId;
+                g_tripleTriadPlayerHands[player].cards[card].id = g_tripleTriadCardHands[entity].cardId;
             }
         }
     }
@@ -1958,35 +1958,35 @@ u8 *spawnAiTurn(s32 seat) {
         s32 opp = seat ^ 1;
         for (i = 0; i < 5; i++) {
             s32 r1, r2, divisor;
-            D_801D3570[opp].cards[i].entityIdx = -1;
+            g_tripleTriadPlayerHands[opp].cards[i].entityIdx = -1;
             r1 = func_80023D04();
             r2 = func_80023D04();
             divisor = D_801A2C48[seat][i] / 11 + 1;
-            D_801D3570[opp].cards[i].id = (r1 % divisor) * 11 + r2 % 11;
+            g_tripleTriadPlayerHands[opp].cards[i].id = (r1 % divisor) * 11 + r2 % 11;
         }
     }
 
     initObjList(D_801D3560, D_801D3540, 0x14, 1);
     node = (AiTurnNode *)allocObjNode(D_801D3560, (ObjNodeFn)updateAiTurn);
-    D_801D35C0 = seat;
+    g_tripleTriadCurrentSeat = seat;
     node->seat = seat;
     {
-        s32 depth = D_80182D64[D_80082C90.field_07 & 7][slotCount - 1];
+        s32 depth = g_aiSearchDepthTable[D_80082C90.field_07 & 7][slotCount - 1];
         node->state = 0;
         node->sub = 0;
         node->unk10 = depth;
     }
 
-    mult = D_80182DAC[D_80082C90.field_06 & 7].w1;
-    D_801D35C8 = D_80182DAC[D_80082C90.field_06 & 7].w0;
-    D_801D35CC = mult;
-    D_801D35D0 = D_80182DAC[D_80082C90.field_06 & 7].w2;
-    D_801D35D4 = D_80182DAC[D_80082C90.field_06 & 7].w3;
-    D_801D35D8 = D_80182DAC[D_80082C90.field_06 & 7].w4;
+    mult = g_aiWeightTable[D_80082C90.field_06 & 7].w1;
+    g_evalCardBaseWeight = g_aiWeightTable[D_80082C90.field_06 & 7].w0;
+    g_evalCardValueScale = mult;
+    g_evalRandomRange = g_aiWeightTable[D_80082C90.field_06 & 7].w2;
+    g_evalDifficultyWeight = g_aiWeightTable[D_80082C90.field_06 & 7].w3;
+    g_evalHandPotentialWeight = g_aiWeightTable[D_80082C90.field_06 & 7].w4;
     weight = mult;
 
     for (i = 0; i < 110; i++) {
-        D_801D35E0[i] = (g_tripleTriadCardStats[i].pad05[0] * weight / 200) >> 12;
+        g_tripleTriadCardValues[i] = (g_tripleTriadCardStats[i].pad05[0] * weight / 200) >> 12;
     }
 
     return D_801D3560;
