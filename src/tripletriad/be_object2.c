@@ -36,23 +36,14 @@ void setCardObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
 }
 
 /**
- * @brief Emit a 24x16 TSPRT overlay sprite anchored at a node's world XY.
+ * @brief Emit a 24x16 textured overlay sprite anchored at a node's screen XY.
  *
- * Builds a single textured sprite primitive (combined DR_TPAGE + SPRT in
- * one packet, 24 bytes) at @c (node.spriteX + 0xB4, node.spriteY + 0x68)
- * and links it into the OT @p ot via @c AddPrim. The @p variant selector
- * picks between two adjacent textures sharing the same tpage:
- *  - @c variant @c > @c 0: U=0,  CLUT=0x3A80
- *  - @c variant @c <= @c 0: U=24, CLUT=0x3AC0
+ * Builds one textured sprite (the elemental +1/-1 modifier marker) anchored to
+ * the card node and links it into @p ot. @p variant picks between the two
+ * marker textures.
  *
- * The function increments and returns the output buffer pointer so the
- * caller can chain further primitives. The single-iteration do-while
- * mirrors the original (likely a degenerate loop body retained for
- * scheduling reasons).
- *
- * @param node     Animation node providing screen-space anchor (only the
- *                 @c spriteX and @c spriteY union members are read).
- * @param variant  Texture selector — positive selects the first texture/CLUT.
+ * @param node     Animation node providing the screen-space anchor.
+ * @param variant  Texture selector — positive selects the first marker.
  * @param ot       OT bucket pointer used by @c AddPrim.
  * @param out      Output primitive buffer (pre-allocated by caller).
  * @return         Pointer to the next free TSPRT slot in @p out.
@@ -89,28 +80,15 @@ TSPRT *drawCardOverlaySprite(CardAnimNode *node, s32 variant, void *ot, TSPRT *o
 }
 
 /**
- * @brief Per-frame update for a @c TripleTriadCardObject — rotation, transform, render.
+ * @brief Per-frame update for one @c TripleTriadCardObject — rotation, transform, render.
  *
- * Called by the be_object2 dispatch (registered via @c allocObjNode in
- * @c setupTripleTriadHands). For one @c TripleTriadCardObject the function:
- *  - Advances @c angle toward 0x1000 (clockwise) or 0 (counter-clockwise)
- *    based on the @c CTRL_FLAG_02 bit, and clamps the result.
- *  - Allocates a 40-byte @c CardAnimNode work buffer.
- *  - Runs the transform chain (@c animateCardEffect, @c layoutCardSlot,
- *    @c func_80041274) to populate the node's base position, then folds
- *    in @c offX/Y/Z and @c offSort to produce the world position.
- *  - Applies a small angle-driven X displacement
- *    (@c (sin(angle/4) * 12) >> 12), sign-flipped by @c groupId.
- *  - For Triple-Triad cards (@c state==0, @c groupId==2), looks up the
- *    cell's @c elementMod in @c D_801D3398 — if non-zero, emits the
- *    elemental modifier overlay sprite via @c drawCardOverlaySprite.
- *  - Calls the per-frame render helpers (@c drawTriadCard and
- *    @c transformCardEffect) to draw the rest of the object.
- *  - Frees the @c CardAnimNode.
+ * Advances the card's spin angle, runs its effect animation
+ * (@c animateCardEffect) and layout to build a world transform, then draws the
+ * card (@c drawTriadCard / @c transformCardEffect) plus, for a placed card on an
+ * elemental cell, its elemental-modifier overlay.
  *
- * @param ctl Handler context whose @c entry slot points at the
- *            @c TripleTriadCardObject being driven.
- * @return 0 (kept on the stack for compat with @c s32 callback signature).
+ * @param ctl Handler context whose @c entry points at the card object being driven.
+ * @return Always 0.
  */
 s32 updateCardObject(CardObjectCtl *ctl) {
     TripleTriadCardObject *entity;
@@ -176,7 +154,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
 }
 
 /**
- * @brief Call updateObjectList with D_801D3110.
+ * @brief Per-frame update of the card-object list.
  */
 void processCardObjects(s32 arg) {
     updateObjectList(D_801D3110);
@@ -185,20 +163,10 @@ void processCardObjects(s32 arg) {
 /**
  * @brief Initialize the 10 hand-card @c TripleTriadCardObject slots for a Triple Triad match.
  *
- * Builds the linked list at @c D_801D3110 (10 nodes from the @c D_801D3120 pool,
- * 16 bytes each), then for each of the two players sets up 5 hand-card entries
- * in @c g_tripleTriadCardHands. Each entry is wired up so that its per-frame
- * @c updateCardObject callback can find it via @c CardObjectCtl.entry.
- *
- * Per-entry fields:
- *  - @c cardId   ← @c D_801A2C48[player][slot] (card id into @c g_tripleTriadCardStats).
- *  - @c flags        ← 1 (active).
- *  - @c initFlags    ← @c 0x12 | player (flag bits read by the card render path).
- *  - @c groupId      ← player.
- *  - @c priority     ← slot.
- *  - @c posData[1]   ← @c 0x800 when rule bit 0 is off and @c D_801A2C70[player] == 3
- *                       (hand-position mode for that player type); 0 otherwise.
- *  - all remaining fields cleared to 0.
+ * Builds the card-object list, then fills both players' five hand cards in
+ * @c g_tripleTriadCardHands from @c D_801A2C48 — setting each card's id, owning
+ * seat, hand slot, and active flag, and registering a per-frame
+ * @c updateCardObject callback that drives it via @c CardObjectCtl.entry.
  */
 void setupTripleTriadHands(void) {
     s32 player;
@@ -244,16 +212,10 @@ void setupTripleTriadHands(void) {
 /**
  * @brief Render one Triple Triad card to the primitive buffer.
  *
- * Allocates a 0x3C-byte @c CardRenderWork scratch buffer, projects the card
- * outline @c D_80182C30 via @c func_80040ED4 (RotTransPers4) and backface-tests
- * it with @c func_80040EA4 (NormalClip). If the card faces the camera it emits,
- * in order: the rank-digit quads (@c flags @c & @c 0x2; one @c POLY_FT4 per edge,
- * projected from @c D_80182C90 centres + @c D_80182C70 corner offsets, UV from
- * @c card->sides[i]); an element-marker FT4 (@c flags @c & @c 0x10 and a non-zero
- * @c card->element, UV from the lowest set element bit); the id-derived body FT4;
- * and a @c POLY_G4 gradient border (palette by @c flags @c & @c 0x20 / @c 0x1).
- * A back-facing card emits a single mirrored card-back FT4. Returns the advanced
- * @p out so the caller can chain further primitives.
+ * Projects the card quad and backface-tests it. A front-facing card emits its
+ * rank digits (when @c flags requests them), an element marker, the card body,
+ * and a gradient border; a back-facing card emits a single mirrored card back.
+ * Returns the advanced @p out so the caller can chain further primitives.
  *
  * @param cardId Index into @c g_tripleTriadCardStats.
  * @param flags  Render flags: 0x2 = show ranks, 0x4 = translucent, 0x10 = show
@@ -418,19 +380,14 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
 }
 
 /**
- * @brief Emit a single semi-transparent black @c POLY_F4 quad — a "card shadow".
+ * @brief Emit a single semi-transparent black quad — a card drop shadow.
  *
- * Allocates a 60-byte @c CardRenderWork scratch, projects the four shadow-quad
- * corners (@c D_80182CF0) through the GTE via @c RotTransPers4 into the
- * primitive's @c x0..x3 fields, then links the primitive into the OT.
- *
- * The tag is set to @c 0x05000000 (5-word POLY_F4 payload) and the colour/code
- * word to @c 0x2A000000 — RGB=0, code @c 0x2A (semi-transparent flat quad).
+ * Projects the four shadow-quad corners through the GTE and links the quad into
+ * the OT.
  *
  * @param ot   OT bucket pointer.
  * @param prim Pre-allocated @c POLY_F4 slot in the primitive buffer.
- * @return     @p prim incremented past this primitive (i.e. the next free
- *             @c POLY_F4 slot).
+ * @return     @p prim incremented past this primitive.
  */
 POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
     CardRenderWork *work;
@@ -450,11 +407,10 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
 }
 
 /**
- * @brief Reset battle state globals and the substate parameter table.
+ * @brief Reset the Triple Triad menu/substate state for a new selection.
  *
- * Clears @c D_801D3328, @c D_801D3359, and the per-substate slots in
- * @c D_801D3340 (zeroing most fields, but setting both halves of slot 3
- * to 1 — slot 3 is the only substate that uses both halfwords).
+ * Clears the subscribed-substate mask and the per-substate cursor slots (the
+ * 2D board substate's row/column are seeded to 1).
  */
 void resetTriadMenuState(void) {
     D_801D3328 = 0;
@@ -470,19 +426,9 @@ void resetTriadMenuState(void) {
 /**
  * @brief Emit one HUD primitive at a substate-driven anchor.
  *
- * Dispatches on @p mode (1..5); modes outside that range are no-ops. Each
- * case calls @c func_8002FF34 to emit a single GPU packet into
- * @c &g_otBase[4] (OT bucket #4), advancing @c g_primCursor (the global
- * primitive-pool tail). The substate slot's two halfwords (@c field0,
- * @c field2) supply per-mode anchor offsets:
- *
- *  - mode 1: char @c 1   at y=0x58, w=@c (field2*32)+0x30
- *  - mode 2: char @c 0   at y=0x110, w=@c (field2*32)+0x30
- *  - mode 3: char @c 0   at y=@c (field0*64)+0x68, w=@c (field2*64)|0x30
- *  - mode 4: char @c 0   at y=@c (field0*64)+0x28, w=0x4C
- *  - mode 5: char @c 0   at y=@c (field0*64)+0x28, w=0x94
- *
- * Color is always white (@c 0x808080).
+ * Dispatches on @p mode (1..5; other values are no-ops); each mode emits a
+ * single cursor/label sprite whose screen anchor is derived from the substate
+ * slot's @c field0 / @c field2.
  *
  * @param mode  Substate index (1..5; other values are ignored).
  * @param slot  Substate parameter slot supplying @c field0 / @c field2 anchors.
@@ -518,12 +464,10 @@ void drawMenuPrim(s32 mode, SubstateSlot *slot) {
 }
 
 /**
- * @brief Look up the active object and initialize its handler.
+ * @brief Show the card-detail popup for the card object matching a search key.
  *
- * Forwards @p a / @p b / @p c through to @c findCardSlot (the function
- * never touches a-regs itself, so the args land in the helper unchanged).
- * If the helper returns a valid index, passes the slot's @c cardId
- * byte to @c func_800A2114.
+ * Looks up the slot via @c findCardSlot and, if found, passes its @c cardId to
+ * @c func_800A2114.
  *
  * @param groupId  Search group — @c findCardSlot arg 0.
  * @param fieldD   Secondary key — @c findCardSlot arg 1.
@@ -537,25 +481,11 @@ void initMenuObjectHandler(s32 groupId, s32 fieldD, s32 priority) {
 }
 
 /**
- * @brief Substate-1 handler: cursor left/right movement on the substate row.
+ * @brief Substate-1 handler: left/right cursor over the cpu hand row.
  *
- * Reads input bits from @c D_801D332E and the controller mask
- * @c D_801D3328 to update @c slot->field2 (the row cursor) and/or queue a
- * sub-dispatch:
- *
- *  - bit 0x1000 (left) : tries @c findCardSlot with @c field2-1; if the
- *    candidate is valid (returns @c >= 0), plays the move SFX via
- *    @c func_800A233C(1), decrements @c field2, and falls through to the
- *    common dispatch.
- *  - bit 0x4000 (right): same pattern, with @c field2+1.
- *  - bit 0x2000 (select) AND @c D_801D3328 has bit 0x8 set → store
- *    @c 3 into @c D_801D3358 and return (skip the dispatch).
- *  - bit 0x2000 (select) AND @c D_801D3328 has bit 0x4 set → store
- *    @c 2 into @c D_801D3358 and return.
- *
- * The common dispatch at the bottom calls @c highlightCardSlot(0, field2) and
- * @c initMenuObjectHandler(0, 0, field2) — the latter forwards its three args
- * through to @c findCardSlot inside the helper.
+ * Moves @c slot->field2 left/right to the next valid card (or, on select,
+ * queues the next substate), then highlights the cursor's card and shows its
+ * detail popup.
  *
  * @param slot Substate parameter slot — @c field2 is the row cursor.
  * @param idx  Substate index (unused here; preserved for the dispatcher
@@ -584,23 +514,10 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
 }
 
 /**
- * @brief Substate-2 handler: cursor left/right movement on the substate row.
+ * @brief Substate-2 handler: left/right cursor over the player hand row.
  *
- * Mirror of @ref handleCursorSubstate1 but with @c a0=1 (substate-2 search key)
- * and a different cancel mapping. Reads input bits from @c D_801D332E and
- * the controller mask @c D_801D3328 to update @c slot->field2 (column
- * cursor) and/or queue a sub-dispatch:
- *
- *  - bit 0x1000 (left) : tries @c findCardSlot(1, 0, field2-1); if valid,
- *    play move SFX and decrement @c field2.
- *  - bit 0x4000 (right): same pattern, with @c field2+1.
- *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x8 set → @c D_801D3358
- *    = 3 and return.
- *  - bit 0x8000 (select) AND @c D_801D3328 has bit 0x2 set → @c D_801D3358
- *    = 1 and return.
- *
- * Common dispatch: @c highlightCardSlot(1, field2) and
- * @c initMenuObjectHandler(1, 0, field2).
+ * Mirror of @ref handleCursorSubstate1 for the other hand (different search
+ * group and cancel mapping).
  *
  * @param slot Substate parameter slot — @c field2 is the column cursor.
  * @param idx  Substate index (unused; preserved for the dispatcher
@@ -629,30 +546,11 @@ void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
 }
 
 /**
- * @brief Substate-3 handler: 2D cursor (row × column) with edge-wrap dispatch.
+ * @brief Substate-3 handler: 2D board cursor (row × column) with edge wrap.
  *
- * Reads input bits from @c D_801D332E and the controller mask
- * @c D_801D3328 to drive a row/column cursor (@c slot->field0 row,
- * @c slot->field2 column):
- *
- *  - bit 0x8000 (up)    : @c field0--; if it doesn't underflow to @c -1,
- *    play SFX. An underflow falls into the "row wrapped below 0" handler
- *    at the bottom (clamps to 0 and conditionally sets @c D_801D3358=1).
- *  - bit 0x2000 (down)  : @c field0++; if still less than 3, play SFX.
- *    A value of 3+ falls into the "row past last" handler at the bottom
- *    (clamps to 2 and conditionally sets @c D_801D3358=2).
- *  - bit 0x1000 (left), only if up/down didn't fire: if @c field2 > 0,
- *    play SFX and @c field2--.
- *  - bit 0x4000 (right), only if up/down/left didn't fire: if
- *    @c field2 < 2, play SFX and @c field2++.
- *
- * Row-wrap tail:
- *  - if @c field0 < 0  : set @c field0 = 0; if @c D_801D3328 has bit 0x2
- *    set, @c D_801D3358 = 1 (queue submenu).
- *  - if @c field0 >= 3 : set @c field0 = 2; if @c D_801D3328 has bit 0x4
- *    set, @c D_801D3358 = 2.
- *
- * Common dispatch at the end: @c initMenuObjectHandler(2, field0, field2).
+ * Moves the @c field0 row / @c field2 column cursor within the 3x3 board on the
+ * d-pad. Stepping off the top or bottom edge clamps the row and, depending on
+ * the subscribed-substate mask, hands control back to a hand-row substate.
  *
  * @param slot Substate parameter slot — @c field0 row, @c field2 column.
  * @param idx  Substate index (unused; preserved for the dispatcher
@@ -693,12 +591,10 @@ void handleCursorSubstate3(SubstateSlot *slot, s32 idx) {
 }
 
 /**
- * @brief Adjust a battle speed/volume parameter based on controller input.
+ * @brief Adjust a config parameter (0..4) up or down from controller input.
  *
- * If D_801D332E has bit 0x8000 set and the current value at @p param is
- * positive, decrements the value and triggers a sound effect. If D_801D332E has
- * bit 0x2000 set and the value is less than 4, increments it and triggers a
- * sound effect. Stores the final value to D_801D335C.
+ * Left/right input nudges @p param within [0, 4] (with a confirm SFX) and
+ * mirrors the result into the menu's display state.
  *
  * @param param Pointer to a halfword value to adjust.
  */
@@ -726,20 +622,11 @@ store:
 }
 
 /**
- * @brief Per-frame battle-engine tick: latch state masks then dispatch substate.
+ * @brief Per-frame Triple Triad menu tick: latch pad input, dispatch substate.
  *
- * Reads @c D_801D3338 as a signed byte. State 0/1 latches the per-state
- * mask entries from @c g_padHeld / @c g_padRepeat / @c g_padPressed into
- * @c D_801D332C / @c D_801D332E / @c D_801D3330; state 2 latches the
- * OR of the first two entries; state < 0 or > 2 skips the latch.
- *
- * If @c D_801D3359 == 1, dispatches to one of four substate handlers
- * (@c handleCursorSubstate1 / @c handleCursorSubstate2 / @c handleCursorSubstate3 /
- * @c adjustConfigParam) based on @c D_801D3358 (0..5), then calls
- * @c drawMenuPrim. Finally checks two completion triggers against
- * @c D_801D3334 / @c D_801D3330: bit-0xC0 sets @c D_801D3359=2 and
- * snapshots @c D_801D3340[D_801D3358] to @c D_801D335C; bit-0x10 sets
- * @c D_801D3359=3.
+ * Latches the current frame's pad masks, then — if a substate is armed —
+ * dispatches to the matching cursor/config handler and draws its HUD primitive.
+ * Finally checks the completion triggers that commit or cancel the substate.
  */
 void updateTriadMenu(void) {
     s32 state = *(u8 *)&D_801D3338;
@@ -787,28 +674,18 @@ void updateTriadMenu(void) {
 }
 
 /**
- * @brief Activate a substate slot and seed its column cursor.
+ * @brief Activate a substate slot and seed its cursor.
  *
- * Latches the substate index and per-call control fields into the global
- * tick state, OR-merging @p mask into @c D_801D3328 with the new
- * substate's mask bit set. Then, for substates 1 and 2, the active column
- * cursor (@c D_801D3340[idx].field2) is probed via @c findCardSlot — if
- * the current position is not valid, it's nudged by +1 to find a valid
- * candidate.
- *
- *  - @c D_801D3358 = @p idx          (active substate index)
- *  - @c D_801D3328 = @p mask | (1<<@p idx)  (cumulative subscribed-substate mask)
- *  - @c D_801D3359 = 1               (arm completion)
- *  - @c D_801D3338 = @p stateByte    (state byte)
- *  - @c D_801D3334 = @p suppressFlags (completion-suppress flags)
- *
- * Substates 0 and 3..5 skip the cursor probe and return immediately.
+ * Arms substate @p idx (recording it in the subscribed-substate mask) and
+ * latches the caller's control fields for the next @ref updateTriadMenu tick.
+ * For the hand-row substates (1 and 2) it also nudges the column cursor to the
+ * nearest valid card.
  *
  * @param idx           Substate index (0..5).
  * @param mask          Caller-supplied subscriber mask (this substate's bit
  *                      is OR'd in before storing).
- * @param stateByte     State byte to latch into @c D_801D3338.
- * @param suppressFlags Completion-suppress flags to latch into @c D_801D3334.
+ * @param stateByte     State byte latched for the dispatcher.
+ * @param suppressFlags Completion-suppress flags latched for the dispatcher.
  */
 void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
     D_801D3358 = idx;
@@ -828,43 +705,16 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
 /**
  * @brief Per-frame state machine for the player's Triple Triad card-selection cursor.
  *
- * Linked-list callback registered by @ref spawnCardSelectCursor on the
- * @c D_801D3380 list. Drives a 4-state machine stored in @p p->state
- * (offset @c 0x0C of the 20-byte node):
+ * Walks the player through picking a hand card, choosing a board cell, and
+ * placing it:
+ *  - pick a card from the hand (re-arming the cursor until a valid one is chosen);
+ *  - hand off to the board-cell cursor;
+ *  - on confirm, commit the card to the board (rejecting an occupied cell);
+ *    on cancel, return to the card pick.
+ * If the player opens the pause/options menu instead, it bails immediately.
  *
- *  - state 0 : prime the column cursor for substate (@c fieldD+1) via
- *              @ref activateMenuSubstate, then advance to state 1.
- *  - state 1 : if @c D_801D3359 already equals the current state (= 1),
- *              the selection has already been committed — bail with @c 0.
- *              Otherwise probe the snapshot's column at @c D_801D335C.field2
- *              via @ref findCardSlot: on success, copy
- *              @c D_801D335C into the node's @c snapshot field, advance to
- *              state 2 and play SFX 1; on failure, fall back to state 0.
- *  - state 2 : arm row-cursor substate 3 via @ref activateMenuSubstate, advance
- *              to state 3.
- *  - state 3 : per-frame display tick:
- *              - if @c g_drawBufferIndex is set, draw the snapshot via
- *                @ref drawMenuPrim.
- *              - update the active cursor entity via @ref highlightCardSlot.
- *              - inspect @c D_801D3359 (= a UI trigger code):
- *                  * @c 2 : commit the chosen card. If the destination
- *                          board slot is already occupied (returned >= 0),
- *                          play SFX @c 0x10 and stay; otherwise allocate
- *                          a new card object, prime it with
- *                          @ref setCardObjectAction and @ref commitCardToBoard,
- *                          play SFX 1, and return 2 (placement done).
- *                  * @c 1 : exit (return 0).
- *                  * @c 3 (matches current state) : cancel — play SFX 9,
- *                          reset to state 0.
- *
- * Bails out at the very top if the global "battle paused" flag
- * (@c g_tripleTriadInputFlags bit @c 0x4) is clear AND @c D_801C2EC4 has bit @c 0x20
- * set — calls @ref func_800A26C8 (the "open battle menu" handler) and
- * returns 0 immediately.
- *
- * @param p Linked-list node owned by @c D_801D3380.
- * @return  @c 0 normally / when bailing on commit; @c 2 once a card has
- *          been placed on the board.
+ * @param p Card-selection cursor node.
+ * @return  @c 0 while still selecting; @c 2 once a card has been placed.
  */
 s32 updateCardSelectCursor(SubstateMachineNode *p) {
     s32 s1;
@@ -930,16 +780,14 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
 }
 
 /**
- * @brief Initialize the D_801D3380 linked list with a battle callback.
+ * @brief Spawn the player's card-selection cursor handler.
  *
- * Sets up D_801D3380 as a linked list (pool at D_801D3360, node size 0x14,
- * capacity 1), then appends updateCardSelectCursor as a callback. Sets byte fields
- * 0xC, 0xD, 0xE on the node from the parameters. Resets D_801D3340 fields
- * at +0xC and +0xE to 1.
+ * Creates a one-node list driving @ref updateCardSelectCursor, seeded with the
+ * row/state parameters.
  *
  * @param rowSeed   Cursor row seed (node @c fieldD).
  * @param stateByte State byte forwarded to activateMenuSubstate (node @c fieldE).
- * @return Pointer to D_801D3380 list header.
+ * @return The cursor list head.
  */
 u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
     u8 *list = D_801D3380;
@@ -994,30 +842,16 @@ s32 anyCardEffectActive(void) {
 }
 
 /**
- * @brief Per-frame transform for a card-effect @c TripleTriadCardObject (state machine).
+ * @brief Per-frame effect animation for a @c TripleTriadCardObject (state machine).
  *
- * Drives the per-frame animation update for a card's render state. The
- * function is dispatched once per frame from @c updateCardObject and chooses
- * its behavior from @c state (0..7):
- *  - @b 0 / @b 6 — idle: no update this frame.
- *  - @b 1 — open/flip sequence keyed by @c field02:
- *      - frames 0..19: ease-in rotation via @c rsin (raises @c offY);
- *        plays SFX 0x59 on the first frame.
- *      - frames 20..24: hold (no visual change).
- *      - frames 25..49: drop sequence: on frame 25 the @c param0..pad13
- *        block (the source colour/index quartet at 0x10) is copied over
- *        the active @c groupId..pad0F block at 0x0C, @c offSort sinks to
- *        @c -9, then the next 24 frames sweep @c offY and @c offZ via
- *        @c rsin/rcos.
- *      - frame 50+: terminate (state=0, @c offSort cleared).
- *  - @b 2..5 — slide-in trajectory: indexes a direction vector from
- *    @c D_80182D10 (one of 4 cardinals) and moves @c posData/field18 along
- *    that vector for 25 frames, with a small @c offZ bob and a single
- *    @c initFlags^=1 toggle on frame 12. Frames 25..29 then settle to
- *    @c offSort = 0; frame 30 terminates.
- *  - @b 7 — short shake/twitch animation: 10-frame @c offY sweep via
- *    @c rsin; on the last frame the cleanup clears @c offY / @c state /
- *    @c field02 and increments @c priority (the byte at @c 0x0E).
+ * Dispatched once per frame from @c updateCardObject; advances the card's
+ * position/rotation offsets for its current @ref CardEffectState:
+ *  - @c CARD_FX_IDLE / @c CARD_FX_FLASH — no movement this frame.
+ *  - @c CARD_FX_FLIP — the open/flip sequence (raise, hold, then drop into place).
+ *  - @c CARD_FX_SLIDE_* — slide in from a captured-from direction.
+ *  - @c CARD_FX_SHAKE — a short shake, then clear and advance to the next card.
+ * Each sub-animation runs for a fixed number of frames (counted in @c field02)
+ * and clears @c state back to idle when it finishes.
  *
  * @param entity Card object being driven this frame.
  */
@@ -1111,23 +945,15 @@ void animateCardEffect(TripleTriadCardObject *entity) {
 /**
  * @brief Emit a 62x62 semi-transparent gouraud quad over a card-effect node.
  *
- * Builds a @c POLY_G4 (semi-transparent code 0x3A) plus a @c DR_TPAGE in the
- * caller's primitive buffer and links both into @p ot. Each of the four
- * corners gets its own colour via @c DpqColor — the depth-queue input is
- * @c rsin(angle + D_80182D30[i]) clamped to @c >=0, so the corners
- * brighten/dim out of phase with each other as @p angle rotates.
+ * Builds a translucent gouraud quad (the flip flash) over the card and links it
+ * into @p ot. Each corner's brightness is driven out of phase by @p angle, so
+ * the quad shimmers as the animation rotates.
  *
- * The quad spans pixels (spriteX+0xA1, spriteY+0x51) to (+0xDF, +0x8F)
- * relative to the @c CardAnimNode anchor.
- *
- * @param node     Display-list node providing the screen-space anchor
- *                 (@c spriteX / @c spriteY at offsets 0x14 / 0x18).
- * @param angle    Animation phase added to each corner's @c D_80182D30 offset.
- * @param ot       Ordering-table bucket to link the two primitives into.
- * @param primBuf  Caller's primitive buffer; the @c POLY_G4 is written at
- *                 offset 0 (36 bytes) and the @c DR_TPAGE at offset 0x24
- *                 (8 bytes).
- * @return Pointer past the emitted primitives (@p primBuf + 0x2C).
+ * @param node     Display-list node providing the screen-space anchor.
+ * @param angle    Animation phase driving the per-corner brightness.
+ * @param ot       Ordering-table bucket to link the primitive into.
+ * @param primBuf  Caller's primitive buffer.
+ * @return Pointer past the emitted primitives.
  */
 u8 *drawCardEffectQuad(CardAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
     POLY_G4 *poly = (POLY_G4 *)primBuf;
@@ -1165,21 +991,11 @@ u8 *drawCardEffectQuad(CardAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
 }
 
 /**
- * @brief Per-frame transform stage 2 for a card-effect @c TripleTriadCardObject.
+ * @brief Per-frame transform/render stage for a card-effect @c TripleTriadCardObject.
  *
- * Dispatches on @c state, mirroring the small state machine in
- * @c animateCardEffect but handling the matrix transform + render side:
- *  - @b 0, @b 7+: nothing this frame.
- *  - @b 1..5 (slide-in trajectory): scale @c node's matrix by the constant
- *    @c cardScale, set @c worldZ to @c 0x200, push rotation/translation
- *    into the GTE, then walk the next display primitive via
- *    @c drawCardShadow into @p otBucket.
- *  - @b 6 (flip): drive an angle from @c field02 (0..19, swept over 20
- *    frames as @c (n+1)*4096/20 — a 12-bit fixed-point sweep through
- *    [0, 4096]) and emit the gouraud quad via @c drawCardEffectQuad into a fixed
- *    OT layer (@c &g_otBase[6], vs the per-card sort-key layer used by the
- *    normal render). @c field02 advances; when it reaches @c 20 the state is
- *    cleared.
+ * The render-side companion to @c animateCardEffect: for the slide-in states it
+ * builds the card's matrix and links its drop shadow into @p otBucket; for the
+ * flip state it emits the translucent flash quad. Idle states draw nothing.
  *
  * @note The @c goto dispatch and the @c stateCopy second local are scaffolds
  *       that are load-bearing for the match — keep them.
@@ -1412,7 +1228,7 @@ s32 applyBasicCapture(TripleTriadBoard *board) {
  * (different owner) — flipping the owner and recording the direction in the
  * @c flags field.
  *
- * @param board The 5x5 Triple Triad board (typically @c &g_tripleTriadBoard).
+ * @param board The 5x5 Triple Triad board.
  * @return Number of cards captured this call.
  */
 s32 applySameRule(TripleTriadBoard *board) {
@@ -1513,7 +1329,7 @@ s32 applySameRule(TripleTriadBoard *board) {
  * The 5-wide board layout with a 1-cell sentinel border means neighbor
  * lookups at the edges fall through cleanly without bounds checks.
  *
- * @param board The 5xN Triple Triad board (typically @c D_801D3398).
+ * @param board The 5x5 Triple Triad board.
  * @return Number of cards captured this call.
  */
 s32 applyPlusRule(TripleTriadBoardSlot board[][TT_BOARD_COLS]) {
@@ -1680,13 +1496,11 @@ void resolveCaptures(TripleTriadBoard *board) {
  *
  * The static evaluator the minimax (@ref searchBestMoveStack) calls at its leaves.
  * Sums three contributions into a signed score (higher = better for @p player):
- *  - **Board material**: for every occupied cell in the 3x3 play area, take
- *    @c D_801D35C8 + the card's value (@c D_801D35E0[cardId]) and add it if
- *    @p player owns the cell, subtract it otherwise.
- *  - **Hand potential**: for each still-playable card in @p player's hand
- *    (@c id != 0xFF), add @c (cardValue * D_801D35D8) >> 12.
- *  - **Random tiebreaker**: when @c D_801D35D0 is nonzero, add
- *    @c rand() % (D_801D35D0 + 1) so equal positions don't always tie.
+ *  - **Board material**: each occupied cell scores its card's value (plus a base
+ *    weight), added for @p player's cells and subtracted for the opponent's.
+ *  - **Hand potential**: a fraction of each still-playable hand card's value.
+ *  - **Random tiebreaker**: a small random amount so equal positions don't
+ *    always tie (difficulty-tunable).
  *
  * @param board  The 5x5 board (the play area is rows/cols 1..3).
  * @param player The seat (0 or 1) to score for.
@@ -1728,37 +1542,23 @@ s32 evaluateBoard(TripleTriadBoard *board, s32 player) {
 /**
  * @brief Recursive Triple Triad AI move search (resumable depth-limited minimax).
  *
- * Tries every move at this ply: for each (card, row, col) combination selected
- * by the iterators in @p node, skips played cards (id 0xFF) and occupied cells,
- * then copies @p board, places the card (@ref placeCard), cascades the capture
- * rules (@ref applyCardRules), and recurses one ply deeper with the opponent to
- * move (child state in @c node[1], the played card masked out of the hand). A
- * child that ran out of depth (result 1) is scored with @ref evaluateBoard from
- * the AI seat's perspective; a child that completed its own pass (result 0)
- * reports back through its @c bestScore / @c bestWeighted fields. The raw score
- * is tracked in @c node->bestScore and its difficulty-weighted counterpart
- * (scaled by @c D_801D35D4 in 4.12 fixed point whenever a capture cascade
- * occurred on the AI seat's own placement) in @c node->bestWeighted; the AI
- * seat maximizes the weighted score while the opponent minimizes the raw one,
- * and the winning move is recorded in @c bestCol / @c bestRow / @c bestCard.
- * After a node completes a full pass it latches its result into @c bound and
- * sets @c checkBound, letting later passes prune (by forcing the iterators to
- * the wrap position) as soon as a partial result already beats it.
- *
- * The search is time-sliced: every placement decrements the shared budget
- * @c D_801D3538, and the recursion unwinds with result 2 once it hits zero.
- * Because each ply's iterators persist in @c D_801D3460, the next slice
- * resumes exactly where this one yielded.
+ * Tries each legal (card, cell) move at this ply: places it on a copy of the
+ * board, runs the capture cascade, and recurses for the opponent one ply
+ * deeper, scoring leaves with @ref evaluateBoard. The AI seat maximizes a
+ * difficulty-weighted score while the opponent minimizes the raw one; the best
+ * move is recorded in @p node, and a completed node's bound lets later passes
+ * prune. The search is time-sliced against a shared placement budget — when it
+ * runs out the recursion yields, and because each ply's iterators persist in
+ * the workspace the next call resumes exactly where it left off.
  *
  * @param board  Position to search (copied per placement; never modified).
  * @param player Seat to move at this ply (0/1).
- * @param node   This ply's search state in the @c D_801D3460 workspace; the
- *               child ply uses @c node[1].
+ * @param node   This ply's search state; the child ply uses @c node[1].
  * @param depth  Remaining search depth in plies.
  *
  * @return 0 when this node completed a full pass (best move/scores recorded),
  *         1 if @p depth was already exhausted (caller evaluates the position),
- *         2 if the @c D_801D3538 budget ran out (yield; resume next slice),
+ *         2 if the time-slice budget ran out (yield; resume next slice),
  *         3 if the root advanced to its next hand card.
  */
 s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth) {
@@ -1881,23 +1681,19 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
  * @brief Live entry point of the AI move search (pool-allocated twin of
  *        @ref searchBestMoveStack).
  *
- * Identical search to @ref searchBestMoveStack — same resumable time-sliced minimax
- * over the @c D_801D3460 ply workspace, same scoring, pruning and return codes —
- * but each recursion level draws its scratch board from the per-frame work pool
- * (@c scratchAlloc) instead of the CPU stack, returning it (@c scratchFree)
- * on every exit after the allocation. This is the variant @ref updateAiTurn
- * actually runs each AI turn; @ref searchBestMoveStack (stack-allocated copy, no
+ * Identical search to @ref searchBestMoveStack, but each recursion level draws
+ * its scratch board from the per-frame work pool instead of the CPU stack. This
+ * is the variant @ref updateAiTurn actually runs; @ref searchBestMoveStack (no
  * in-overlay caller) appears to be its unused sibling.
  *
  * @param board  Position to search (copied per placement; never modified).
  * @param player Seat to move at this ply (0/1).
- * @param node   This ply's search state in the @c D_801D3460 workspace; the
- *               child ply uses @c node[1].
+ * @param node   This ply's search state; the child ply uses @c node[1].
  * @param depth  Remaining search depth in plies.
  *
  * @return 0 when this node completed a full pass (best move/scores recorded),
  *         1 if @p depth was already exhausted (caller evaluates the position),
- *         2 if the @c D_801D3538 budget ran out (yield; resume next slice),
+ *         2 if the time-slice budget ran out (yield; resume next slice),
  *         3 if the root advanced to its next hand card.
  */
 s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth) {
@@ -2025,29 +1821,17 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
  * @brief Advance the AI player's Triple Triad turn: search for a move, play the
  *        selection animation, then commit the chosen card to the board.
  *
- * Runs a small state machine over @p a (re-entered once per frame) and is a
- * no-op while card input is globally disabled (@c g_tripleTriadInputFlags bit @c 0x4).
+ * Runs a small state machine (re-entered once per frame), a no-op while card
+ * input is globally disabled:
+ *  - reset the move workspace;
+ *  - run the (time-sliced) move search, highlighting the candidate card, and
+ *    re-search if the search asks to;
+ *  - play the selection animation for the chosen card;
+ *  - commit it to the board.
  *
- *  - @b State @b 0 — reset the 9-entry move workspace @c D_801D3460, enter state 1.
- *  - @b State @b 1 — three sub-steps:
- *      - @e sub @e 0: arm the search timer (@c D_801D353C = 10), latch the chosen
- *        card slot (@c D_801D3462) into @p a, advance.
- *      - @e sub @e 1: highlight the card (@ref highlightCardSlot), refill the minimax
- *        placement budget (@c D_801D3538 = 100) and run the move search
- *        (@ref searchBestMove). If it reports busy (result 2 — budget exhausted)
- *        tick the search timer and yield; otherwise, if the chosen card is
- *        already played (id @c 0xFF) clear the timer, advance.
- *      - @e sub @e 2: keep highlighting; while the search timer is positive tick it
- *        and yield. Once it expires, restart the search (sub 0) if the result was 3,
- *        else advance to state 2.
- *  - @b State @b 2 — animate the placement card (@c D_801D3466) for 15 frames, then
- *    enter state 3.
- *  - @b State @b 3 — set the card object's action (@ref setCardObjectAction) and
- *    commit it to the board (@ref commitCardToBoard).
- *
- * @param a AI turn/placement controller for the current player.
- * @return 2 once the card has been placed (state 3); 0 while still working or when
- *         input is disabled.
+ * @param node AI turn/placement controller for the current player.
+ * @return 2 once the card has been placed; 0 while still working or when input
+ *         is disabled.
  */
 s32 updateAiTurn(AiTurnNode *node) {
     TripleTriadBoard board;
@@ -2135,21 +1919,14 @@ s32 updateAiTurn(AiTurnNode *node) {
  * @brief Set up the AI player's Triple Triad turn and spawn its turn handler.
  *
  * Runs once when it becomes seat @p seat's turn:
- *  1. Builds both players' working search hands @c D_801D3570 from the live card
- *     objects @c g_tripleTriadCardHands (via @ref findCardSlot): each slot's
- *     @c entityIdx is the object index and @c id its card id (@c 0xFF if the slot
- *     holds no card); @c slotCount tracks how many cards remain in play.
- *  2. If the Open rule is off (@c g_tripleTriadRules bit 0) and the matching
- *     config bit is clear, randomizes the opponent's hidden hand — each guessed
- *     id is @c (rand()%(cardLevel+1))*11 + rand()%11, seeded from the real hand
- *     card levels in @c D_801A2C48.
- *  3. Spawns the per-frame turn handler: a list node with @ref updateAiTurn as
- *     its callback, seeds its search-depth @c unk10 from @c D_80182D64, loads the
- *     difficulty weight row from @c D_80182DAC into @c D_801D35C8..D_801D35D8, and
- *     fills the per-card value table @c D_801D35E0[0..109].
+ *  1. Builds both players' working search hands from the live card objects.
+ *  2. Unless the Open rule is on, randomizes the AI's guess of the opponent's
+ *     hidden hand (biased by each card's level).
+ *  3. Spawns the per-frame @ref updateAiTurn handler and loads the difficulty
+ *     tuning (search depth, evaluation weights, per-card values).
  *
  * @param seat Player/seat index taking the turn.
- * @return The AI turn-node list head (@c D_801D3560).
+ * @return The AI turn-node list head.
  */
 u8 *spawnAiTurn(s32 seat) {
     AiTurnNode *node;
@@ -2214,16 +1991,14 @@ u8 *spawnAiTurn(s32 seat) {
 }
 
 /**
- * @brief Initialize the D_801D3C58 list with node pool D_801D3798.
- *
- * Sets up a linked list with node size 0x4C and capacity 0x10.
+ * @brief Initialize the Triple Triad task list.
  */
 void initTriadTaskPool(void) {
     initObjList(D_801D3C58, D_801D3798, 0x4C, 0x10);
 }
 
 /**
- * @brief Call updateObjectList with D_801D3C58.
+ * @brief Per-frame update of the Triple Triad task list.
  */
 void processTriadTasks(void) {
     updateObjectList(D_801D3C58);
