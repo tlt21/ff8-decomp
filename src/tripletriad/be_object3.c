@@ -32,22 +32,22 @@ s32 updateCardScaleSprite(ScriptStateNode *node) {
 
     prim = g_primCursor;
     switch (node->state) {
-    case 0:
+    case CARD_SCALE_IN:
         q = ((++node->field0D & 0xFF) << 12) / 5;
         prim->width = (-((q * 5) << 6) >> 12) + 0x180;
         if (node->field0D >= 5) {
-            node->state = 1;
+            node->state = CARD_SCALE_HOLD;
             node->field0D = 0;
         }
         break;
-    case 1:
+    case CARD_SCALE_HOLD:
         prim->width = 0x40;
         if ((++node->field0D & 0xFF) >= 0x28) {
-            node->state = 2;
+            node->state = CARD_SCALE_OUT;
             node->field0D = 0;
         }
         break;
-    case 2:
+    case CARD_SCALE_OUT:
         q = ((++node->field0D & 0xFF) << 12) / 5;
         prim->width = ((q - ((q * 5) << 6)) >> 12) + 0x40;
         if (node->field0D >= 5) {
@@ -98,22 +98,22 @@ s32 updateCardScaleSpriteShort(ScriptStateNode *node) {
 
     prim = g_primCursor;
     switch (node->state) {
-    case 0:
+    case CARD_SCALE_IN:
         q = ((++node->field0D & 0xFF) << 12) / 5;
         prim->width = (-((q * 5) << 6) >> 12) + 0x180;
         if (node->field0D >= 5) {
-            node->state = 1;
+            node->state = CARD_SCALE_HOLD;
             node->field0D = 0;
         }
         break;
-    case 1:
+    case CARD_SCALE_HOLD:
         prim->width = 0x40;
         if ((++node->field0D & 0xFF) >= 0x19) {
-            node->state = 2;
+            node->state = CARD_SCALE_OUT;
             node->field0D = 0;
         }
         break;
-    case 2:
+    case CARD_SCALE_OUT:
         q = ((++node->field0D & 0xFF) << 12) / 5;
         prim->width = ((q - ((q * 5) << 6)) >> 12) + 0x40;
         if (node->field0D >= 5) {
@@ -295,7 +295,7 @@ s32 updateCardColorFade(ScriptStateNode *node) {
     prim->field14 = 0xFF;
     prim->field16 = 0x30;
     switch (node->state) {
-    case 0:
+    case CARD_FADE_IN:
         v = ((++node->field0D & 0xFF) << 12) / 10;
         a = (v * 255) >> 12;
         t = (a << 8) | 0x66000000;
@@ -304,11 +304,11 @@ s32 updateCardColorFade(ScriptStateNode *node) {
         prim->field12 = 0x3801;
         AddPrim(g_otBase + 3, prim++);
         if (node->field0D >= 0xA) {
-            node->state = 1;
+            node->state = CARD_FADE_OUT;
             node->field0D = 0;
         }
         break;
-    case 1:
+    case CARD_FADE_OUT:
         if ((u32)node->field0D < 0x14) {
             v = ((++node->field0D & 0xFF) << 12) / 20;
             a2 = ((v - (v << 7)) >> 12) + 0xFF;
@@ -411,9 +411,9 @@ s32 updateScriptCardAnims(void)
         for (col = 0; col < 5; col++) {
             e = &g_scriptActions[row][col];
             switch (e->status) {
-            case 0:
+            case SCRIPT_ANIM_NONE:
                 break;
-            case 1:
+            case SCRIPT_ANIM_SLIDE_IN:
                 if (e->field02 == 0) {
                     playTriadSfx(0x59);
                 }
@@ -428,11 +428,11 @@ s32 updateScriptCardAnims(void)
                 e->posZ = tmp->pos.vz;
                 e->sort = tmp->pos.pad;
                 if (e->field02 >= 0xF) {
-                    e->status = 0;
+                    e->status = SCRIPT_ANIM_NONE;
                     e->field02 = 0;
                 }
                 break;
-            case 2:
+            case SCRIPT_ANIM_SLIDE_OUT:
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
                 s0 = rsin(s0 / 4);
@@ -444,18 +444,18 @@ s32 updateScriptCardAnims(void)
                 e->posZ = tmp->pos.vz;
                 e->sort = tmp->pos.pad;
                 if (e->field02 >= 0xF) {
-                    e->status = 0;
+                    e->status = SCRIPT_ANIM_NONE;
                     e->field02 = 0;
                 }
                 break;
-            case 3:
+            case SCRIPT_ANIM_FLIP:
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
                 e->actionId = (-(s0 << 11) >> 12) + 0x800;
                 s0 = rsin(s0 / 2);
                 e->posZ = 0x200 - ((s0 << 6) >> 12);
                 if (e->field02 >= 0xF) {
-                    e->status = 0;
+                    e->status = SCRIPT_ANIM_NONE;
                     e->field02 = 0;
                 }
                 break;
@@ -580,7 +580,7 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
     g_addCardEdge = g_padPressed[2];
     while (1) {
         switch (node->state) {
-        case 0:
+        case HAND_BUILD_INIT:
             for (i = 0; i < 5; i++) {
                 D_801A2C48[node->counter][i] = 0xFF;
             }
@@ -588,10 +588,10 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
             func_800A44B0(1);
             node->field13 = 0;
             g_handBuildCount = 0;
-            node->state = 1;
+            node->state = HAND_BUILD_PICK;
             node->subState = 0;
             break;
-        case 1:
+        case HAND_BUILD_PICK:
             if (node->subState == 0) {
                 g_tripleTriadInputFlags |= TT_INPUT_HAND_BUILD;
                 node->subState++;
@@ -601,16 +601,16 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
                 if (g_cardDisplaySlot >= 0) {
                     card = g_cardDisplaySlot;
                     if (g_handBuildCount >= 5) {
-                        node->state = 1;
+                        node->state = HAND_BUILD_PICK;
                         node->subState = 0;
                         break;
                     }
                     if (func_80023B14(card) <= 0) {
-                        node->state = 1;
+                        node->state = HAND_BUILD_PICK;
                         node->subState = 0;
                         break;
                     }
-                    (g_scriptActions[node->counter] + g_handBuildCount)->status = 1;
+                    (g_scriptActions[node->counter] + g_handBuildCount)->status = SCRIPT_ANIM_SLIDE_IN;
                     (g_scriptActions[node->counter] + g_handBuildCount)->field02 = 0;
                     g_scriptActions[node->counter][g_handBuildCount].marker = card;
                     hand = D_801A2C48[node->counter];
@@ -620,12 +620,12 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
                     modifyItemQuantity(card, D_80082C95);
                     playTriadSfx(1);
                     if (g_handBuildCount != 5) {
-                        node->state = 1;
+                        node->state = HAND_BUILD_PICK;
                         node->subState = 0;
                         break;
                     }
                     g_tripleTriadInputFlags &= ~TT_INPUT_HAND_BUILD;
-                    node->state = 2;
+                    node->state = HAND_BUILD_CONFIRM;
                     node->subState = 0;
                     break;
                 }
@@ -636,14 +636,14 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
                 card = handRow[g_handBuildCount];
                 D_801A2C48[node->counter][g_handBuildCount] = 0xFF;
                 markItemPresent(card);
-                node->state = 1;
+                node->state = HAND_BUILD_PICK;
                 node->subState = 0;
-                (g_scriptActions[node->counter] + g_handBuildCount)->status = 2;
+                (g_scriptActions[node->counter] + g_handBuildCount)->status = SCRIPT_ANIM_SLIDE_OUT;
                 (g_scriptActions[node->counter] + g_handBuildCount)->field02 = 0;
                 playTriadSfx(9);
             }
             return 0;
-        case 2:
+        case HAND_BUILD_CONFIRM:
             if (node->subState == 0) {
                 if (hasPendingScriptAction() != 0) {
                 ret0:
@@ -659,15 +659,15 @@ s32 runHandBuildSequencer(ScriptCtx *node) {
             }
             func_800A2054(6);
             if (r == 0) {
-                node->state = 3;
+                node->state = HAND_BUILD_FADE;
                 node->subState = 0;
                 break;
             }
             func_800A44B0(1);
-            node->state = 1;
+            node->state = HAND_BUILD_PICK;
             node->subState = 0;
             break;
-        case 3:
+        case HAND_BUILD_FADE:
             if (node->subState == 0) {
                 func_800A44BC();
             }
@@ -825,7 +825,7 @@ s32 updateHandToScriptTable(ScriptCtx *node) {
     }
     if (node->subState == 0) {
         card = D_801A2C48[node->counter][node->state];
-        (g_scriptActions[node->counter] + node->state)->status = 1;
+        (g_scriptActions[node->counter] + node->state)->status = SCRIPT_ANIM_SLIDE_IN;
         (g_scriptActions[node->counter] + node->state)->field02 = 0;
         g_scriptActions[node->counter][node->state].marker = card;
         if (D_801A2C70[node->counter] < 3) {
@@ -926,7 +926,7 @@ s32 reloadSetupBuffer(void) {
 s32 runTriadSetupSequence(ScriptCtx *ctx) {
     while (1) {
         switch (ctx->state) {
-        case 0:
+        case TRIAD_SETUP_WARMUP:
             if (ctx->subState == 0) {
                 startFadeToBlack(0xF);
             }
@@ -935,11 +935,11 @@ s32 runTriadSetupSequence(ScriptCtx *ctx) {
                 return 0;
             }
             ctx->counter = 0;
-            ctx->state = 1;
+            ctx->state = TRIAD_SETUP_HANDS;
             ctx->subState = 0;
             break;
 
-        case 1:
+        case TRIAD_SETUP_HANDS:
             if (ctx->subState == 0) {
                 ctx->cachedResult = setupPlayerHand(ctx->counter);
                 ctx->subState++;
@@ -949,32 +949,32 @@ s32 runTriadSetupSequence(ScriptCtx *ctx) {
             }
             ctx->counter++;
             if (ctx->counter < 2) {
-                ctx->state = 1;
+                ctx->state = TRIAD_SETUP_HANDS;
                 ctx->subState = 0;
                 break;
             }
             if (g_tripleTriadRules & 1) {
-                ctx->state = 2;
+                ctx->state = TRIAD_SETUP_CLEAR;
                 ctx->subState = 0;
                 break;
             }
-            ctx->state = 4;
+            ctx->state = TRIAD_SETUP_DONE;
             ctx->subState = 0;
             break;
 
-        case 2: {
+        case TRIAD_SETUP_CLEAR: {
             s32 row;
             s32 col;
             if ((u8)(ctx->subState % 5) == 0) {
                 col = 4 - (u8)(ctx->subState / 5);
                 for (row = 0; row < 2; row++) {
                     if (g_scriptActions[row][col].actionId != 0) {
-                        g_scriptActions[row][col].status = 3;
+                        g_scriptActions[row][col].status = SCRIPT_ANIM_FLIP;
                         g_scriptActions[row][col].field02 = 0;
                     }
                 }
                 if (col == 0) {
-                    ctx->state = 3;
+                    ctx->state = TRIAD_SETUP_WAIT;
                     ctx->subState = 0;
                 }
             }
@@ -982,7 +982,7 @@ s32 runTriadSetupSequence(ScriptCtx *ctx) {
             return 0;
         }
 
-        case 3:
+        case TRIAD_SETUP_WAIT:
             if (ctx->subState == 0) {
                 if (hasPendingScriptAction() != 0) {
                     return 0;
@@ -992,11 +992,11 @@ s32 runTriadSetupSequence(ScriptCtx *ctx) {
             if (ctx->subState < 0x1E) {
                 return 0;
             }
-            ctx->state = 4;
+            ctx->state = TRIAD_SETUP_DONE;
             ctx->subState = 0;
             break;
 
-        case 4:
+        case TRIAD_SETUP_DONE:
             g_tripleTriadState = TT_STATE_PLAY;
             return 0;
         }
@@ -1122,7 +1122,7 @@ u8 *initTripleTriadScripts(void) {
         do {
             e = (ScriptEntry *)(colOff + (s32)base);
             e->col = col;
-            e->status = 0;
+            e->status = SCRIPT_ANIM_NONE;
             e->marker = marker;
             e->row = row;
             e->field06 = 0;
@@ -1254,7 +1254,7 @@ s32 updateClaimBoard(void) {
         m->t[2] = cell->baseZ;
         s7 = cell->fieldA | 0x12;
         if (cell->field8) switch (cell->field8) {
-        case 1:
+        case CLAIM_ANIM_SLIDE_IN:
             s0 = (cell->field9 << 12) / 30;
             s0 = rsin(s0 / 4);
             if (cell->fieldA == 0) {
@@ -1264,11 +1264,11 @@ s32 updateClaimBoard(void) {
             }
             cell->field9++;
             if ((cell->field9 & 0xFF) >= 0x1E) {
-                cell->field8 = 0;
+                cell->field8 = CLAIM_ANIM_NONE;
                 cell->field9 = 0;
             }
             break;
-        case 2:
+        case CLAIM_ANIM_FLIP:
             if (cell->field9 == 0) {
                 cell->sort -= 5;
                 playTriadSfx(0x5A);
@@ -1284,12 +1284,12 @@ s32 updateClaimBoard(void) {
             t = rsin(s0 / 2);
             cell->baseZ = 0x200 - ((t << 5) >> 12);
             if ((cell->field9 & 0xFF) >= 0x14) {
-                cell->field8 = 0;
+                cell->field8 = CLAIM_ANIM_NONE;
                 cell->field9 = 0;
                 cell->sort += 5;
             }
             break;
-        case 3:
+        case CLAIM_ANIM_CAPTURE_A:
             s0 = cell->field9;
             if (s0 < 0x1E) {
                 if (s0 == 0) {
@@ -1328,14 +1328,14 @@ s32 updateClaimBoard(void) {
                         m->t[1] = ((s0 * 7) << 4) >> 12;
                         cell->field9++;
                     } else {
-                        cell->field8 = 0;
+                        cell->field8 = CLAIM_ANIM_NONE;
                         cell->field9 = 0;
                         cell->flags &= ~1;
                     }
                 }
             }
             break;
-        case 4:
+        case CLAIM_ANIM_CAPTURE_B:
             s0 = cell->field9;
             if (s0 < 0x1E) {
                 if (s0 == 0) {
@@ -1374,7 +1374,7 @@ s32 updateClaimBoard(void) {
                         m->t[1] = -((s0 * 7) << 4) >> 12;
                         cell->field9++;
                     } else {
-                        cell->field8 = 0;
+                        cell->field8 = CLAIM_ANIM_NONE;
                         cell->field9 = 0;
                         cell->flags &= ~1;
                     }
@@ -1455,7 +1455,7 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case KEEP_SEL_BANNER:
             src = (u8 *)&D_8018268A - 0xA + D_8018268A;
             dst = g_bannerBuf;
             c = *src;
@@ -1474,10 +1474,10 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
             *dst = 0;
             func_800A1D68(1, g_bannerBuf, 0);
             g_capturedCount = 0;
-            node->state = 1;
+            node->state = KEEP_SEL_PICK;
             node->field0D = 0;
             break;
-        case 1:
+        case KEEP_SEL_PICK:
             if (node->field0D == 0) {
                 if (hasPendingCardObj() != 0) {
                     return 0;
@@ -1487,19 +1487,19 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
                 break;
             }
             switch (g_substatePhase) {
-            case 1:
+            case TT_SUBPHASE_ACTIVE:
                 showCardDetail(g_activeCardObjs[D_801D335C.field0].cardId);
                 return 0;
-            case 2:
+            case TT_SUBPHASE_CONFIRM:
                 cell = &g_activeCardObjs[D_801D335C.field0];
                 if (cell->fieldA != node->field0E) {
                     if (g_capturedCount < g_sweepTarget) {
-                        cell->field8 = 2;
+                        cell->field8 = CLAIM_ANIM_FLIP;
                         g_activeCardObjs[D_801D335C.field0].field9 = 0;
                         playTriadSfx(1);
                         g_capturedCount++;
                     } else {
-                        node->state = 1;
+                        node->state = KEEP_SEL_PICK;
                         node->field0D = 0;
                         playTriadSfx(0x10);
                         continue;
@@ -1508,23 +1508,23 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
                     if (g_capturedCount <= 0) {
                         break;
                     }
-                    cell->field8 = 2;
+                    cell->field8 = CLAIM_ANIM_FLIP;
                     g_activeCardObjs[D_801D335C.field0].field9 = 0;
                     playTriadSfx(9);
                     g_capturedCount--;
                 }
                 if (g_capturedCount == g_sweepTarget) {
-                    node->state = 2;
+                    node->state = KEEP_SEL_CONFIRM;
                     node->field0D = 0;
                     continue;
                 }
-                node->state = 1;
+                node->state = KEEP_SEL_PICK;
                 node->field0D = 0;
                 return 0;
-            case 3:
+            case TT_SUBPHASE_CANCEL:
                 cell = &g_activeCardObjs[D_801D335C.field0];
                 if (cell->fieldA == node->field0E) {
-                    cell->field8 = 2;
+                    cell->field8 = CLAIM_ANIM_FLIP;
                     g_activeCardObjs[D_801D335C.field0].field9 = 0;
                     playTriadSfx(9);
                     g_capturedCount--;
@@ -1533,10 +1533,10 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
             default:
                 continue;
             }
-            node->state = 1;
+            node->state = KEEP_SEL_PICK;
             node->field0D = 0;
             break;
-        case 2:
+        case KEEP_SEL_CONFIRM:
             if (node->field0D == 0) {
                 if (hasPendingCardObj() != 0) {
                     return 0;
@@ -1558,7 +1558,7 @@ s32 runKeepCardSelect(ScriptStateNode *node) {
                 return 2;
             case 1:
                 func_800A2054(6);
-                node->state = 1;
+                node->state = KEEP_SEL_PICK;
                 node->field0D = 0;
                 continue;
             }
@@ -1587,12 +1587,12 @@ s32 runAiCaptureSelect(ScriptStateNode *node) {
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case SWEEP_INIT:
             g_sweepProcessed = 0;
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             break;
-        case 1:
+        case SWEEP_RUN:
             if (node->field0D == 0) {
                 if (hasPendingCardObj() != 0) {
                     return 0;
@@ -1614,10 +1614,10 @@ s32 runAiCaptureSelect(ScriptStateNode *node) {
                     bestIdx = i;
                 }
             }
-            g_activeCardObjs[bestIdx].field8 = 2;
+            g_activeCardObjs[bestIdx].field8 = CLAIM_ANIM_FLIP;
             g_activeCardObjs[bestIdx].field9 = 0;
             g_sweepProcessed++;
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             break;
         }
@@ -1651,17 +1651,17 @@ s32 replayHandMoves(ScriptStateNode *node) {
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case SWEEP_INIT:
             for (i = 0; i < 2; i++) {
                 for (col = 0; col < 5; col++) {
                     g_handBuildHands[i][col] = D_801A2C48[i][col];
                 }
             }
             node->index = 0;
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             break;
-        case 1:
+        case SWEEP_RUN:
             if (node->field0D == 0) {
                 if (hasPendingCardObj() != 0) {
                     return 0;
@@ -1684,13 +1684,13 @@ s32 replayHandMoves(ScriptStateNode *node) {
                 for (i = 0; i < 10; i++) {
                     if (g_activeCardObjs[i].cardId == card &&
                         g_activeCardObjs[i].fieldA != owner) {
-                        g_activeCardObjs[i].field8 = 2;
+                        g_activeCardObjs[i].field8 = CLAIM_ANIM_FLIP;
                         g_activeCardObjs[i].field9 = 0;
                         break;
                     }
                 }
             }
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             node->index++;
             break;
@@ -1712,12 +1712,12 @@ s32 replayHandMoves(ScriptStateNode *node) {
 s32 runOpponentSideSweep(ScriptStateNode *node) {
     while (1) {
         switch (node->state) {
-        case 0:
+        case SWEEP_INIT:
             node->index = 0;
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             break;
-        case 1:
+        case SWEEP_RUN:
             if (node->field0D == 0) {
                 if (hasPendingCardObj() != 0) {
                     return 0;
@@ -1729,10 +1729,10 @@ s32 runOpponentSideSweep(ScriptStateNode *node) {
                 node->field0D++;
             }
             if (g_activeCardObjs[node->index].fieldA == (node->field0E ^ 1)) {
-                g_activeCardObjs[node->index].field8 = 2;
+                g_activeCardObjs[node->index].field8 = CLAIM_ANIM_FLIP;
                 g_activeCardObjs[node->index].field9 = 0;
             }
-            node->state = 1;
+            node->state = SWEEP_RUN;
             node->field0D = 0;
             node->index++;
             break;
@@ -1760,26 +1760,26 @@ s32 runCaptureCleanupSweep(ScriptStateNode *node) {
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case CLEANUP_WAIT:
             if (hasPendingCardObj() != 0) {
                 return 0;
             }
-            node->state = 1;
+            node->state = CLEANUP_SWEEP_OPP;
             node->field0D = 0;
             node->index = 0;
             break;
-        case 1:
+        case CLEANUP_SWEEP_OPP:
             if (node->field0D == 0) {
                 if (node->index < 5) {
                     c = &g_activeCardObjs[(g_claimSeat ^ 1) * 5 + node->index];
                     if (c->fieldA == g_claimSeat) {
-                        c->field8 = 3;
+                        c->field8 = CLAIM_ANIM_CAPTURE_A;
                         c->field9 = 0;
                     }
                     node->index++;
                     node->field0D++;
                 } else {
-                    node->state = 2;
+                    node->state = CLEANUP_SWEEP_OWN;
                     node->field0D = 0;
                     node->index = 0;
                     break;
@@ -1790,18 +1790,18 @@ s32 runCaptureCleanupSweep(ScriptStateNode *node) {
             }
             node->field0D = 0;
             break;
-        case 2:
+        case CLEANUP_SWEEP_OWN:
             if (node->field0D == 0) {
                 if (node->index < 5) {
                     c = &g_activeCardObjs[g_claimSeat * 5 + node->index];
                     if (c->fieldA != g_claimSeat) {
-                        c->field8 = 4;
+                        c->field8 = CLAIM_ANIM_CAPTURE_B;
                         c->field9 = 0;
                     }
                     node->index++;
                     node->field0D++;
                 } else {
-                    node->state = 3;
+                    node->state = CLEANUP_COLLECT;
                     node->field0D = 0;
                     node->index = 0;
                     break;
@@ -1812,7 +1812,7 @@ s32 runCaptureCleanupSweep(ScriptStateNode *node) {
             }
             node->field0D = 0;
             break;
-        case 3:
+        case CLEANUP_COLLECT:
             if (node->field0D == 0) {
                 for (i = 0; i < 10; i++) {
                     if (g_activeCardObjs[i].fieldA == g_claimSeat) {

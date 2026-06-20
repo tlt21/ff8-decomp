@@ -84,6 +84,81 @@ extern s32  runCaptureCleanupSweep(ScriptStateNode *node);
 
 /* ───────── Private (only used in be_object3.c; may move into the .c) ─────── */
 
+/* Private enums / defines / consts */
+
+/** @brief Phase of the card scale-in/hold/out animation (@c ScriptStateNode.state in
+ *         @ref updateCardScaleSprite / @ref updateCardScaleSpriteShort). */
+enum CardScalePhase {
+    CARD_SCALE_IN   = 0,  /**< Scale the sprite width up. */
+    CARD_SCALE_HOLD = 1,  /**< Hold at full width. */
+    CARD_SCALE_OUT  = 2   /**< Scale back down, then finish. */
+};
+
+/** @brief Phase of the card colour fade (@c ScriptStateNode.state in @ref updateCardColorFade). */
+enum CardColorFadePhase {
+    CARD_FADE_IN  = 0,  /**< Fade the colour up. */
+    CARD_FADE_OUT = 1   /**< Fade down, then hold solid. */
+};
+
+/** @brief @c ScriptEntry.status — the per-card animation queued in @c g_scriptActions,
+ *         read by @ref updateScriptCardAnims and written by the hand/script builders. */
+enum ScriptCardAnim {
+    SCRIPT_ANIM_NONE     = 0,  /**< Idle / no animation. */
+    SCRIPT_ANIM_SLIDE_IN = 1,  /**< Slide the card onto the board. */
+    SCRIPT_ANIM_SLIDE_OUT= 2,  /**< Slide the card off. */
+    SCRIPT_ANIM_FLIP     = 3   /**< Flip the card (also the "complete" marker). */
+};
+
+/** @brief @c ActiveObj.field8 — the per-cell claim animation, read by @ref updateClaimBoard
+ *         and written by the claim/capture sweeps. */
+enum ClaimCellAnim {
+    CLAIM_ANIM_NONE      = 0,  /**< No animation pending. */
+    CLAIM_ANIM_SLIDE_IN  = 1,  /**< Slide the card in from off-screen. */
+    CLAIM_ANIM_FLIP      = 2,  /**< Flip (toggle owner at the halfway point). */
+    CLAIM_ANIM_CAPTURE_A = 3,  /**< Capture lift-and-fade, direction A. */
+    CLAIM_ANIM_CAPTURE_B = 4   /**< Capture lift-and-fade, direction B. */
+};
+
+/** @brief @c ScriptCtx.state of the interactive hand-build sequencer (@ref runHandBuildSequencer). */
+enum HandBuildState {
+    HAND_BUILD_INIT    = 0,  /**< Clear the hand slots and arm the UI. */
+    HAND_BUILD_PICK    = 1,  /**< Add/remove a card per frame until five are held. */
+    HAND_BUILD_CONFIRM = 2,  /**< Poll the confirm message gate. */
+    HAND_BUILD_FADE    = 3   /**< Run the fade-out, then finish. */
+};
+
+/** @brief @c ScriptCtx.state of the match setup sequence (@ref runTriadSetupSequence). */
+enum TriadSetupState {
+    TRIAD_SETUP_WARMUP = 0,  /**< Fade-in warmup. */
+    TRIAD_SETUP_HANDS  = 1,  /**< Per-player hand setup. */
+    TRIAD_SETUP_CLEAR  = 2,  /**< Clear-sweep the board columns. */
+    TRIAD_SETUP_WAIT   = 3,  /**< Idle wait. */
+    TRIAD_SETUP_DONE   = 4   /**< Hand off to TT_STATE_PLAY. */
+};
+
+/** @brief @c ScriptStateNode.state of the keep-a-captured-card selection (@ref runKeepCardSelect). */
+enum KeepSelectState {
+    KEEP_SEL_BANNER  = 0,  /**< Build and show the banner string. */
+    KEEP_SEL_PICK    = 1,  /**< Run the card picker. */
+    KEEP_SEL_CONFIRM = 2   /**< Poll the confirm gate; commit or return to the picker. */
+};
+
+/** @brief Two-phase init/run sweep state shared by @ref runAiCaptureSelect,
+ *         @ref replayHandMoves, and @ref runOpponentSideSweep (@c ScriptStateNode.state). */
+enum SweepState {
+    SWEEP_INIT = 0,  /**< Reset the counter/index. */
+    SWEEP_RUN  = 1   /**< Do one unit of work per tick until done. */
+};
+
+/** @brief @c ScriptStateNode.state of the post-round capture/cleanup sweep
+ *         (@ref runCaptureCleanupSweep). */
+enum CleanupState {
+    CLEANUP_WAIT      = 0,  /**< Wait for the action gate. */
+    CLEANUP_SWEEP_OPP = 1,  /**< Flag the opponent's row for capture. */
+    CLEANUP_SWEEP_OWN = 2,  /**< Flag the player's own row. */
+    CLEANUP_COLLECT   = 3   /**< Return all own cards to the collection, then finish. */
+};
+
 /* Private typedefs */
 
 /**
