@@ -345,13 +345,13 @@ s32 updateCardColorFade(ScriptStateNode *node) {
  * @param a0 Index into the g_gradFadeCallbacks callback table.
  */
 void spawnGradientFade(s32 a0) {
-    u8 *node = (u8 *)allocObjNodeFront(g_gradFadeList, g_gradFadeCallbacks[a0]);
+    GradientFadeNode *node = allocObjNodeFront(g_gradFadeList, g_gradFadeCallbacks[a0]);
     if (node != 0) {
-        node[0xE] = a0;
-        *(s16 *)(node + 0x20) = 0;
-        node[0x22] = 0;
-        node[0xC] = 0;
-        node[0xD] = 0;
+        node->variant = a0;
+        node->field20 = 0;
+        node->done = 0;
+        node->state = 0;
+        node->frame = 0;
     }
 }
 
@@ -1167,8 +1167,8 @@ s32 updateScreenFade(FadeObject *obj) {
     func_80040918(obj->startColor, progress, &prim->r0);
     prim->code = 0x62;
     AddPrim(g_otBase + 2, prim);
-    func_8004D724((u8 *)prim + 0x10, 1, 1, 0x40);
-    AddPrim(g_otBase + 2, (u8 *)prim + 0x10);
+    func_8004D724((u8 *)prim + sizeof(TILE), 1, 1, 0x40);
+    AddPrim(g_otBase + 2, (u8 *)prim + sizeof(TILE));
     g_primCursor = (u8 *)prim + 0x18;
     frame = (u16)obj->frame;
     obj->frame = frame + 1;
@@ -1402,16 +1402,13 @@ s32 updateClaimBoard(void) {
  * @return 1 if any active object has a pending action, 0 otherwise.
  */
 s32 hasPendingCardObj(void) {
-    s32 i = 0;
-    u8 *entry = g_activeCardObjs;
+    s32 i;
 
-    top:
-    if ((*(s32 *)(entry + 4) & 1) && *(u8 *)(entry + 8) != 0) {
-        return 1;
+    for (i = 0; i < 10; i++) {
+        if ((g_activeCardObjs[i].flags & 1) && g_activeCardObjs[i].field8 != 0) {
+            return 1;
+        }
     }
-    i++;
-    entry += 0x20;
-    if (i < 10) goto top;
 
     return 0;
 }
