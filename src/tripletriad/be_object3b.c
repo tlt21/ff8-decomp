@@ -25,7 +25,7 @@
  * @param node Controller state node.
  * @return 0 while the sequence is still running, 2 once it has finished.
  */
-s32 func_800A15C8(ClaimCtrlNode *node)
+s32 updateClaimController(ClaimCtrlNode *node)
 {
     ScriptStateNode *spawned;
     s32 mode;
@@ -166,7 +166,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
  *  3. If @c g_sweepTarget < 0, returns every card in the acting seat's hand to its owner
  *     (@c markItemPresent), stages result 6 into @c g_tripleTriadState, and returns 0.
  *  4. Otherwise initializes the @c D_801D42F8 handler pool, spawns the claim controller
- *     @c func_800A15C8, fills the @c g_activeCardObjs display-object array with both five-card
+ *     @c updateClaimController, fills the @c g_activeCardObjs display-object array with both five-card
  *     hands (positions/sort keys mirrored per seat), spawns the board renderer
  *     @c updateClaimBoard and @c reloadClaimBuffer, and returns the pool.
  *
@@ -225,7 +225,7 @@ s32 setupTripleTriadCardClaim(void)
         return 0;
     }
     initObjList(D_801D42F8, g_claimSetupPool, 0x14, 4);
-    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A15C8);
+    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)updateClaimController);
     cell = g_activeCardObjs;
     node->state = 0;
     node->field0D = 0;

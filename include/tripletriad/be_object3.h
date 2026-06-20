@@ -17,7 +17,7 @@
  *
  * Used by the claim handlers @ref runKeepCardSelect / @ref runAiCaptureSelect /
  * @ref replayHandMoves / @ref runOpponentSideSweep / @ref runCaptureCleanupSweep and spawned by
- * the card-claim controller func_800A15C8 (in be_object3b.c).
+ * the card-claim controller updateClaimController (in be_object3b.c).
  */
 typedef struct {
     /* 0x00 */ u8 pad00[0x0C];
