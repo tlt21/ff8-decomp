@@ -405,7 +405,7 @@ void *findFreeNode(u8 *listMem) {
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
  */
-void *allocObjNode(u8 *listMem, s32 callback) {
+void *allocObjNode(u8 *listMem, ObjNodeFn callback) {
     ObjListNode *node = findFreeNode(listMem);
 
     if (node != 0) {
@@ -432,7 +432,7 @@ void *allocObjNode(u8 *listMem, s32 callback) {
  * @param callback Per-frame callback stored in the new node.
  * @return The new node, or NULL if the pool is full.
  */
-void *allocObjNodeFront(u8 *listMem, s32 callback) {
+void *allocObjNodeFront(u8 *listMem, ObjNodeFn callback) {
     ObjList *list = (ObjList *)listMem;
     ObjListNode *node = findFreeNode(listMem);
 
@@ -464,7 +464,7 @@ s32 updateObjectList(u8 *listMem) {
     s32 result;
 
     while (node != 0) {
-        result = ((ObjNodeFn)node->callback)(node);
+        result = node->callback(node);
         if (result & 2) {
             node->flags = 0;
             if (prev != 0) {

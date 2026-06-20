@@ -183,7 +183,7 @@ void setupTripleTriadHands(void) {
         hand = D_801A2C48[player];
         for (slot = 0; slot < 5; slot++) {
             playerType = &D_801A2C70[player];
-            node = (CardObjectCtl *)allocObjNode(D_801D3110, (s32)updateCardObject);
+            node = (CardObjectCtl *)allocObjNode(D_801D3110, (ObjNodeFn)updateCardObject);
             node->entry = entity;
             entity->cardId = hand[slot];
             entity->state      = CARD_FX_IDLE;
@@ -794,7 +794,7 @@ u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
     SubstateMachineNode *node;
 
     initObjList(list, D_801D3360, 0x14, 1);
-    node = (SubstateMachineNode *)allocObjNode(list, (s32)updateCardSelectCursor);
+    node = (SubstateMachineNode *)allocObjNode(list, (ObjNodeFn)updateCardSelectCursor);
     node->state = 0;
     node->fieldD = rowSeed;
     node->fieldE = stateByte;
@@ -1965,7 +1965,7 @@ u8 *spawnAiTurn(s32 seat) {
     }
 
     initObjList(D_801D3560, D_801D3540, 0x14, 1);
-    node = (AiTurnNode *)allocObjNode(D_801D3560, (s32)updateAiTurn);
+    node = (AiTurnNode *)allocObjNode(D_801D3560, (ObjNodeFn)updateAiTurn);
     D_801D35C0 = seat;
     node->seat = seat;
     {

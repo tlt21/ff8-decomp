@@ -78,7 +78,7 @@ extern s32 D_801D4288;   /**< Count of objects processed this sweep (func_800A0F
 extern s32 D_801D4448;   /**< Target object count; sweep completes when D_801D4288 reaches it. */
 extern u8 D_801D444C;
 extern s32 D_801D3D08;
-extern s32 D_80182E4C[];
+extern ObjNodeFn D_80182E4C[];
 extern u8 D_80158680[];
 extern u8 D_80182E68[]; /**< Staged fade color (RGB); the start color for the next fade. */
 extern u8  D_801D444D;   /**< Set to 1 when func_800A1374's capture/cleanup sweep finishes. */
@@ -164,7 +164,7 @@ extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the
 
 /** @brief Allocate a tripletriad object from the @c D_801D3C58 pool with the
  *         given per-frame callback; returns the new object (0 if pool is full). */
-s32 func_8009E248(s32 a0) {
+s32 func_8009E248(ObjNodeFn a0) {
     return allocObjNode(D_801D3C58, a0);
 }
 
@@ -1069,19 +1069,19 @@ s32 func_8009FAF8(s32 arg0) {
 
     if (g_tripleTriadRules & 0x20000000) {
         func_8009F5F0(arg0, 0);
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
     } else if (g_tripleTriadRules & 0x8) {
         if (D_801A2C70[arg0] >= 3) {
             func_8009F5F0(arg0, D_80082C95);
         } else {
             func_8009F844(arg0, D_80082C95);
         }
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
     } else if (D_801A2C70[node->counter] >= 3) {
         func_8009F5F0(arg0, D_80082C95);
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
     } else {
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (s32)func_8009F17C);
+        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F17C);
     }
 
     node->counter = arg0;
@@ -1312,10 +1312,10 @@ u8 *initTripleTriadScripts(void) {
     s32 colOff;
 
     initObjList(D_801D3FA0, D_801D3FB0, 0x14, 0xA);
-    node = (ScriptCtx *)allocObjNode(D_801D3FA0, (s32)func_8009FC90);
+    node = (ScriptCtx *)allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FC90);
     node->state = 0;
     node->subState = 0;
-    allocObjNode(D_801D3FA0, (s32)func_8009EBF4);
+    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009EBF4);
     row = 0;
     base = (u8 *)D_801D3EC0;
     marker = 0xFF;
@@ -1338,8 +1338,8 @@ u8 *initTripleTriadScripts(void) {
         row++;
         rowOff += 0x6E;
     } while (row < 2);
-    allocObjNode(D_801D3FA0, (s32)func_8009FED0);
-    allocObjNode(D_801D3FA0, (s32)func_8009FC40);
+    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FED0);
+    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FC40);
     return D_801D3FA0;
 }
 
@@ -1395,7 +1395,7 @@ s32 func_800A01DC(FadeObject *obj) {
 void func_800A030C(s32 duration) {
     FadeObject *obj;
 
-    obj = (FadeObject *)func_8009E248((s32)func_800A01DC);
+    obj = (FadeObject *)func_8009E248((ObjNodeFn)func_800A01DC);
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;
@@ -1416,7 +1416,7 @@ void func_800A030C(s32 duration) {
 void func_800A0370(s32 duration) {
     FadeObject *obj;
 
-    obj = (FadeObject *)func_8009E248((s32)func_800A01DC);
+    obj = (FadeObject *)func_8009E248((ObjNodeFn)func_800A01DC);
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;

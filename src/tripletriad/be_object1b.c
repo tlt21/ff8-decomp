@@ -33,7 +33,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
         switch (ctl->state) {
             case MATCH_FLOW_INIT: {
                 if (ctl->counter == 0) {
-                    HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (s32)cardFlipHandler);
+                    HandlerNode *sub = (HandlerNode *)allocObjNode(D_801D3028, (ObjNodeFn)cardFlipHandler);
                     sub->state = CARD_FLIP_INIT;
                     sub->counter = 0;
                     g_cardFlipPhase = -1;
@@ -356,13 +356,13 @@ u8 *initTripleTriadUpdateList(void) {
     resetTriadBoard();
     list = D_801D3028;
     initObjList(list, D_801D3038, 0x18, 8);
-    node = (HandlerNode *)allocObjNode(list, (s32)matchFlowHandler);
+    node = (HandlerNode *)allocObjNode(list, (ObjNodeFn)matchFlowHandler);
     node->state = 0;
     node->counter = 0;
     node->pad14 = 0;
-    allocObjNode(list, (s32)updateCardObjects);
-    allocObjNode(list, (s32)drawBoardElements);
-    allocObjNode(list, (s32)drawScoreDigits);
+    allocObjNode(list, (ObjNodeFn)updateCardObjects);
+    allocObjNode(list, (ObjNodeFn)drawBoardElements);
+    allocObjNode(list, (ObjNodeFn)drawScoreDigits);
     setupTripleTriadHands();
     return list;
 }

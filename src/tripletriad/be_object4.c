@@ -202,7 +202,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A238C);
 void func_800A247C(void) {
     u8 *node;
     sndProcessAudio(D_80182EC8, 0);
-    node = (u8 *)func_8009E248((s32)func_800A238C);
+    node = (u8 *)func_8009E248((ObjNodeFn)func_800A238C);
     *(s16 *)(node + 0xC) = 0;
     *(s16 *)(node + 0xE) = 0;
 }
@@ -263,10 +263,10 @@ u8 *initTripleTriadRenderList(void) {
     u8 *list = D_801D4968;
     u8 *node;
     initObjList(list, D_801D4978, 0x10, 4);
-    node = (u8 *)allocObjNode(list, (s32)func_800A279C);
+    node = (u8 *)allocObjNode(list, (ObjNodeFn)func_800A279C);
     node[0xC] = 0;
     node[0xD] = 0;
-    allocObjNode(list, (s32)func_800A274C);
+    allocObjNode(list, (ObjNodeFn)func_800A274C);
     return list;
 }
 

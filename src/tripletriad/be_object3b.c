@@ -116,18 +116,18 @@ s32 func_800A15C8(ClaimCtrlNode *node)
                 }
                 if (D_801D4448 < 5) {
                     if (D_801A2C70[D_801D30FC] < 3) {
-                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A0B24);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0B24);
                     } else {
-                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A0F0C);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0F0C);
                     }
                     goto fieldSetup;
                 }
                 goto spawn1260;
             spawn1080:
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1080);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1080);
                 goto fieldSetup;
             spawn1260:
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1260);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1260);
             fieldSetup:
                 seat = D_801D30FC;
                 spawned->state = 0;
@@ -144,7 +144,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
             break;
         case 2:
             if (node->subState == 0) {
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A1374);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1374);
                 actingSeat = D_801D4450;
                 spawned->state = 0;
                 spawned->field0D = 0;
@@ -265,7 +265,7 @@ s32 setupTripleTriadCardClaim(void)
         return 0;
     }
     initObjList(D_801D42F8, D_801D42A8, 0x14, 4);
-    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (s32)func_800A15C8);
+    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A15C8);
     cell = D_801D4308;
     node->state = 0;
     node->field0D = 0;
@@ -295,8 +295,8 @@ s32 setupTripleTriadCardClaim(void)
             xpos += 0x40;
         }
     }
-    allocObjNode(D_801D42F8, (s32)func_800A03DC);
-    allocObjNode(D_801D42F8, (s32)func_800A0AD4);
+    allocObjNode(D_801D42F8, (ObjNodeFn)func_800A03DC);
+    allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0AD4);
     return (s32)D_801D42F8;
 }
 
