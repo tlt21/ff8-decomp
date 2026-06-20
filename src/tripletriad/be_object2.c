@@ -94,7 +94,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
     TripleTriadCardObject *entity;
     CardAnimNode *node;
 
-    node = scratchAlloc(0x28);
+    node = scratchAlloc(sizeof(CardAnimNode));
     entity = ctl->entry;
 
     if (entity->flags & CTRL_FLAG_02) {
@@ -149,7 +149,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
                                 &g_otBase[node->base.pad], g_primCursor);
     transformCardEffect(entity, node, &g_otBase[node->base.pad]);
 
-    scratchFree(0x28);
+    scratchFree(sizeof(CardAnimNode));
     return 0;
 }
 
@@ -175,7 +175,7 @@ void setupTripleTriadHands(void) {
     CardObjectCtl *node;
     u8 *hand;
 
-    initObjList(D_801D3110, D_801D3120, 0x10, 0xA);
+    initObjList(D_801D3110, D_801D3120, sizeof(CardObjectCtl), 10);
 
     entity = g_tripleTriadCardHands;
     for (player = 0; player < 2; player++) {
@@ -394,7 +394,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
 POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
     CardRenderWork *work;
 
-    work = scratchAlloc(0x3C);
+    work = scratchAlloc(sizeof(CardRenderWork));
     prim->tag = 0x05000000;
     *(u32 *)&prim->r0 = 0x2A000000;
 
@@ -404,7 +404,7 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
                   &work->P, &work->flag);
 
     AddPrim(ot, prim);
-    scratchFree(0x3C);
+    scratchFree(sizeof(CardRenderWork));
     return prim + 1;
 }
 
@@ -795,7 +795,7 @@ u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
     ObjList *list = D_801D3380;
     SubstateMachineNode *node;
 
-    initObjList(list, D_801D3360, 0x14, 1);
+    initObjList(list, D_801D3360, sizeof(SubstateMachineNode), 1);
     node = (SubstateMachineNode *)allocObjNode(list, (ObjNodeFn)updateCardSelectCursor);
     node->state = 0;
     node->fieldD = rowSeed;
@@ -1966,7 +1966,7 @@ u8 *spawnAiTurn(s32 seat) {
         }
     }
 
-    initObjList(D_801D3560, D_801D3540, 0x14, 1);
+    initObjList(D_801D3560, D_801D3540, sizeof(AiTurnNode), 1);
     node = (AiTurnNode *)allocObjNode(D_801D3560, (ObjNodeFn)updateAiTurn);
     g_tripleTriadCurrentSeat = seat;
     node->seat = seat;
@@ -1996,7 +1996,7 @@ u8 *spawnAiTurn(s32 seat) {
  * @brief Initialize the Triple Triad task list.
  */
 void initTriadTaskPool(void) {
-    initObjList(D_801D3C58, D_801D3798, 0x4C, 0x10);
+    initObjList(D_801D3C58, D_801D3798, 76, 16);
 }
 
 /**
