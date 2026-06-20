@@ -19,6 +19,9 @@ extern s32 func_80023B14(s32 idx);
 /** @brief Non-zero if card/item @p cardId is present in the collection. */
 extern s32 isItemPresent(s32 cardId);
 
+/** @brief Look up a card's display-name string by card index. */
+extern u8 *func_80023A54(s32 cardId);
+
 /** @brief Mark card/item @p cardId as present (return it to the collection). */
 extern void markItemPresent(s32 cardId);
 

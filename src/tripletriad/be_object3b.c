@@ -3,6 +3,7 @@
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
 #include "tripletriad/be_object3b.h"
+#include "tripletriad/be_object4.h"
 
 /**
  * @brief Per-frame card-claim transition controller.

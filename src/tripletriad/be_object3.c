@@ -1163,11 +1163,11 @@ s32 updateScreenFade(FadeObject *obj) {
     prim->x0 = 0;
     prim->h = 0xE0;
     progress = (obj->frame << 12) / obj->duration;
-    func_800408A4(obj->endColor[0], obj->endColor[1], obj->endColor[2]);
-    func_80040918(obj->startColor, progress, &prim->r0);
+    SetFarColor(obj->endColor[0], obj->endColor[1], obj->endColor[2]);
+    DpqColor((CVECTOR *)obj->startColor, progress, (CVECTOR *)&prim->r0);
     prim->code = 0x62;
     AddPrim(g_otBase + 2, prim);
-    func_8004D724((u8 *)prim + sizeof(TILE), 1, 1, 0x40);
+    SetDrawTPage((u8 *)prim + sizeof(TILE), 1, 1, 0x40);
     AddPrim(g_otBase + 2, (u8 *)prim + sizeof(TILE));
     g_primCursor = (u8 *)prim + 0x18;
     frame = (u16)obj->frame;

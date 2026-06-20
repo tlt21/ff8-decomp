@@ -359,18 +359,9 @@ extern s32 g_lastActiveSlot;     /**< Last-active slot index (-1 = none). */
 /* Private prototypes — be_object3.c internal forward declaration */
 extern s32 updateScriptCardAnims(void); /**< Per-frame card slide/scale animation sweep. */
 
-/* Imported prototypes (sibling TUs / SDK / main-binary; relocate to their owning
-   headers as those TUs are cleaned up). */
-extern u8  *func_80023A54(s32 cardId);       /**< Look up a card's display-name string. */
+/* Prototypes imported by be_object3.c / be_object3b.c. */
 extern void func_80047C74(u8 *dst, u8 *src); /**< Append a string to the work buffer. */
-extern void func_800408A4(s32 r, s32 g, s32 b);              /**< Set the GTE far/interpolation target colour. */
-extern void func_80040918(u8 *startColor, s32 frac, u8 *dst);/**< Lerp startColor -> target by @p frac into @p dst. */
-extern void func_8004D724(void *prim, s32 a1, s32 a2, s32 a3);/**< Init the trailing blend-control primitive. */
-extern void func_800A1D68(s32 a0, u8 *a1, s32 a2);           /**< Show a banner/message string. */
-extern void func_800A2054(s32 a0);                          /**< Acknowledge/advance a message gate. */
-extern s32  func_800A20F4(s32 a0);                          /**< Poll a message gate (>0 = result, <0 = pending). */
-extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new claim sequence. */
-extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */
-extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the sequence. */
+extern s32  func_800A20F4(s32 a0);           /**< Poll the player-input gate: <0 = still
+                                                  waiting, 0 or 1 = the player's decision. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT3_H */
