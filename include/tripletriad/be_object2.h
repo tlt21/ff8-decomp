@@ -40,16 +40,23 @@ extern void setCardEntityType(s32 entityIdx, s32 type);
  *         and clear its captured-from bits. */
 extern void resolveCaptures(TripleTriadBoard *board);
 
+/** @brief True while any hand card is mid effect-animation (slide/flip). */
+extern s32 anyCardEffectActive(void);
+
 /* Card-object processing + per-match board/hand setup. */
 extern void processCardObjects(s32 arg);
 extern void resetTriadBoard(void);
 extern void setupTripleTriadHands(void);
 
 /* Menu / cursor sub-machine. */
+extern void initTriadTaskPool(void);
+extern void resetTriadMenuState(void);
 extern void updateTriadMenu(void);
 extern void processTriadTasks(void);
 /** @brief Enter an interactive card-selection substate. */
 extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
+/** @brief Spawn the interactive card-selection cursor handler; returns the cursor list head. */
+extern u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte);
 
 /* Card render / per-frame effect. */
 extern TSPRT *drawCardOverlaySprite(CardAnimNode *node, s32 variant, void *ot, TSPRT *out);

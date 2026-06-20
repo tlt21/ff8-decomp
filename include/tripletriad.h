@@ -309,12 +309,14 @@ typedef enum {
  *         seat (player 0 or 1). This is the seat index only — whether a seat
  *         is human, AI, or demo is the separate per-seat "player type". */
 #define TT_OWNER_MASK            0x01 // Blue or pink
-#define TT_USE_STATS             0x02 // Stats don't show on card when this is set
+#define TT_USE_STATS             0x02 // Show the card's rank digits (drawTriadCard)
 #define TT_SHOW_LIGHT_OVERLAY    0x04 // Card gets light purple/blue overlay depending on what bit 1 is set to
+#define TT_SHOW_ELEMENT          0x10 // Draw the card's element marker (drawTriadCard)
 #define TT_SHOW_DARK_OVERLAY     0x20 // Card turns dark blue
 
 
 /** @brief Bits in @c g_tripleTriadRules controlling which optional rules are active. */
+#define TT_RULE_OPEN       0x01   /**< Open rule: both hands are shown face-up. */
 #define TT_RULE_SAME       0x02   /**< Same rule enabled. */
 #define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
 #define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */

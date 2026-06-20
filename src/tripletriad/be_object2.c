@@ -187,12 +187,12 @@ void setupTripleTriadHands(void) {
             node->entry = entity;
             entity->cardId = hand[slot];
             entity->state      = CARD_FX_IDLE;
-            entity->initFlags  = 0x12 | player;
+            entity->initFlags  = TT_SHOW_ELEMENT | TT_USE_STATS | player;
             entity->groupId    = player;
             entity->fieldD     = 0;
             entity->priority   = slot;
             entity->posData[0] = 0;
-            if ((g_tripleTriadRules & 1) == 0 && *playerType == 3) {
+            if ((g_tripleTriadRules & TT_RULE_OPEN) == 0 && *playerType == 3) {
                 entity->posData[1] = 0x800;
             } else {
                 entity->posData[1] = 0;
@@ -218,8 +218,10 @@ void setupTripleTriadHands(void) {
  * Returns the advanced @p out so the caller can chain further primitives.
  *
  * @param cardId Index into @c g_tripleTriadCardStats.
- * @param flags  Render flags: 0x2 = show ranks, 0x4 = translucent, 0x10 = show
- *               element, 0x20 = dimmed palette, 0x1 = opponent border tint.
+ * @param flags  Render flags (the card object's @c initFlags): @c TT_USE_STATS =
+ *               show ranks, @c TT_SHOW_LIGHT_OVERLAY = translucent,
+ *               @c TT_SHOW_ELEMENT = element marker, @c TT_SHOW_DARK_OVERLAY =
+ *               dimmed palette, @c TT_OWNER_MASK = opponent border tint.
  * @param ot     OT bucket pointer for @c AddPrim (AddPrim).
  * @param out    Output primitive buffer (pre-allocated by the caller).
  * @return       Pointer to the next free primitive slot in @p out.
@@ -243,10 +245,10 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
     id = cardId;
     work = (CardRenderWork *)scratchAlloc(sizeof(CardRenderWork));
     baseColor = 0x2C404040;
-    if ((flags & 0x20) == 0) {
+    if ((flags & TT_SHOW_DARK_OVERLAY) == 0) {
         baseColor = 0x2C808080;
     }
-    if (flags & 0x4) {
+    if (flags & TT_SHOW_LIGHT_OVERLAY) {
         transBit = 0x2000000;
         baseColor |= transBit;
     } else {
@@ -256,7 +258,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
     RotTransPers4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
                   &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3], &work->P, &work->flag);
     if (NormalClip(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
-        if (flags & 0x2) {
+        if (flags & TT_USE_STATS) {
             SVECTOR *rowAddr;
             s32 i;
             s32 j;
@@ -290,7 +292,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
             }
         }
         /* triple do/while(0): amplify flags' ref count so it wins s7 over baseColor */
-        do { do { do { eflag = flags & 0x10; } while (0); } while (0); } while (0);
+        do { do { do { eflag = flags & TT_SHOW_ELEMENT; } while (0); } while (0); } while (0);
         if (eflag) {
             s32 element = card->element;
             if (element != 0) {
@@ -340,11 +342,11 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                           (s32 *)&((POLY_G4 *)out)->x2, (s32 *)&((POLY_G4 *)out)->x3, &work->P, &work->flag);
             ((POLY_G4 *)out)->tag = 0x08000000;
             gPrim = (POLY_G4 *)out;
-            if (flags & 0x20) {
+            if (flags & TT_SHOW_DARK_OVERLAY) {
                 color0 = 0x38807060;
                 color1 = 0x807060;
                 color2 = 0x402018;
-            } else if ((flags & 0x1) == 0) {
+            } else if ((flags & TT_OWNER_MASK) == 0) {
                 color0 = 0x38E0C0FF;
                 color1 = 0xE0C0FF;
                 color2 = 0x403080;
@@ -908,7 +910,7 @@ void animateCardEffect(TripleTriadCardObject *entity) {
         state -= CARD_FX_SLIDE_LEFT;
         if (field02 < 25) {
             if (field02 == 12) {
-                entity->initFlags ^= 1;
+                entity->initFlags ^= TT_OWNER_MASK;
             }
             t = ((field02 + 1) * 4096) / 25;
             entity->offZ = -((rsin(t / 2) * 128) >> 12);
