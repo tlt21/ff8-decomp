@@ -85,6 +85,49 @@ enum AiSearchPhase {
 /** @brief Frames the picked card is shown during @ref AI_TURN_ANIMATE before placement. */
 #define AI_ANIM_FRAMES 15
 
+/** @brief Result of one @ref searchBestMove / @ref searchBestMoveStack ply. */
+enum AiSearchResult {
+    AI_RESULT_DONE      = 0,  /**< Full pass complete; best move/scores recorded. */
+    AI_RESULT_LEAF      = 1,  /**< Depth exhausted; evaluate this position directly. */
+    AI_RESULT_YIELD     = 2,  /**< Time-slice budget ran out; yield and resume next slice. */
+    AI_RESULT_ROOT_NEXT = 3   /**< Root ply advanced to its next hand card. */
+};
+
+/** @brief Active interactive menu substate — @c D_801D3358, and the @c mode
+ *         selector of @ref drawMenuPrim (which HUD cursor to draw). */
+enum TriadMenuSubstate {
+    TT_SUBSTATE_NONE     = 0,  /**< No substate armed. */
+    TT_SUBSTATE_HAND_P0  = 1,  /**< Player 0's hand row (findCardSlot group 0). */
+    TT_SUBSTATE_HAND_P1  = 2,  /**< Player 1's hand row (findCardSlot group 1). */
+    TT_SUBSTATE_BOARD    = 3,  /**< Board cell (row/col) cursor. */
+    TT_SUBSTATE_CONFIG_A = 4,  /**< First config-param row (adjustConfigParam). */
+    TT_SUBSTATE_CONFIG_B = 5   /**< Second config-param row. */
+};
+
+/** @brief Pad-input source for the menu tick — @c D_801D3338 (@ref updateTriadMenu). */
+enum TriadMenuPadSource {
+    TT_PAD_SRC_P0   = 0,  /**< Player 0's controller only. */
+    TT_PAD_SRC_P1   = 1,  /**< Player 1's controller only. */
+    TT_PAD_SRC_BOTH = 2   /**< Both controllers OR'd together. */
+};
+
+/** @brief Completion phase of the armed substate — @c D_801D3359. */
+enum TriadSubstatePhase {
+    TT_SUBPHASE_IDLE    = 0,  /**< No substate running. */
+    TT_SUBPHASE_ACTIVE  = 1,  /**< Running; awaiting input. */
+    TT_SUBPHASE_CONFIRM = 2,  /**< User confirmed the selection. */
+    TT_SUBPHASE_CANCEL  = 3   /**< User canceled. */
+};
+
+/** @brief Player card-selection cursor state — @c SubstateMachineNode.state
+ *         (@ref updateCardSelectCursor): pick a hand card, then place it. */
+enum CardSelectState {
+    CARD_SEL_BEGIN_PICK  = 0,  /**< Arm the hand-card cursor. */
+    CARD_SEL_WAIT_PICK   = 1,  /**< Wait for a hand card to be chosen. */
+    CARD_SEL_BEGIN_PLACE = 2,  /**< Arm the board-cell cursor. */
+    CARD_SEL_WAIT_PLACE  = 3   /**< Wait for the board confirm/cancel. */
+};
+
 /* Typedefs */
 
 /**
@@ -139,14 +182,14 @@ typedef struct { s32 w0, w1, w2, w3, w4; } WeightSet;  /* 0x14 */
  * @brief 20-byte linked-list node owned by the @c D_801D3380 list and
  *        driven by the @ref updateCardSelectCursor callback.
  *
- * @c state is a small dispatch index (0..3) for the card-selection
- * cursor; @c fieldD and @c fieldE seed the row-cursor substate
- * subscriptions; @c snapshot is a 4-byte mirror of the current
- * @c D_801D3340 entry copied in when state 1 commits the choice.
+ * @c state is a @ref CardSelectState for the card-selection cursor;
+ * @c fieldD and @c fieldE seed the row-cursor substate subscriptions;
+ * @c snapshot is a 4-byte mirror of the current @c D_801D3340 entry
+ * copied in when the hand pick is committed.
  */
 typedef struct {
     u8           pad00[0xC];   /* linked-list header (flags / next / callback) */
-    u8           state;        /* 0x0C: dispatch state (0..3) */
+    u8           state;        /* 0x0C: cursor state (@ref CardSelectState) */
     u8           fieldD;       /* 0x0D: cursor row index seed */
     u8           fieldE;       /* 0x0E: state byte forwarded to activateMenuSubstate */
     u8           pad0F;        /* 0x0F */

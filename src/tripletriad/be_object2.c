@@ -416,7 +416,7 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
  */
 void resetTriadMenuState(void) {
     D_801D3328 = 0;
-    D_801D3359 = 0;
+    D_801D3359 = TT_SUBPHASE_IDLE;
     D_801D3340[1].field2 = 0;
     D_801D3340[2].field2 = 0;
     D_801D3340[3].field0 = 1;
@@ -437,27 +437,27 @@ void resetTriadMenuState(void) {
  */
 void drawMenuPrim(s32 mode, SubstateSlot *slot) {
     switch (mode) {
-    case 1:
+    case TT_SUBSTATE_HAND_P0:
         g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     1, 0x58,
                                     (slot->field2 << 5) + 0x30, 0x808080);
         break;
-    case 2:
+    case TT_SUBSTATE_HAND_P1:
         g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, 0x110,
                                     (slot->field2 << 5) + 0x30, 0x808080);
         break;
-    case 3:
+    case TT_SUBSTATE_BOARD:
         g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x68,
                                     (slot->field2 << 6) | 0x30, 0x808080);
         break;
-    case 4:
+    case TT_SUBSTATE_CONFIG_A:
         g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x28,
                                     0x4C, 0x808080);
         break;
-    case 5:
+    case TT_SUBSTATE_CONFIG_B:
         g_primCursor = func_8002FF34(&g_otBase[4], g_primCursor,
                                     0, (slot->field0 << 6) + 0x28,
                                     0x94, 0x808080);
@@ -634,43 +634,43 @@ void updateTriadMenu(void) {
     s32 state = *(u8 *)&D_801D3338;
 
     switch (state) {
-    case 0:
-    case 1:
+    case TT_PAD_SRC_P0:
+    case TT_PAD_SRC_P1:
         D_801D332C = g_padHeld[state];
         D_801D332E = g_padRepeat[state];
         D_801D3330 = g_padPressed[state];
         break;
-    case 2:
+    case TT_PAD_SRC_BOTH:
         D_801D332C = g_padHeld[0] | g_padHeld[1];
         D_801D332E = g_padRepeat[0] | g_padRepeat[1];
         D_801D3330 = g_padPressed[0] | g_padPressed[1];
         break;
     }
 
-    if (D_801D3359 == 1) {
+    if (D_801D3359 == TT_SUBPHASE_ACTIVE) {
         s32   idx = D_801D3358 * 4;
         void *p   = &D_801D3340[D_801D3358];
 
         switch (D_801D3358) {
-        case 0: break;
-        case 1: handleCursorSubstate1(p, idx); break;
-        case 2: handleCursorSubstate2(p, idx); break;
-        case 3: handleCursorSubstate3(p, idx); break;
-        case 4:
-        case 5: adjustConfigParam(p);      break;
+        case TT_SUBSTATE_NONE: break;
+        case TT_SUBSTATE_HAND_P0: handleCursorSubstate1(p, idx); break;
+        case TT_SUBSTATE_HAND_P1: handleCursorSubstate2(p, idx); break;
+        case TT_SUBSTATE_BOARD:   handleCursorSubstate3(p, idx); break;
+        case TT_SUBSTATE_CONFIG_A:
+        case TT_SUBSTATE_CONFIG_B: adjustConfigParam(p);      break;
         }
 
         drawMenuPrim(D_801D3358, &D_801D3340[D_801D3358]);
 
         if (!(D_801D3334 & 1)) {
             if (D_801D3330 & 0xC0) {
-                D_801D3359 = 2;
+                D_801D3359 = TT_SUBPHASE_CONFIRM;
                 memcpy(&D_801D335C, &D_801D3340[D_801D3358], 4);
                 return;
             }
         }
         if (!(D_801D3334 & 2) && (D_801D3330 & 0x10)) {
-            D_801D3359 = 3;
+            D_801D3359 = TT_SUBPHASE_CANCEL;
         }
     }
 }
@@ -692,7 +692,7 @@ void updateTriadMenu(void) {
 void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
     D_801D3358 = idx;
     D_801D3328 = mask | (1 << idx);
-    D_801D3359 = 1;
+    D_801D3359 = TT_SUBPHASE_ACTIVE;
     D_801D3338 = stateByte;
     D_801D3334 = suppressFlags;
 
@@ -729,25 +729,25 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
     while (1) {
         s1 = p->state;
         switch (s1) {
-        case 0:
+        case CARD_SEL_BEGIN_PICK:
             activateMenuSubstate(p->fieldD + 1, 0, p->fieldE, 2);
-            p->state = 1;
+            p->state = CARD_SEL_WAIT_PICK;
             break;
-        case 1:
+        case CARD_SEL_WAIT_PICK:
             if (D_801D3359 == s1) return 0;
             if (findCardSlot(p->fieldD, 0, D_801D335C.field2) >= 0) {
                 p->snapshot = D_801D335C;
-                p->state = 2;
+                p->state = CARD_SEL_BEGIN_PLACE;
                 playTriadSfx(1);
             } else {
-                p->state = 0;
+                p->state = CARD_SEL_BEGIN_PICK;
             }
             break;
-        case 2:
-            activateMenuSubstate(3, 0, p->fieldE, 0);
-            p->state = 3;
+        case CARD_SEL_BEGIN_PLACE:
+            activateMenuSubstate(TT_SUBSTATE_BOARD, 0, p->fieldE, 0);
+            p->state = CARD_SEL_WAIT_PLACE;
             break;
-        case 3: {
+        case CARD_SEL_WAIT_PLACE: {
             s32 trig;
             if (g_drawBufferIndex != 0) {
                 drawMenuPrim(p->fieldD + 1, &p->snapshot);
@@ -755,7 +755,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             highlightCardSlot(p->fieldD, p->snapshot.field2);
             trig = D_801D3359;
             switch (trig) {
-            case 2:
+            case TT_SUBPHASE_CONFIRM:
                 if (findCardSlot(2, D_801D335C.field0, D_801D335C.field2) < 0) {
                     s32 entIdx = findCardSlot(p->fieldD, 0, p->snapshot.field2);
                     setCardObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
@@ -766,12 +766,12 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
                 playTriadSfx(0x10);
                 p->state = trig;
                 break;
-            case 1:
+            case TT_SUBPHASE_ACTIVE:
                 return 0;
-            case 3:
+            case TT_SUBPHASE_CANCEL:
                 if (trig == s1) {
                     playTriadSfx(9);
-                    p->state = 0;
+                    p->state = CARD_SEL_BEGIN_PICK;
                 }
                 break;
             }
@@ -797,7 +797,7 @@ u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
 
     initObjList(list, D_801D3360, sizeof(SubstateMachineNode), 1);
     node = (SubstateMachineNode *)allocObjNode(list, (ObjNodeFn)updateCardSelectCursor);
-    node->state = 0;
+    node->state = CARD_SEL_BEGIN_PICK;
     node->fieldD = rowSeed;
     node->fieldE = stateByte;
     D_801D3340[3].field0 = 1;
@@ -1574,7 +1574,7 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
     s32 product;
 
     if (depth <= 0) {
-        return 1;
+        return AI_RESULT_LEAF;
     }
     while (g_aiPlacementBudget > 0) {
         cardId = g_tripleTriadPlayerHands[player].cards[node->card].id;
@@ -1598,20 +1598,20 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                 g_tripleTriadPlayerHands[player].cards[node->card].id = cardId;
 
                 switch (result) {
-                case 0:
+                case AI_RESULT_DONE:
                     score = node[1].bestScore;
                     product = node[1].bestWeighted * weight;
                     weighted = product >> 12;
                     break;
-                case 1: {
+                case AI_RESULT_LEAF: {
                     s32 eval = evaluateBoard(&boardCopy, g_tripleTriadCurrentSeat);
                     product = eval * weight;
                     score = eval;
                     weighted = product >> 12;
                     break;
                 }
-                case 2:
-                    return 2;
+                case AI_RESULT_YIELD:
+                    return AI_RESULT_YIELD;
                 }
 
                 if (player == g_tripleTriadCurrentSeat) {
@@ -1668,15 +1668,15 @@ s32 searchBestMoveStack(TripleTriadBoard *board, s32 player, AiMove *node, s32 d
                     } else {
                         node->bound = node->bestWeighted;
                     }
-                    return 0;
+                    return AI_RESULT_DONE;
                 }
                 if (node == g_aiSearchStack) {
-                    return 3;
+                    return AI_RESULT_ROOT_NEXT;
                 }
             }
         }
     }
-    return 2;
+    return AI_RESULT_YIELD;
 }
 
 /**
@@ -1709,7 +1709,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
     s32 product;
 
     if (depth <= 0) {
-        return 1;
+        return AI_RESULT_LEAF;
     }
     boardCopy = (TripleTriadBoard *)scratchAlloc(sizeof(TripleTriadBoard));
     while (g_aiPlacementBudget > 0) {
@@ -1734,21 +1734,21 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                 g_tripleTriadPlayerHands[player].cards[node->card].id = cardId;
 
                 switch (result) {
-                case 0:
+                case AI_RESULT_DONE:
                     score = node[1].bestScore;
                     product = node[1].bestWeighted * weight;
                     weighted = product >> 12;
                     break;
-                case 1: {
+                case AI_RESULT_LEAF: {
                     s32 eval = evaluateBoard(boardCopy, g_tripleTriadCurrentSeat);
                     product = eval * weight;
                     score = eval;
                     weighted = product >> 12;
                     break;
                 }
-                case 2:
+                case AI_RESULT_YIELD:
                     scratchFree(sizeof(TripleTriadBoard));
-                    return 2;
+                    return AI_RESULT_YIELD;
                 }
 
                 if (player == g_tripleTriadCurrentSeat) {
@@ -1806,17 +1806,17 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
                         node->bound = node->bestWeighted;
                     }
                     scratchFree(sizeof(TripleTriadBoard));
-                    return 0;
+                    return AI_RESULT_DONE;
                 }
                 if (node == g_aiSearchStack) {
                     scratchFree(sizeof(TripleTriadBoard));
-                    return 3;
+                    return AI_RESULT_ROOT_NEXT;
                 }
             }
         }
     }
     scratchFree(sizeof(TripleTriadBoard));
-    return 2;
+    return AI_RESULT_YIELD;
 }
 
 /**
@@ -1869,7 +1869,7 @@ s32 updateAiTurn(AiTurnNode *node) {
                 highlightCardSlot(g_tripleTriadCurrentSeat, node->cardSlot);
                 g_aiPlacementBudget = 100;
                 node->result = searchBestMove(&g_tripleTriadBoard, g_tripleTriadCurrentSeat, g_aiSearchStack, node->unk10);
-                if ((node->result & 0xFF) == 2) {
+                if ((node->result & 0xFF) == AI_RESULT_YIELD) {
                     g_aiSearchTimer--;
                     return 0;
                 }
@@ -1884,7 +1884,7 @@ s32 updateAiTurn(AiTurnNode *node) {
                     g_aiSearchTimer--;
                     return 0;
                 }
-                if (node->result == 3) {
+                if (node->result == AI_RESULT_ROOT_NEXT) {
                     node->sub = AI_SEARCH_PREP;  /* re-run the search from the top */
                 } else {
                     /* sub == AI_TURN_ANIMATE; using the cached local (not the
@@ -1954,7 +1954,7 @@ u8 *spawnAiTurn(s32 seat) {
         }
     }
 
-    if (!(g_tripleTriadRules & 1) && !(D_80082C97 & 0x10)) {
+    if (!(g_tripleTriadRules & TT_RULE_OPEN) && !(D_80082C97 & 0x10)) {
         s32 opp = seat ^ 1;
         for (i = 0; i < 5; i++) {
             s32 r1, r2, divisor;
