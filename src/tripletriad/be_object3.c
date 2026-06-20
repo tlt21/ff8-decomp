@@ -61,7 +61,6 @@ typedef struct {
     /* 0x13 */ u8 field13;   /**< Cleared to 0 when func_8009F17C (re)inits the sequence. */
 } ScriptCtx;
 
-extern u8 D_801D3C58[];
 extern u8 D_801D3C68[];
 extern u8 D_801D3C78[];
 extern ScriptEntry D_801D3EC0[2][5];
@@ -156,7 +155,7 @@ extern void func_800A1D68(s32 a0, u8 *a1, s32 a2);        /**< Show a banner/mes
 extern void func_800A2054(s32 a0);                        /**< Acknowledge/advance a message gate. */
 extern s32  func_800A20F4(s32 a0);                        /**< Poll a message gate (>0 = result, <0 = pending). */
 extern void func_800A2114(s32 a0);                        /**< Trigger the card-detail popup for a card id. */
-extern void activateMenuSubstate(s32 a0, s32 a1, s32 a2, s32 a3); /**< Enter an interactive selection substate. */
+/* activateMenuSubstate prototype now lives in tripletriad.h */
 extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new claim sequence. */
 extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */
 extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the sequence. */

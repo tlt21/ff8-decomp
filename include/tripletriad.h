@@ -361,6 +361,7 @@ extern u16           D_801C2EC4;        /**< Result-screen pad input. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
+extern u8            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
 
 /* ── Cross-TU entry points (defined in sibling be_objectN TUs) ─────────────── */
 extern void func_800A233C(s32 a);
@@ -371,5 +372,7 @@ extern void updateTriadMenu(void);
 extern void func_800A1C6C(void);
 extern void func_800A2214(void);
 extern void clearAllSfx(void);
+/** @brief Enter an interactive card-selection substate (defined in be_object2.c). */
+extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags);
 
 #endif /* TRIPLETRIAD_H */
