@@ -467,7 +467,7 @@ s32 updateScriptCardAnims(void)
                 tmp->mtx.t[2] = e->posZ;
                 SetRotMatrix(&tmp->mtx);
                 SetTransMatrix(&tmp->mtx);
-                g_primCursor = drawTriadCard(e->marker, e->row | 0x12,
+                g_primCursor = drawTriadCard(e->marker, e->row | TT_SHOW_ELEMENT | TT_USE_STATS,
                                            g_otBase + e->sort, g_primCursor);
             }
         }
@@ -847,8 +847,8 @@ s32 updateHandToScriptTable(ScriptCtx *node) {
  *
  * Initialises the @c g_setupHandlerList pool, then (by @c g_tripleTriadRules) builds the
  * player's hand and chooses the per-frame handler:
- *  - rule bit @c 0x20000000: random hand (@c dealRarityHand, delta 0) + @c updateHandToScriptTable.
- *  - rule bit @c 0x8: open hand — @c dealRarityHand if this player uses the offset-hand
+ *  - @c TT_RULE_NO_CLAIM: random hand (@c dealRarityHand, delta 0) + @c updateHandToScriptTable.
+ *  - @c TT_RULE_RANDOM: auto-dealt hand — @c dealRarityHand if this player uses the offset-hand
  *    layout (@c D_801A2C70 >= 3) else @c buildRandomOwnedHand — + @c updateHandToScriptTable.
  *  - otherwise: @c dealRarityHand + @c updateHandToScriptTable for the offset-hand layout, else the
  *    interactive @c runHandBuildSequencer.
@@ -865,10 +865,10 @@ s32 setupPlayerHand(s32 arg0) {
 
     initObjList(g_setupHandlerList, g_setupHandlerPool, 0x14, 1);
 
-    if (g_tripleTriadRules & 0x20000000) {
+    if (g_tripleTriadRules & TT_RULE_NO_CLAIM) {
         dealRarityHand(arg0, 0);
         node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)updateHandToScriptTable);
-    } else if (g_tripleTriadRules & 0x8) {
+    } else if (g_tripleTriadRules & TT_RULE_RANDOM) {
         if (D_801A2C70[arg0] >= 3) {
             dealRarityHand(arg0, D_80082C95);
         } else {
@@ -913,7 +913,7 @@ s32 reloadSetupBuffer(void) {
  * State 0: warmup. Calls startFadeToBlack(0xF) once, ticks 15 frames.
  * State 1: setup. Calls setupPlayerHand(counter) per counter, polls
  *          updateObjectList until ready; tries counter 0..1, then branches
- *          to state 2 (if g_tripleTriadRules & 1) or state 4.
+ *          to TRIAD_SETUP_CLEAR (if g_tripleTriadRules & TT_RULE_OPEN) else TRIAD_SETUP_DONE.
  * State 2: clear sweep. Every 5 ticks, marks queued actions in
  *          g_scriptActions[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
@@ -953,7 +953,7 @@ s32 runTriadSetupSequence(ScriptCtx *ctx) {
                 ctx->subState = 0;
                 break;
             }
-            if (g_tripleTriadRules & 1) {
+            if (g_tripleTriadRules & TT_RULE_OPEN) {
                 ctx->state = TRIAD_SETUP_CLEAR;
                 ctx->subState = 0;
                 break;
@@ -1074,7 +1074,7 @@ s32 updateCardDisplaySpawn(void) {
             }
             SetRotMatrix(node->subNode);
             SetTransMatrix(node->subNode);
-            g_primCursor = drawTriadCard((u8)g_cardDisplaySlot, 0x13, &g_otBase[3], g_primCursor);
+            g_primCursor = drawTriadCard((u8)g_cardDisplaySlot, TT_OWNER_MASK | TT_USE_STATS | TT_SHOW_ELEMENT, &g_otBase[3], g_primCursor);
             scratchFree(0x28);
             g_lastActiveSlot = g_cardDisplaySlot;
         } else {
@@ -1252,7 +1252,7 @@ s32 updateClaimBoard(void) {
         m->t[0] = cell->baseX;
         m->t[1] = cell->baseY;
         m->t[2] = cell->baseZ;
-        s7 = cell->fieldA | 0x12;
+        s7 = cell->fieldA | TT_SHOW_ELEMENT | TT_USE_STATS;
         if (cell->field8) switch (cell->field8) {
         case CLAIM_ANIM_SLIDE_IN:
             s0 = (cell->field9 << 12) / 30;

@@ -199,7 +199,7 @@ s32 func_800A15C8(ClaimCtrlNode *node)
  *  1. Clears @c D_801D4454 and picks the acting seat @c g_claimSeat (the player
  *     whose hand uses the non-offset layout, @c D_801A2C70[seat] < 3).
  *  2. Computes the claim selector @c g_sweepTarget (default -1 = capture-only). Unless
- *     the "no claim" rule bit (0x20000000) is set, the rule/mode @c D_801A2C44 maps to:
+ *     the @c TT_RULE_NO_CLAIM rule bit is set, the rule/mode @c D_801A2C44 maps to:
  *       1 → claim one card; 2 → claim 2 per owned card on the board (offset from -10);
  *       3 → claim none (0); 4 → claim five. Seat 2 (none) leaves it at -1.
  *  3. If @c g_sweepTarget < 0, returns every card in the acting seat's hand to its owner
@@ -227,7 +227,7 @@ s32 setupTripleTriadCardClaim(void)
         g_claimSeat = 1;
     }
     g_sweepTarget = -1;
-    if (!(g_tripleTriadRules & 0x20000000)) {
+    if (!(g_tripleTriadRules & TT_RULE_NO_CLAIM)) {
         switch (D_801A2C44) {
         case 0:
             break;

@@ -319,9 +319,12 @@ typedef enum {
 #define TT_RULE_OPEN       0x01   /**< Open rule: both hands are shown face-up. */
 #define TT_RULE_SAME       0x02   /**< Same rule enabled. */
 #define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
+#define TT_RULE_RANDOM     0x08   /**< Random rule: the hand is auto-dealt rather than picked. */
+#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
 #define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */
 #define TT_RULE_ELEMENTAL  0x80   /**< FF8 Elemental rule (tile elements give +1/-1 edge modifiers). */
-#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
+#define TT_RULE_NO_CLAIM   0x20000000 /**< Engine flag (high bit): no card is won/lost after the match
+                                           (the post-match claim sweep is skipped); the hand is auto-dealt. */
 
 /** @brief Bits in @c g_tripleTriadInputFlags. */
 #define TT_INPUT_DISABLED   0x04  /**< Card input suspended while a modal sub-screen is active. */
