@@ -75,7 +75,7 @@ typedef enum {
 } MatchFlowState;
 
 /**
- * @brief Callback node in the tripletriad list at @c D_801D3C68.
+ * @brief Callback node in the tripletriad list at @c g_gradFadeList.
  *
  * Minimal view: a list-node header followed by a list-head pointer. Other fields
  * (byte flags at 0x0E, 0x22; s16 at 0x20; etc.) are not yet modeled.

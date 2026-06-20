@@ -1,9 +1,9 @@
 /* PsyQ library aliases used by decomped C. */
 
-/* Second input-edge flag, a separate u16 split out from the D_801D3E74[2]
-   merge so func_8009F17C's prologue re-emits %hi(D_801D3E76) rather than
-   reusing the D_801D3E74 base (matches the original codegen). */
-D_801D3E76     = 0x801D3E76;
+/* Second input-edge flag, a separate u16 split out from the g_removeCardEdge[2]
+   merge so func_8009F17C's prologue re-emits %hi(g_addCardEdge) rather than
+   reusing the g_removeCardEdge base (matches the original codegen). */
+g_addCardEdge  = 0x801D3E76;
 
 /* Triple Triad state-handler dispatch table. The base (0x800A4588) overlaps
    func_800A4504's last word, so it can't be a symbol_addrs label (splat would

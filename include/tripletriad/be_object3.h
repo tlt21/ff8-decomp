@@ -29,7 +29,7 @@ typedef struct {
     /* 0x22 */ u8 field22;   /**< Pre-set "already finished" flag: func_8009E904 returns 2 immediately when this is 1. */
 } ScriptStateNode;
 
-/** @brief One 0x20-byte entry of the @ref D_801D4308 active-object array. */
+/** @brief One 0x20-byte entry of the @ref g_activeCardObjs active-object array. */
 typedef struct {
     /* 0x00 */ u8  cardId;   /**< Index into g_tripleTriadCardStats. */
     /* 0x01 */ u8  pad01[3];
@@ -49,15 +49,15 @@ typedef struct {
 } ActiveObj; /* 0x20 */
 
 /* Public data */
-extern ActiveObj D_801D4308[]; /**< Active card-display object array. */
+extern ActiveObj g_activeCardObjs[]; /**< Active card-display object array. */
 
 /* Shared by the be_object3b tail (the card-claim controller/setup). */
-extern s32 D_801D4448;   /**< Target object count; the sweep completes when D_801D4288 reaches it. */
+extern s32 g_sweepTarget;   /**< Target object count; the sweep completes when g_sweepProcessed reaches it. */
 extern u8  D_801D444C;
-extern u8  D_801D444D;    /**< Set to 1 when func_800A1374's capture/cleanup sweep finishes. */
-extern s32 D_801D4450;    /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
+extern u8  g_sweepDone;    /**< Set to 1 when func_800A1374's capture/cleanup sweep finishes. */
+extern s32 g_claimSeat;    /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
 extern s32 D_801D4454;
-extern u8  D_801D42A8[];  /**< Backing element storage for the D_801D42F8 pool. */
+extern u8  g_claimSetupPool[];  /**< Backing element storage for the D_801D42F8 pool. */
 
 /* Public prototypes */
 extern void updateFadeEffects(void);
@@ -87,7 +87,7 @@ extern s32  func_800A1374(ScriptStateNode *node);
 /* Private typedefs */
 
 /**
- * @brief Script-action entry in the @ref D_801D3EC0 2x5 table.
+ * @brief Script-action entry in the @ref g_scriptActions 2x5 table.
  *
  * Initialized in initTripleTriadScripts. Used by func_8009FC90's state-2 sweep
  * to mark queued actions complete and by func_8009EF68 to scan for pending actions.
@@ -146,13 +146,13 @@ typedef struct {
  * white), then driven each frame by @c func_800A01DC: it interpolates a
  * screen-sized sprite's colour from @c startColor toward @c endColor across
  * @c duration frames, advancing @c frame each call. When the fade completes it
- * stages @c endColor back into @c D_80182E68 so the next fade starts there.
+ * stages @c endColor back into @c g_stagedFadeColor so the next fade starts there.
  */
 typedef struct {
     /* 0x00 */ u8  pad00[0x0C];
     /* 0x0C */ s16 frame;          /**< Current frame counter (0..duration). */
     /* 0x0E */ s16 duration;       /**< Total fade length, in frames. */
-    /* 0x10 */ u8  startColor[4];  /**< Starting RGB, copied from the staged D_80182E68. */
+    /* 0x10 */ u8  startColor[4];  /**< Starting RGB, copied from the staged g_stagedFadeColor. */
     /* 0x14 */ u8  endColor[4];    /**< Target RGB (written as a word: 0 = black, 0xFFFFFF = white). */
 } FadeObject;
 
@@ -176,7 +176,7 @@ typedef struct {
     /* 0x16 */ s16 field16;
 } CardScaleSprite; /* 0x18 */
 
-/** @brief D_801D3C68-pool node (0x24 bytes) for the screen gradient-fade effect. */
+/** @brief g_gradFadeList-pool node (0x24 bytes) for the screen gradient-fade effect. */
 typedef struct {
     /* 0x00 */ u8  pad00[0x0C];
     /* 0x0C */ u8  state;
@@ -229,7 +229,7 @@ typedef struct {
  */
 typedef struct {
     /* 0x00 */ s16 angle;        /**< Rotation/animation angle. */
-    /* 0x02 */ s16 phase;        /**< Phase counter (mirror of @c D_801D3EB8). */
+    /* 0x02 */ s16 phase;        /**< Phase counter (mirror of @c g_fadePhaseMirror). */
     /* 0x04 */ s16 unk04;        /**< Always zeroed at init. */
     /* 0x06 */ u8  pad06[2];
     /* 0x08 */ u8  subNode[0x14];/**< Sub-node passed to chain calls. */
@@ -239,28 +239,28 @@ typedef struct {
 } DispNode;                      /* 0x28 bytes */
 
 /* Private data — object pools / script tables */
-extern ObjList  D_801D3C68[];   /**< Screen gradient-fade effect list (CallbackNode nodes). */
-extern u8       D_801D3C78[];   /**< Backing element storage for the D_801D3C68 pool. */
-extern ScriptEntry D_801D3EC0[2][5]; /**< Per-player script-action table (initTripleTriadScripts). */
-extern ObjList  D_801D3FA0[];   /**< Script-handler object pool. */
-extern u8       D_801D3FB0[];   /**< Backing element storage for the D_801D3FA0 pool. */
-extern ObjList  D_801D3EA0[];   /**< Setup-handler object pool (func_8009FAF8). */
-extern u8       D_801D3E80[];   /**< Backing element storage for the D_801D3EA0 pool. */
-extern ObjNodeFn D_80182E4C[];  /**< Gradient-fade variant callback table. */
+extern ObjList  g_gradFadeList[];   /**< Screen gradient-fade effect list (CallbackNode nodes). */
+extern u8       g_gradFadePool[];   /**< Backing element storage for the g_gradFadeList pool. */
+extern ScriptEntry g_scriptActions[2][5]; /**< Per-player script-action table (initTripleTriadScripts). */
+extern ObjList  g_scriptHandlerList[];   /**< Script-handler object pool. */
+extern u8       g_scriptHandlerPool[];   /**< Backing element storage for the g_scriptHandlerList pool. */
+extern ObjList  g_setupHandlerList[];   /**< Setup-handler object pool (func_8009FAF8). */
+extern u8       g_setupHandlerPool[];   /**< Backing element storage for the g_setupHandlerList pool. */
+extern ObjNodeFn g_gradFadeCallbacks[];  /**< Gradient-fade variant callback table. */
 
 /* Private data — hand build / card config */
 extern u8  D_80082C95;     /**< Card-config byte; the owned-quantity delta for built hands. */
 extern u8  D_80078658[];   /**< Card rarity/type table (cards 0x4D+); used to draw rarity-filtered hands. */
-extern u8  D_801D4298[2][5];/**< Per-player working copy of the hands (card ids), seeded from D_801A2C48 (func_800A1080). */
-extern s32 D_801D4288;     /**< Count of objects processed this sweep (func_800A0F0C). */
-extern s32 D_801D3D08;
+extern u8  g_handBuildHands[2][5];/**< Per-player working copy of the hands (card ids), seeded from D_801A2C48 (func_800A1080). */
+extern s32 g_sweepProcessed;     /**< Count of objects processed this sweep (func_800A0F0C). */
+extern s32 g_gradFadeCount;
 extern u8  D_80158680[];
 
 /* Private data — fade / banner */
-extern u8  D_80182E68[];   /**< Staged fade colour (RGB); the start colour for the next fade. */
-extern s32 D_801D4178;     /**< Running captured-card counter (func_800A0B24). */
-extern u8  D_801D4188[];   /**< 256-byte global scratch buffer for the built banner string. */
-extern u8  D_801D4078[];   /**< Scratch buffer for the captured-card name banner. */
+extern u8  g_stagedFadeColor[];   /**< Staged fade colour (RGB); the start colour for the next fade. */
+extern s32 g_capturedCount;     /**< Running captured-card counter (func_800A0B24). */
+extern u8  g_bannerBuf[];   /**< 256-byte global scratch buffer for the built banner string. */
+extern u8  g_nameBannerBuf[];   /**< Scratch buffer for the captured-card name banner. */
 extern u16 D_80182686;     /**< Relative-pointer string-table offsets (pool base 0x80182680). */
 extern u16 D_8018268A;
 extern u16 D_8018268E;
@@ -268,18 +268,17 @@ extern u16 D_80182692;     /**< Card-claim banner string-table offsets (pool bas
 extern u16 D_80182696;
 
 /* Private data — per-frame input edge flags (refreshed at the top of func_8009F17C
-   from D_801C2EBC / g_padPressed[2]). */
-extern u16 D_801D3E74;     /**< Edge flag A: 0x10 == remove-card request. */
-extern u16 D_801D3E76;     /**< Edge flag B: 0x40/0x80 == add-card request. */
-extern s32 D_801D3E78;     /**< Number of cards built into the active hand (0..5). */
-extern u16 D_801C2EBC;     /**< Source value copied into D_801D3E74 each frame. */
+   from g_padRepeat[2] / g_padPressed[2]). */
+extern u16 g_removeCardEdge;     /**< Edge flag A: 0x10 == remove-card request. */
+extern u16 g_addCardEdge;     /**< Edge flag B: 0x40/0x80 == add-card request. */
+extern s32 g_handBuildCount;     /**< Number of cards built into the active hand (0..5). */
 
 /* Private data — display-node spawner state (func_8009FED0 fade/render path). */
-extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
-extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
-extern s32 D_801D3EB8;     /**< Phase mirror counter (running scale). */
-extern s32 D_801D44FC;     /**< Current card-display slot index (must be < 0x6E). */
-extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
+extern s32 g_fadePhase;     /**< Phase counter (incrementing each frame). */
+extern s32 g_fadeLastAngle;     /**< Last rotation/angle value (cached). */
+extern s32 g_fadePhaseMirror;     /**< Phase mirror counter (running scale). */
+extern s32 g_cardDisplaySlot;     /**< Current card-display slot index (must be < 0x6E). */
+extern s32 g_lastActiveSlot;     /**< Last-active slot index (-1 = none). */
 
 /* Private prototypes — be_object3.c internal forward declaration */
 extern s32 func_8009EBF4(void); /**< Per-frame card slide/scale animation sweep. */

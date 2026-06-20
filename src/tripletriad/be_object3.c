@@ -268,7 +268,7 @@ s32 func_8009E640(GradientFadeNode *node) {
  * (a @c CardScaleSprite is 0x18 bytes), writing the new tail back to @c g_primCursor.
  *
  * @param node State-machine driver (state at 0x0C, frame counter at 0x0D).
- * @return 2 when finished (@c node->field22 already 1, or while @c D_801D3D08 gates
+ * @return 2 when finished (@c node->field22 already 1, or while @c g_gradFadeCount gates
  *         it off returns 0), else 0.
  */
 s32 func_8009E904(ScriptStateNode *node) {
@@ -282,7 +282,7 @@ s32 func_8009E904(ScriptStateNode *node) {
     if (node->field22 == 1) {
         return 2;
     }
-    if (D_801D3D08 >= 2) {
+    if (g_gradFadeCount >= 2) {
         return 0;
     }
     prim = g_primCursor;
@@ -337,15 +337,15 @@ s32 func_8009E904(ScriptStateNode *node) {
 }
 
 /**
- * @brief Allocate a node in D_801D3C68 list with a callback from D_80182E4C.
+ * @brief Allocate a node in g_gradFadeList list with a callback from g_gradFadeCallbacks.
  *
- * Looks up a callback pointer from the D_80182E4C table at index @p a0,
+ * Looks up a callback pointer from the g_gradFadeCallbacks table at index @p a0,
  * allocates a node via allocObjNodeFront, and initializes several fields.
  *
- * @param a0 Index into the D_80182E4C callback table.
+ * @param a0 Index into the g_gradFadeCallbacks callback table.
  */
 void func_8009EB30(s32 a0) {
-    u8 *node = (u8 *)allocObjNodeFront(D_801D3C68, D_80182E4C[a0]);
+    u8 *node = (u8 *)allocObjNodeFront(g_gradFadeList, g_gradFadeCallbacks[a0]);
     if (node != 0) {
         node[0xE] = a0;
         *(s16 *)(node + 0x20) = 0;
@@ -366,26 +366,26 @@ void func_8009EB90(u8 *a0, s32 a1) {
 }
 
 /**
- * @brief Initialize the D_801D3C68 list with node pool D_801D3C78.
+ * @brief Initialize the g_gradFadeList list with node pool g_gradFadePool.
  *
  * Sets up a linked list with node size 0x24 and capacity 0x4.
  */
 void func_8009EB98(void) {
-    initObjList(D_801D3C68, D_801D3C78, 0x24, 0x4);
+    initObjList(g_gradFadeList, g_gradFadePool, 0x24, 0x4);
 }
 
 /**
  * @brief Tick the screen-fade effect objects, recording how many remain active.
  *
- * Updates the @c D_801D3C68 gradient-fade effect list and stores the live count
- * in @c D_801D3D08.
+ * Updates the @c g_gradFadeList gradient-fade effect list and stores the live count
+ * in @c g_gradFadeCount.
  */
 void updateFadeEffects(void) {
-    D_801D3D08 = updateObjectList(D_801D3C68);
+    g_gradFadeCount = updateObjectList(g_gradFadeList);
 }
 
 /**
- * @brief Per-frame card slide/scale animation sweep over the D_801D3EC0 table.
+ * @brief Per-frame card slide/scale animation sweep over the g_scriptActions table.
  *
  * Walks all 2x5 @c ScriptEntry slots and, for each active one (@c status 1/2/3),
  * advances a 15-frame animation: status 1 slides the card in (posY eases from
@@ -409,7 +409,7 @@ s32 func_8009EBF4(void)
     tmp = (TmpBuf *)scratchAlloc(0x2C);
     for (row = 0; row < 2; row++) {
         for (col = 0; col < 5; col++) {
-            e = &D_801D3EC0[row][col];
+            e = &g_scriptActions[row][col];
             switch (e->status) {
             case 0:
                 break;
@@ -487,7 +487,7 @@ s32 func_8009EBF4(void)
  */
 s32 func_8009EF68(void) {
     s32 row = 0;
-    u8 *base = (u8 *)D_801D3EC0;
+    u8 *base = (u8 *)g_scriptActions;
     s32 marker = 0xFF;
     s32 rowOff = row;
     s32 col;
@@ -559,9 +559,9 @@ void func_8009EFD4(u8 *out, s32 base) {
  * @brief Per-frame interactive card-claim sequencer (state machine, @c node->state 0-3).
  *
  * Drives the post-battle "build your hand from the claimed cards" flow. State 0 clears
- * the hand slots and arms the UI; state 1 adds a card (on the @c D_801D3E76 0x40/0x80
- * input edge) or removes one (on the @c D_801D3E74 0x10 edge), one per frame, into
- * @c D_801D3EC0 / @c D_801A2C48 until the hand holds five; state 2 polls a confirmation
+ * the hand slots and arms the UI; state 1 adds a card (on the @c g_addCardEdge 0x40/0x80
+ * input edge) or removes one (on the @c g_removeCardEdge 0x10 edge), one per frame, into
+ * @c g_scriptActions / @c D_801A2C48 until the hand holds five; state 2 polls a confirmation
  * message gate; state 3 runs the fade-out. The case-1, @c func_8009EF68 and @c r<0
  * "still waiting" paths share a single return via @c ret0.
  *
@@ -576,8 +576,8 @@ s32 func_8009F17C(ScriptCtx *node) {
     u8 *hand;
     u8 *handRow;
 
-    D_801D3E74 = D_801C2EBC;
-    D_801D3E76 = g_padPressed[2];
+    g_removeCardEdge = g_padRepeat[2];
+    g_addCardEdge = g_padPressed[2];
     while (1) {
         switch (node->state) {
         case 0:
@@ -587,7 +587,7 @@ s32 func_8009F17C(ScriptCtx *node) {
             func_800A44CC();
             func_800A44B0(1);
             node->field13 = 0;
-            D_801D3E78 = 0;
+            g_handBuildCount = 0;
             node->state = 1;
             node->subState = 0;
             break;
@@ -597,10 +597,10 @@ s32 func_8009F17C(ScriptCtx *node) {
                 node->subState++;
                 goto ret0;
             }
-            if (D_801D3E76 == 0x40 || D_801D3E76 == 0x80) {
-                if (D_801D44FC >= 0) {
-                    card = D_801D44FC;
-                    if (D_801D3E78 >= 5) {
+            if (g_addCardEdge == 0x40 || g_addCardEdge == 0x80) {
+                if (g_cardDisplaySlot >= 0) {
+                    card = g_cardDisplaySlot;
+                    if (g_handBuildCount >= 5) {
                         node->state = 1;
                         node->subState = 0;
                         break;
@@ -610,16 +610,16 @@ s32 func_8009F17C(ScriptCtx *node) {
                         node->subState = 0;
                         break;
                     }
-                    (D_801D3EC0[node->counter] + D_801D3E78)->status = 1;
-                    (D_801D3EC0[node->counter] + D_801D3E78)->field02 = 0;
-                    D_801D3EC0[node->counter][D_801D3E78].marker = card;
+                    (g_scriptActions[node->counter] + g_handBuildCount)->status = 1;
+                    (g_scriptActions[node->counter] + g_handBuildCount)->field02 = 0;
+                    g_scriptActions[node->counter][g_handBuildCount].marker = card;
                     hand = D_801A2C48[node->counter];
-                    idx = D_801D3E78;
+                    idx = g_handBuildCount;
                     hand[idx] = card;
-                    D_801D3E78 = ++idx;
+                    g_handBuildCount = ++idx;
                     modifyItemQuantity(card, D_80082C95);
                     playTriadSfx(1);
-                    if (D_801D3E78 != 5) {
+                    if (g_handBuildCount != 5) {
                         node->state = 1;
                         node->subState = 0;
                         break;
@@ -630,16 +630,16 @@ s32 func_8009F17C(ScriptCtx *node) {
                     break;
                 }
             }
-            if (D_801D3E74 == 0x10 && D_801D3E78 > 0) {
+            if (g_removeCardEdge == 0x10 && g_handBuildCount > 0) {
                 handRow = D_801A2C48[node->counter];
-                D_801D3E78--;
-                card = handRow[D_801D3E78];
-                D_801A2C48[node->counter][D_801D3E78] = 0xFF;
+                g_handBuildCount--;
+                card = handRow[g_handBuildCount];
+                D_801A2C48[node->counter][g_handBuildCount] = 0xFF;
                 markItemPresent(card);
                 node->state = 1;
                 node->subState = 0;
-                (D_801D3EC0[node->counter] + D_801D3E78)->status = 2;
-                (D_801D3EC0[node->counter] + D_801D3E78)->field02 = 0;
+                (g_scriptActions[node->counter] + g_handBuildCount)->status = 2;
+                (g_scriptActions[node->counter] + g_handBuildCount)->field02 = 0;
                 playTriadSfx(9);
             }
             return 0;
@@ -803,7 +803,7 @@ loop:
  * Drives one card slot per 5 frames. @c node->state is the current slot index
  * (0..4) and doubles as the state; @c node->counter is the player index. On the
  * first frame of each slot (@c subState 0) it copies the hand card
- * @c D_801A2C48[player][slot] into @c D_801D3EC0[player][slot]: status 1, the
+ * @c D_801A2C48[player][slot] into @c g_scriptActions[player][slot]: status 1, the
  * card id as the @c marker, and an @c actionId selected by the layout type
  * (@c 0x800 for the offset-hand layout @c D_801A2C70 >= 3, else 0). After 5
  * frames it advances to the next slot. Once all slots are done (@c state >= 5)
@@ -813,7 +813,7 @@ loop:
  * @return 2 when all hands are queued and drained, else 0.
  *
  * @note The @c status / @c field02 stores use the pointer form
- *       @c (D_801D3EC0[player]+slot)->field to force the row index into the lower
+ *       @c (g_scriptActions[player]+slot)->field to force the row index into the lower
  *       register (row-major codegen); the @c marker / @c actionId stores keep the
  *       array form, matching the original register allocation.
  */
@@ -825,13 +825,13 @@ s32 func_8009F908(ScriptCtx *node) {
     }
     if (node->subState == 0) {
         card = D_801A2C48[node->counter][node->state];
-        (D_801D3EC0[node->counter] + node->state)->status = 1;
-        (D_801D3EC0[node->counter] + node->state)->field02 = 0;
-        D_801D3EC0[node->counter][node->state].marker = card;
+        (g_scriptActions[node->counter] + node->state)->status = 1;
+        (g_scriptActions[node->counter] + node->state)->field02 = 0;
+        g_scriptActions[node->counter][node->state].marker = card;
         if (D_801A2C70[node->counter] < 3) {
-            D_801D3EC0[node->counter][node->state].actionId = 0;
+            g_scriptActions[node->counter][node->state].actionId = 0;
         } else {
-            D_801D3EC0[node->counter][node->state].actionId = 0x800;
+            g_scriptActions[node->counter][node->state].actionId = 0x800;
         }
     }
     node->subState++;
@@ -845,7 +845,7 @@ s32 func_8009F908(ScriptCtx *node) {
 /**
  * @brief Set up the per-player hand and spawn its setup handler, per the active rules.
  *
- * Initialises the @c D_801D3EA0 pool, then (by @c g_tripleTriadRules) builds the
+ * Initialises the @c g_setupHandlerList pool, then (by @c g_tripleTriadRules) builds the
  * player's hand and chooses the per-frame handler:
  *  - rule bit @c 0x20000000: random hand (@c func_8009F5F0, delta 0) + @c func_8009F908.
  *  - rule bit @c 0x8: open hand — @c func_8009F5F0 if this player uses the offset-hand
@@ -856,37 +856,37 @@ s32 func_8009F908(ScriptCtx *node) {
  * The spawned node's @c counter is set to @p arg0 and its state cleared.
  *
  * @param arg0 Player/slot index.
- * @return The initialised pool (@c D_801D3EA0).
+ * @return The initialised pool (@c g_setupHandlerList).
  * @note The third branch's @c D_801A2C70[node->counter] test reads @c node before it is
  *       assigned (the original relies on the stale register value); preserved to match.
  */
 s32 func_8009FAF8(s32 arg0) {
     ScriptCtx *node;
 
-    initObjList(D_801D3EA0, D_801D3E80, 0x14, 1);
+    initObjList(g_setupHandlerList, g_setupHandlerPool, 0x14, 1);
 
     if (g_tripleTriadRules & 0x20000000) {
         func_8009F5F0(arg0, 0);
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
     } else if (g_tripleTriadRules & 0x8) {
         if (D_801A2C70[arg0] >= 3) {
             func_8009F5F0(arg0, D_80082C95);
         } else {
             func_8009F844(arg0, D_80082C95);
         }
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
     } else if (D_801A2C70[node->counter] >= 3) {
         func_8009F5F0(arg0, D_80082C95);
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F908);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F908);
     } else {
-        node = (ScriptCtx *)allocObjNode(D_801D3EA0, (ObjNodeFn)func_8009F17C);
+        node = (ScriptCtx *)allocObjNode(g_setupHandlerList, (ObjNodeFn)func_8009F17C);
     }
 
     node->counter = arg0;
     node->state = 0;
     node->subState = 0;
 
-    return (s32)D_801D3EA0;
+    return (s32)g_setupHandlerList;
 }
 
 /**
@@ -915,7 +915,7 @@ s32 func_8009FC40(void) {
  *          updateObjectList until ready; tries counter 0..1, then branches
  *          to state 2 (if g_tripleTriadRules & 1) or state 4.
  * State 2: clear sweep. Every 5 ticks, marks queued actions in
- *          D_801D3EC0[row][col] complete for column = 4 down to 0;
+ *          g_scriptActions[row][col] complete for column = 4 down to 0;
  *          transitions to state 3 once column 0 is processed.
  * State 3: wait. Calls func_8009EF68 once, idles 0x1E frames.
  * State 4: done. Sets g_tripleTriadState = TT_STATE_PLAY and exits.
@@ -968,9 +968,9 @@ s32 func_8009FC90(ScriptCtx *ctx) {
             if ((u8)(ctx->subState % 5) == 0) {
                 col = 4 - (u8)(ctx->subState / 5);
                 for (row = 0; row < 2; row++) {
-                    if (D_801D3EC0[row][col].actionId != 0) {
-                        D_801D3EC0[row][col].status = 3;
-                        D_801D3EC0[row][col].field02 = 0;
+                    if (g_scriptActions[row][col].actionId != 0) {
+                        g_scriptActions[row][col].status = 3;
+                        g_scriptActions[row][col].field02 = 0;
                     }
                 }
                 if (col == 0) {
@@ -1004,17 +1004,17 @@ s32 func_8009FC90(ScriptCtx *ctx) {
 }
 
 /**
- * @brief Per-frame display-node spawn for some D_801D44FC-driven animation.
+ * @brief Per-frame display-node spawn for some g_cardDisplaySlot-driven animation.
  *
- * Validates the current slot index in D_801D44FC, allocates a 40-byte
+ * Validates the current slot index in g_cardDisplaySlot, allocates a 40-byte
  * @c DispNode via @c scratchAlloc, and initializes it based on the
- * current phase counter (@c D_801D3EB0 / @c D_801D3EB8):
+ * current phase counter (@c g_fadePhase / @c g_fadePhaseMirror):
  * - phase < 10:  rotating-arc setup, angle scaled via @c rsin
  * - phase < 300: simple static node (scale = 0x18)
  * - else:        squashed angle via @c rsin + phase mirror
  *
  * On any failure (slot out of range or @c func_80023B14 returns negative),
- * sets @c D_80182E64 = @c -1 and returns 0.
+ * sets @c g_lastActiveSlot = @c -1 and returns 0.
  *
  * @return Always 0.
  */
@@ -1022,32 +1022,32 @@ s32 func_8009FED0(void) {
     DispNode *node;
     s32 cur;
 
-    if ((u32)D_801D44FC < 0x6E) {
-        if (func_80023B14(D_801D44FC) >= 0) {
+    if ((u32)g_cardDisplaySlot < 0x6E) {
+        if (func_80023B14(g_cardDisplaySlot) >= 0) {
             node = (DispNode *)scratchAlloc(0x28);
-            if (D_80182E64 != D_801D44FC) {
-                D_801D3EB8 = 0;
-                D_801D3EB0 = 0;
+            if (g_lastActiveSlot != g_cardDisplaySlot) {
+                g_fadePhaseMirror = 0;
+                g_fadePhase = 0;
             }
-            cur = D_801D3EB0;
+            cur = g_fadePhase;
             if (cur < 0xA) {
                 s32 newCur = cur + 1;
                 s32 v = (newCur << 12) / 10;
-                D_801D3EB0 = newCur;
-                D_801D3EB4 = v;
-                D_801D3EB4 = rsin(v / 4);
+                g_fadePhase = newCur;
+                g_fadeLastAngle = v;
+                g_fadeLastAngle = rsin(v / 4);
                 node->unk04 = 0;
                 node->phase = 0;
                 node->angle = 0;
                 RotMatrixYXZ(node, node->subNode);
                 {
-                    s32 r = D_801D3EB4;
+                    s32 r = g_fadeLastAngle;
                     node->charType = 0x44;
                     node->unk24 = 0x200;
                     node->scale = (-(r * 88) >> 12) + 0x70;
                 }
             } else if (cur < 0x12C) {
-                D_801D3EB0 = cur + 1;
+                g_fadePhase = cur + 1;
                 node->unk04 = 0;
                 node->phase = 0;
                 node->angle = 0;
@@ -1056,17 +1056,17 @@ s32 func_8009FED0(void) {
                 node->scale = 0x18;
                 node->unk24 = 0x200;
             } else {
-                s32 newScale = D_801D3EB8 + 0x20;
+                s32 newScale = g_fadePhaseMirror + 0x20;
                 s32 rounded;
                 s32 v;
-                D_801D3EB8 = newScale;
+                g_fadePhaseMirror = newScale;
                 rounded = newScale + (s32)((u32)newScale >> 31);
                 v = rsin(rounded >> 1);
                 v = -v;
                 if (v < 0) v += 7;
                 node->angle = v >> 3;
                 node->unk04 = 0;
-                node->phase = (u16)D_801D3EB8;
+                node->phase = (u16)g_fadePhaseMirror;
                 RotMatrixYXZ(node, node->subNode);
                 node->charType = 0x44;
                 node->scale = 0x18;
@@ -1074,14 +1074,14 @@ s32 func_8009FED0(void) {
             }
             SetRotMatrix(node->subNode);
             SetTransMatrix(node->subNode);
-            g_primCursor = drawTriadCard((u8)D_801D44FC, 0x13, &g_otBase[3], g_primCursor);
+            g_primCursor = drawTriadCard((u8)g_cardDisplaySlot, 0x13, &g_otBase[3], g_primCursor);
             scratchFree(0x28);
-            D_80182E64 = D_801D44FC;
+            g_lastActiveSlot = g_cardDisplaySlot;
         } else {
-            D_80182E64 = -1;
+            g_lastActiveSlot = -1;
         }
     } else {
-        D_80182E64 = -1;
+        g_lastActiveSlot = -1;
     }
     return 0;
 }
@@ -1089,13 +1089,13 @@ s32 func_8009FED0(void) {
 /**
  * @brief Initialise the script-handler subsystem and its object pool.
  *
- * Sets up the @c D_801D3FA0 pool (10 entries of 0x14 bytes), spawns the
+ * Sets up the @c g_scriptHandlerList pool (10 entries of 0x14 bytes), spawns the
  * persistent handler nodes (state machine @c func_8009FC90, @c func_8009EBF4,
- * @c func_8009FED0, @c func_8009FC40), and clears the @c D_801D3EC0 2x5
+ * @c func_8009FED0, @c func_8009FC40), and clears the @c g_scriptActions 2x5
  * @c ScriptEntry table (each entry tagged with @c marker 0xFF and its
  * row/column cached).
  *
- * @return The initialised pool (@c D_801D3FA0).
+ * @return The initialised pool (@c g_scriptHandlerList).
  */
 u8 *initTripleTriadScripts(void) {
     ScriptCtx *node;
@@ -1107,13 +1107,13 @@ u8 *initTripleTriadScripts(void) {
     s32 col;
     s32 colOff;
 
-    initObjList(D_801D3FA0, D_801D3FB0, 0x14, 0xA);
-    node = (ScriptCtx *)allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FC90);
+    initObjList(g_scriptHandlerList, g_scriptHandlerPool, 0x14, 0xA);
+    node = (ScriptCtx *)allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FC90);
     node->state = 0;
     node->subState = 0;
-    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009EBF4);
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009EBF4);
     row = 0;
-    base = (u8 *)D_801D3EC0;
+    base = (u8 *)g_scriptActions;
     marker = 0xFF;
     rowOff = row;
     do {
@@ -1134,9 +1134,9 @@ u8 *initTripleTriadScripts(void) {
         row++;
         rowOff += 0x6E;
     } while (row < 2);
-    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FED0);
-    allocObjNode(D_801D3FA0, (ObjNodeFn)func_8009FC40);
-    return D_801D3FA0;
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FED0);
+    allocObjNode(g_scriptHandlerList, (ObjNodeFn)func_8009FC40);
+    return g_scriptHandlerList;
 }
 
 /**
@@ -1146,7 +1146,7 @@ u8 *initTripleTriadScripts(void) {
  * @c startColor toward @c endColor by the elapsed fraction, links it (plus a
  * trailing blend-control primitive) into OT bucket 2, and advances the
  * primitive pool. Returns 0 while fading; once @c frame reaches @c duration it
- * stages @c endColor into @c D_80182E68 and returns 2 (fade complete).
+ * stages @c endColor into @c g_stagedFadeColor and returns 2 (fade complete).
  *
  * @param obj The fade object.
  * @return 0 while in progress, 2 when complete.
@@ -1173,7 +1173,7 @@ s32 func_800A01DC(FadeObject *obj) {
     frame = (u16)obj->frame;
     obj->frame = frame + 1;
     if ((s16)frame >= obj->duration) {
-        memcpy(D_80182E68, obj->endColor, 4);
+        memcpy(g_stagedFadeColor, obj->endColor, 4);
         return 2;
     }
     return 0;
@@ -1183,7 +1183,7 @@ s32 func_800A01DC(FadeObject *obj) {
  * @brief Start a full-screen fade to black over @p duration frames.
  *
  * Spawns a @c FadeObject driven by @c func_800A01DC. The fade begins from the
- * currently-staged color (@c D_80182E68) and ends at black; black is then
+ * currently-staged color (@c g_stagedFadeColor) and ends at black; black is then
  * staged so any following fade starts from black.
  *
  * @param duration Fade length in frames.
@@ -1195,8 +1195,8 @@ void func_800A030C(s32 duration) {
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;
-        memcpy(obj->startColor, D_80182E68, 4);
-        *(s32 *)D_80182E68 = 0;
+        memcpy(obj->startColor, g_stagedFadeColor, 4);
+        *(s32 *)g_stagedFadeColor = 0;
         *(s32 *)obj->endColor = 0;
     }
 }
@@ -1205,7 +1205,7 @@ void func_800A030C(s32 duration) {
  * @brief Start a full-screen fade to white over @p duration frames.
  *
  * Identical to @c func_800A030C but ends at white (0xFFFFFF), which is also
- * staged into @c D_80182E68 for the next fade.
+ * staged into @c g_stagedFadeColor for the next fade.
  *
  * @param duration Fade length in frames.
  */
@@ -1216,8 +1216,8 @@ void func_800A0370(s32 duration) {
     if (obj != NULL) {
         obj->frame = 0;
         obj->duration = duration;
-        memcpy(obj->startColor, D_80182E68, 4);
-        *(s32 *)D_80182E68 = 0xFFFFFF;
+        memcpy(obj->startColor, g_stagedFadeColor, 4);
+        *(s32 *)g_stagedFadeColor = 0xFFFFFF;
         *(s32 *)obj->endColor = 0xFFFFFF;
     }
 }
@@ -1225,7 +1225,7 @@ void func_800A0370(s32 duration) {
 /**
  * @brief Per-frame board render/update loop for the post-game card-claim board.
  *
- * Walks the ten board cells (@c D_801D4308). For each, it builds a rotation/translation
+ * Walks the ten board cells (@c g_activeCardObjs). For each, it builds a rotation/translation
  * @c MATRIX from the cell's @c rot* and @c base* fields, then runs the cell's animation
  * state (@c field8): 1 = slide in from off-screen; 2 = flip (rotates @c rotY, toggles
  * @c fieldA owner at the half-way point, bobs @c baseZ); 3/4 = capture lift-and-fade
@@ -1247,7 +1247,7 @@ s32 func_800A03DC(void) {
 
     m = (MATRIX *)scratchAlloc(0x20);
     for (i = 0; i < 10; i++) {
-        cell = &D_801D4308[i];
+        cell = &g_activeCardObjs[i];
         RotMatrixYXZ(&cell->rotX, m);
         m->t[0] = cell->baseX;
         m->t[1] = cell->baseY;
@@ -1309,9 +1309,9 @@ s32 func_800A03DC(void) {
                     m->t[1] = 0;
                     m->t[2] = 0x100;
                     if (s0 == 0) {
-                        strcpy(D_801D4078, func_80023A54(cell->cardId));
-                        func_80047C74(D_801D4078, (u8 *)&D_80182692 - 0x12 + D_80182692);
-                        func_800A1D68(1, D_801D4078, 0);
+                        strcpy(g_nameBannerBuf, func_80023A54(cell->cardId));
+                        func_80047C74(g_nameBannerBuf, (u8 *)&D_80182692 - 0x12 + D_80182692);
+                        func_800A1D68(1, g_nameBannerBuf, 0);
                         cell->field9++;
                     } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
@@ -1355,9 +1355,9 @@ s32 func_800A03DC(void) {
                     m->t[1] = 0;
                     m->t[2] = 0x100;
                     if (s0 == 0) {
-                        strcpy(D_801D4078, func_80023A54(cell->cardId));
-                        func_80047C74(D_801D4078, (u8 *)&D_80182696 - 0x16 + D_80182696);
-                        func_800A1D68(1, D_801D4078, 0);
+                        strcpy(g_nameBannerBuf, func_80023A54(cell->cardId));
+                        func_80047C74(g_nameBannerBuf, (u8 *)&D_80182696 - 0x16 + D_80182696);
+                        func_800A1D68(1, g_nameBannerBuf, 0);
                         cell->field9++;
                     } else if ((g_padPressed[0] | g_padPressed[1]) != 0) {
                         D_801D4454 = 1;
@@ -1395,7 +1395,7 @@ s32 func_800A03DC(void) {
 /**
  * @brief Check if any active card object has a pending action.
  *
- * Iterates through 10 entries in D_801D4308 (stride 0x20). For each entry
+ * Iterates through 10 entries in g_activeCardObjs (stride 0x20). For each entry
  * where bit 0 of the word at offset +4 is set and the byte at offset +8
  * is non-zero, returns 1. Returns 0 if no such entry is found.
  *
@@ -1403,7 +1403,7 @@ s32 func_800A03DC(void) {
  */
 s32 func_800A0A88(void) {
     s32 i = 0;
-    u8 *entry = D_801D4308;
+    u8 *entry = g_activeCardObjs;
 
     top:
     if ((*(s32 *)(entry + 4) & 1) && *(u8 *)(entry + 8) != 0) {
@@ -1434,11 +1434,11 @@ s32 func_800A0AD4(void) {
 /**
  * @brief Interactive "keep a captured card" selection sequence (Random/Trade rule).
  *
- * State 0 builds a banner string into @c D_801D4188 — a prefix (string-pool entry
- * @c D_8018268A), the acting seat as a letter (@c D_801D4448 + '!'), then a suffix
+ * State 0 builds a banner string into @c g_bannerBuf — a prefix (string-pool entry
+ * @c D_8018268A), the acting seat as a letter (@c g_sweepTarget + '!'), then a suffix
  * (@c D_8018268E) — and shows it. State 1 runs the picker: it opens a selection
  * substate, then on the player's choice (@c g_substatePhase) either shows a card's detail
- * (1), toggles a card for capture while tracking the remaining budget @c D_801D4178
+ * (1), toggles a card for capture while tracking the remaining budget @c g_capturedCount
  * (2), or deselects one (3). State 2 confirms via @c func_800A20F4: on accept it sets
  * @c D_801D444C and returns 2; on cancel it returns to the picker.
  *
@@ -1460,7 +1460,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
         switch (node->state) {
         case 0:
             src = (u8 *)&D_8018268A - 0xA + D_8018268A;
-            dst = D_801D4188;
+            dst = g_bannerBuf;
             c = *src;
             while (c != 0) {
                 src++;
@@ -1468,15 +1468,15 @@ s32 func_800A0B24(ScriptStateNode *node) {
                 c = *src;
                 dst++;
             }
-            *dst = D_801D4448 + 0x21;
+            *dst = g_sweepTarget + 0x21;
             src = (u8 *)&D_8018268E - 0xE + D_8018268E;
             while (dst++, (c2 = *src) != 0) {
                 src++;
                 *dst = c2;
             }
             *dst = 0;
-            func_800A1D68(1, D_801D4188, 0);
-            D_801D4178 = 0;
+            func_800A1D68(1, g_bannerBuf, 0);
+            g_capturedCount = 0;
             node->state = 1;
             node->field0D = 0;
             break;
@@ -1491,16 +1491,16 @@ s32 func_800A0B24(ScriptStateNode *node) {
             }
             switch (g_substatePhase) {
             case 1:
-                showCardDetail(D_801D4308[D_801D335C.field0].cardId);
+                showCardDetail(g_activeCardObjs[D_801D335C.field0].cardId);
                 return 0;
             case 2:
-                cell = &D_801D4308[D_801D335C.field0];
+                cell = &g_activeCardObjs[D_801D335C.field0];
                 if (cell->fieldA != node->field0E) {
-                    if (D_801D4178 < D_801D4448) {
+                    if (g_capturedCount < g_sweepTarget) {
                         cell->field8 = 2;
-                        D_801D4308[D_801D335C.field0].field9 = 0;
+                        g_activeCardObjs[D_801D335C.field0].field9 = 0;
                         playTriadSfx(1);
-                        D_801D4178++;
+                        g_capturedCount++;
                     } else {
                         node->state = 1;
                         node->field0D = 0;
@@ -1508,15 +1508,15 @@ s32 func_800A0B24(ScriptStateNode *node) {
                         continue;
                     }
                 } else {
-                    if (D_801D4178 <= 0) {
+                    if (g_capturedCount <= 0) {
                         break;
                     }
                     cell->field8 = 2;
-                    D_801D4308[D_801D335C.field0].field9 = 0;
+                    g_activeCardObjs[D_801D335C.field0].field9 = 0;
                     playTriadSfx(9);
-                    D_801D4178--;
+                    g_capturedCount--;
                 }
-                if (D_801D4178 == D_801D4448) {
+                if (g_capturedCount == g_sweepTarget) {
                     node->state = 2;
                     node->field0D = 0;
                     continue;
@@ -1525,12 +1525,12 @@ s32 func_800A0B24(ScriptStateNode *node) {
                 node->field0D = 0;
                 return 0;
             case 3:
-                cell = &D_801D4308[D_801D335C.field0];
+                cell = &g_activeCardObjs[D_801D335C.field0];
                 if (cell->fieldA == node->field0E) {
                     cell->field8 = 2;
-                    D_801D4308[D_801D335C.field0].field9 = 0;
+                    g_activeCardObjs[D_801D335C.field0].field9 = 0;
                     playTriadSfx(9);
-                    D_801D4178--;
+                    g_capturedCount--;
                 }
                 break;
             default:
@@ -1573,12 +1573,12 @@ s32 func_800A0B24(ScriptStateNode *node) {
 /**
  * @brief Per-frame AI move-selection state machine.
  *
- * State 0 resets the placed-count (@c D_801D4288). State 1 alternates between a
+ * State 0 resets the placed-count (@c g_sweepProcessed). State 1 alternates between a
  * gate tick (waits while @c func_800A0A88 reports a pending action; finishes with
- * @c D_801D444C=1, return 2 once @c D_801D4288 reaches @c D_801D4448) and a scan
+ * @c D_801D444C=1, return 2 once @c g_sweepProcessed reaches @c g_sweepTarget) and a scan
  * tick that picks the capturable object (owner != @c node->field0E, @c flags bit 0
  * set) with the highest card level (@c g_tripleTriadCardStats[cardId] level byte),
- * marks it (0x08=2, 0x09=0), and bumps @c D_801D4288.
+ * marks it (0x08=2, 0x09=0), and bumps @c g_sweepProcessed.
  *
  * @param node The driver node.
  * @return 0 while blocked, 2 when the move sweep completes.
@@ -1591,7 +1591,7 @@ s32 func_800A0F0C(ScriptStateNode *node) {
     while (1) {
         switch (node->state) {
         case 0:
-            D_801D4288 = 0;
+            g_sweepProcessed = 0;
             node->state = 1;
             node->field0D = 0;
             break;
@@ -1600,7 +1600,7 @@ s32 func_800A0F0C(ScriptStateNode *node) {
                 if (func_800A0A88() != 0) {
                     return 0;
                 }
-                if (D_801D4288 == D_801D4448) {
+                if (g_sweepProcessed == g_sweepTarget) {
                     D_801D444C = 1;
                     return 2;
                 }
@@ -1610,16 +1610,16 @@ s32 func_800A0F0C(ScriptStateNode *node) {
             bestVal = 0;
             bestIdx = 0;
             for (i = 0; i < 10; i++) {
-                if (D_801D4308[i].fieldA != node->field0E &&
-                    (D_801D4308[i].flags & 1) &&
-                    bestVal < g_tripleTriadCardStats[D_801D4308[i].cardId].pad05[0]) {
-                    bestVal = g_tripleTriadCardStats[D_801D4308[i].cardId].pad05[0];
+                if (g_activeCardObjs[i].fieldA != node->field0E &&
+                    (g_activeCardObjs[i].flags & 1) &&
+                    bestVal < g_tripleTriadCardStats[g_activeCardObjs[i].cardId].pad05[0]) {
+                    bestVal = g_tripleTriadCardStats[g_activeCardObjs[i].cardId].pad05[0];
                     bestIdx = i;
                 }
             }
-            D_801D4308[bestIdx].field8 = 2;
-            D_801D4308[bestIdx].field9 = 0;
-            D_801D4288++;
+            g_activeCardObjs[bestIdx].field8 = 2;
+            g_activeCardObjs[bestIdx].field9 = 0;
+            g_sweepProcessed++;
             node->state = 1;
             node->field0D = 0;
             break;
@@ -1631,15 +1631,15 @@ s32 func_800A0F0C(ScriptStateNode *node) {
  * @brief Per-frame state machine that consumes each played hand card from the
  *        working board/hand state, one move per pass.
  *
- * State 0 seeds the per-player working hand copy @c D_801D4298 from the match
+ * State 0 seeds the per-player working hand copy @c g_handBuildHands from the match
  * hands @c D_801A2C48 (2 players x 5 cards), then advances to state 1.
  *
  * State 1 walks @c g_tripleTriadCardHands one move at a time (index @c node->index,
  * advanced each pass while @c func_800A0A88 reports no pending action). For the
  * current move it takes the card id and owning seat (bit 0 of @c initFlags) and
  * marks that card consumed: if the card is still in the owner's working hand
- * @c D_801D4298[owner] it is stamped @c 0xFF; otherwise the matching board cell in
- * @c D_801D4308 owned by the *other* seat is flagged (@c field8 = 2, @c field9 = 0)
+ * @c g_handBuildHands[owner] it is stamped @c 0xFF; otherwise the matching board cell in
+ * @c g_activeCardObjs owned by the *other* seat is flagged (@c field8 = 2, @c field9 = 0)
  * to trigger its flip.
  *
  * @param node State-machine driver node.
@@ -1657,7 +1657,7 @@ s32 func_800A1080(ScriptStateNode *node) {
         case 0:
             for (i = 0; i < 2; i++) {
                 for (col = 0; col < 5; col++) {
-                    D_801D4298[i][col] = D_801A2C48[i][col];
+                    g_handBuildHands[i][col] = D_801A2C48[i][col];
                 }
             }
             node->index = 0;
@@ -1678,17 +1678,17 @@ s32 func_800A1080(ScriptStateNode *node) {
             owner = g_tripleTriadCardHands[node->index].initFlags & 1;
             card = g_tripleTriadCardHands[node->index].cardId;
             for (i = 0; i < 5; i++) {
-                if (D_801D4298[owner][i] == card) {
-                    D_801D4298[owner][i] = 0xFF;
+                if (g_handBuildHands[owner][i] == card) {
+                    g_handBuildHands[owner][i] = 0xFF;
                     break;
                 }
             }
             if (i >= 5) {
                 for (i = 0; i < 10; i++) {
-                    if (D_801D4308[i].cardId == card &&
-                        D_801D4308[i].fieldA != owner) {
-                        D_801D4308[i].field8 = 2;
-                        D_801D4308[i].field9 = 0;
+                    if (g_activeCardObjs[i].cardId == card &&
+                        g_activeCardObjs[i].fieldA != owner) {
+                        g_activeCardObjs[i].field8 = 2;
+                        g_activeCardObjs[i].field9 = 0;
                         break;
                     }
                 }
@@ -1702,7 +1702,7 @@ s32 func_800A1080(ScriptStateNode *node) {
 }
 
 /**
- * @brief Per-frame state machine that sweeps the 10 D_801D4308 cells.
+ * @brief Per-frame state machine that sweeps the 10 g_activeCardObjs cells.
  *
  * State 0 resets the scan (index = 0). State 1 walks one cell per tick:
  * if the cell's 0x0A field equals @c node->field0E XOR 1, the cell is marked
@@ -1731,9 +1731,9 @@ s32 func_800A1260(ScriptStateNode *node) {
                 }
                 node->field0D++;
             }
-            if (D_801D4308[node->index].fieldA == (node->field0E ^ 1)) {
-                D_801D4308[node->index].field8 = 2;
-                D_801D4308[node->index].field9 = 0;
+            if (g_activeCardObjs[node->index].fieldA == (node->field0E ^ 1)) {
+                g_activeCardObjs[node->index].field8 = 2;
+                g_activeCardObjs[node->index].field9 = 0;
             }
             node->state = 1;
             node->field0D = 0;
@@ -1748,10 +1748,10 @@ s32 func_800A1260(ScriptStateNode *node) {
  *
  * State machine (one cell advanced per pass while @c func_800A0A88 reports no pending
  * action). State 0 waits for the action gate. State 1 sweeps the opponent row
- * (@c D_801D4450 ^ 1): each card owned by the acting seat is flagged @c field8 = 3.
- * State 2 sweeps the acting seat's row (@c D_801D4450): each card NOT owned by it is
+ * (@c g_claimSeat ^ 1): each card owned by the acting seat is flagged @c field8 = 3.
+ * State 2 sweeps the acting seat's row (@c g_claimSeat): each card NOT owned by it is
  * flagged @c field8 = 4. State 3 returns every acting-seat card to its collection
- * (@c markItemPresent) and finishes, setting @c D_801D444D and returning 2 — unless held
+ * (@c markItemPresent) and finishes, setting @c g_sweepDone and returning 2 — unless held
  * by @c D_801D4454 / @c g_padPressed[2], in which case it returns 0.
  *
  * @param node State node (state 0x0C, per-pass guard 0x0D, cell index 0x0F).
@@ -1774,8 +1774,8 @@ s32 func_800A1374(ScriptStateNode *node) {
         case 1:
             if (node->field0D == 0) {
                 if (node->index < 5) {
-                    c = &D_801D4308[(D_801D4450 ^ 1) * 5 + node->index];
-                    if (c->fieldA == D_801D4450) {
+                    c = &g_activeCardObjs[(g_claimSeat ^ 1) * 5 + node->index];
+                    if (c->fieldA == g_claimSeat) {
                         c->field8 = 3;
                         c->field9 = 0;
                     }
@@ -1796,8 +1796,8 @@ s32 func_800A1374(ScriptStateNode *node) {
         case 2:
             if (node->field0D == 0) {
                 if (node->index < 5) {
-                    c = &D_801D4308[D_801D4450 * 5 + node->index];
-                    if (c->fieldA != D_801D4450) {
+                    c = &g_activeCardObjs[g_claimSeat * 5 + node->index];
+                    if (c->fieldA != g_claimSeat) {
                         c->field8 = 4;
                         c->field9 = 0;
                     }
@@ -1818,8 +1818,8 @@ s32 func_800A1374(ScriptStateNode *node) {
         case 3:
             if (node->field0D == 0) {
                 for (i = 0; i < 10; i++) {
-                    if (D_801D4308[i].fieldA == D_801D4450) {
-                        markItemPresent(D_801D4308[i].cardId);
+                    if (g_activeCardObjs[i].fieldA == g_claimSeat) {
+                        markItemPresent(g_activeCardObjs[i].cardId);
                     }
                 }
                 node->field0D++;
@@ -1829,7 +1829,7 @@ s32 func_800A1374(ScriptStateNode *node) {
                         return 0;
                     }
                 }
-                D_801D444D = 1;
+                g_sweepDone = 1;
                 return 2;
             }
             break;
