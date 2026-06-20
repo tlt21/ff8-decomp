@@ -49,14 +49,18 @@ segments:
     vram: 0x80098000
     subsegments:
       - { start: 0x0, type: .rodata, name: be_object1, linker_section_order: .text }
-      - [0xDC, asm, be_dispatch]
+      - { start: 0xDC, type: .rodata, name: be_object1b, linker_section_order: .text }
       - { start: 0x104, type: .rodata, name: be_object2, linker_section_order: .text }
       - [0x154, asm, be_dispatch_mid]
       - { start: 0x164, type: .rodata, name: be_object3, linker_section_order: .text }
-      - { start: 0x178, type: data, name: be_dispatch_post, linker_section_order: .text }
+      - { start: 0x178, type: .rodata, name: be_object3b, linker_section_order: .text }
+      - { start: 0x1A4, type: .rodata, name: be_object4, linker_section_order: .text }
+      - { start: 0x1BC, type: data, name: be_dispatch_post, linker_section_order: .text }
       - [0x22C, c, be_object1]
+      - [0x1C78, c, be_object1b]
       - [0x28CC, c, be_object2]
       - [0x6248, c, be_object3]
+      - [0x95C8, c, be_object3b]
       - [0x9BE0, c, be_object4]
       - [0xC58C, asm, be_data]             # data tables: jump tables, animation data, etc. (not code)
   - [0x10AC40]

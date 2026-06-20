@@ -3,10 +3,12 @@
 
 #include "common.h"
 #include "psxsdk/libgpu.h"  /* TSPRT (drawCardOverlaySprite) */
-#include "psxsdk/libgte.h"  /* SVECTOR / MATRIX (CardRenderWork, BattleAnimNode) */
+#include "psxsdk/libgte.h"  /* SVECTOR / MATRIX (CardRenderWork, CardAnimNode) */
 
-/* Types, constants, and globals for the Triple Triad card mini-game
-   (played inside the battle overlay). */
+/* Types, constants, and globals for the Triple Triad card mini-game. Its code
+   is the `tripletriad` overlay, which loads at the same VRAM address
+   (0x80098000) as the `battle` overlay — they are mutually exclusive, not
+   nested. */
 
 /**
  * @brief One slot on the Triple Triad board (8 bytes).
@@ -32,7 +34,7 @@
 typedef struct {
     /* 0x00 */ u16 flags;       /**< See @c TT_CELL_* flag table below. */
     /* 0x02 */ u8  cardId;      /**< Index into @c g_tripleTriadCardStats. */
-    /* 0x03 */ u8  entityIdx;   /**< @c g_tripleTriadCardHands slot index (battle object) driving this cell's animation. */
+    /* 0x03 */ u8  entityIdx;   /**< @c g_tripleTriadCardHands slot index (card object) driving this cell's animation. */
     /* 0x04 */ u8  owner;       /**< Player 0 or 1. */
     /* 0x05 */ u8  element;     /**< Cell element bitmask (board-tile element; 0 = none). */
     /* 0x06 */ s8  elementMod;  /**< FF8 Elemental rule: +1/-1 added to each edge if card's
@@ -52,6 +54,11 @@ typedef struct {
 #define TT_CELL_CAP_FROM_MASK 0x0078  /**< All four captured-from-direction bits (UP|DOWN|LEFT|RIGHT). */
 #define TT_CELL_SAME_MATCHED  0x0080  /**< Matched in Same-rule pass 1, or "Same fired here" on the placer. */
 #define TT_CELL_PLUS_COMBO    0x0100  /**< Involved in a Plus-rule combo this turn. */
+
+/* applyCardRules() return flags: which combo rule captured cards this turn. */
+#define TT_RESULT_SAME_FIRED  0x04   /**< Same rule fired. */
+#define TT_RESULT_PLUS_FIRED  0x08   /**< Plus rule fired. */
+#define TT_RESULT_COMBO_MASK  0x0C   /**< Same | Plus — a combo fired (run the capture sweep). */
 
 /**
  * @brief Per-card stat block (8 bytes) — one entry of @c g_tripleTriadCardStats.
@@ -119,8 +126,12 @@ typedef struct {
     /* 0x00 */ TripleTriadBoardSlot cells[TT_BOARD_ROWS][TT_BOARD_COLS];
 } TripleTriadBoard;
 
+/** @brief Byte strides for addressing the board by raw offset (see @c drawBoardElements). */
+#define TT_SLOT_BYTES ((s32)sizeof(TripleTriadBoardSlot))   /**< One board cell. */
+#define TT_ROW_BYTES  (TT_SLOT_BYTES * TT_BOARD_COLS)        /**< One board row. */
+
 /** @brief Global 5x5 Triple Triad board (sentinel-padded). */
-extern TripleTriadBoard D_801D3398;
+extern TripleTriadBoard g_tripleTriadBoard;
 
 /**
  * @brief A Triple Triad card in play (36 bytes) — one entry of
@@ -139,13 +150,12 @@ extern TripleTriadBoard D_801D3398;
  */
 typedef struct {
     /* 0x00 */ u8  cardId;       /**< Card id — index into @c g_tripleTriadCardStats. */
-    /* 0x01 */ u8  state;        /**< Slot state/sub-category (1 = active, 7 = reset). */
+    /* 0x01 */ u8  state;        /**< Effect-animation state — a @ref CardEffectState. */
     /* 0x02 */ s16 field02;      /**< Cleared whenever @c state is written. */
     /* 0x04 */ u16 flags;        /**< Bit 0x2 = rotating CW (consumed by handler). */
     /* 0x06 */ s16 angle;        /**< Current animation angle (clamped to 0..0x1000). */
     /* 0x08 */ s32 initFlags;    /**< Init-time flag word; bit 0 (@c TT_OWNER_MASK) = owning seat. */
-    /* 0x0C */ u8  groupId;      /**< Group/category for the priority-cancel sweep
-                                       (also doubles as a sub-state code: 0/2 in handler). */
+    /* 0x0C */ u8  groupId;      // 0 = in cpu hand, 1 = in player hand, 2 = on board, 3 = left of board
     /* 0x0D */ u8  fieldD;       /**< Secondary index (e.g. board column). */
     /* 0x0E */ u8  priority;     /**< Slot priority within its group / hand slot 0..4
                                        (also doubles as a row index in some handlers). */
@@ -154,7 +164,7 @@ typedef struct {
     /* 0x11 */ u8  param1;       /**< Action parameter 1. */
     /* 0x12 */ u8  param2;       /**< Action parameter 2. */
     /* 0x13 */ u8  pad13;
-    /* 0x14 */ s16 posData[2];   /**< Local position source passed to @c func_80041274. */
+    /* 0x14 */ s16 posData[2];   /**< Local rotation source passed to @c RotMatrixYXZ. */
     /* 0x18 */ s16 field18;
     /* 0x1A */ s16 field1A;
     /* 0x1C */ s16 offX;         /**< Added to node @c baseX to produce world X. */
@@ -163,8 +173,44 @@ typedef struct {
     /* 0x22 */ s16 offSort;      /**< Added to node @c sortKey. */
 } TripleTriadCardObject; /* 36 bytes */
 
+/**
+ * @brief @c TripleTriadCardObject.state values — the per-card effect animation
+ *        driven each frame by @c animateCardEffect / @c transformCardEffect.
+ *
+ * The four @c CARD_FX_SLIDE_* directions are contiguous (2..5) because the
+ * handler does @c state-=2 and indexes the @c D_80182D10 motion-vector table
+ * (LEFT, UP, DOWN, RIGHT). @c setCardEntityType plays the capture SFX for any
+ * value in that range.
+ */
+typedef enum {
+    CARD_FX_IDLE        = 0,  /**< No per-frame update. */
+    CARD_FX_FLIP        = 1,  /**< Open / flip-over sequence. */
+    CARD_FX_SLIDE_LEFT  = 2,  /**< Directional capture, slides toward -X. */
+    CARD_FX_SLIDE_UP    = 3,  /**< Directional capture, slides toward -Y. */
+    CARD_FX_SLIDE_DOWN  = 4,  /**< Directional capture, slides toward +Y. */
+    CARD_FX_SLIDE_RIGHT = 5,  /**< Directional capture, slides toward +X. */
+    CARD_FX_FLASH       = 6,  /**< Translucent gouraud-quad flash overlay (~20 frames); no position update. */
+    CARD_FX_SHAKE       = 7,  /**< Short shake/twitch, then clears and advances priority. */
+} CardEffectState;
+
+/** @brief Bits in @c TripleTriadCardObject.flags. */
+#define TT_CARD_ACTIVE    0x0001  /**< Active/selectable card (filtered by @c findCardSlot). */
+#define TT_CARD_ROTATE_CW 0x0002  /**< Spin clockwise; set to highlight the card. */
+
+/** @brief @c TripleTriadCardObject.groupId — which collection a card object is in. */
+typedef enum {
+    TT_GROUP_CPU_HAND    = 0,  /**< In the CPU's hand.    */
+    TT_GROUP_PLAYER_HAND = 1,  /**< In the player's hand. */
+    TT_GROUP_BOARD       = 2,  /**< Placed on the board.  */
+    TT_GROUP_LEFT        = 3,  /**< Left of the board.    */
+} TripleTriadCardGroup;
+
 /** @brief The two players' hands as card objects (5 each, 10 total). */
 extern TripleTriadCardObject g_tripleTriadCardHands[10];
+
+/** @brief The two players' 5-card hands as raw card ids (match-state region @ 0x801A2C40). */
+extern u8 D_801A2C48[2][5];
+/* func_80023D04 / modifyItemQuantity prototypes live in item.h (their owner). */
 
 /**
  * @brief One slot of a player's working hand for the AI search (8 bytes).
@@ -185,33 +231,33 @@ typedef struct {
 } PlayerHand;                /* 0x28 */
 
 /** @brief The two players' working card-id hands for the AI search. */
-extern PlayerHand D_801D3570[2];
+extern PlayerHand g_tripleTriadPlayerHands[2];
 
 /* Triple Triad AI board-evaluation weights (read by @ref evaluateBoard). */
-extern s32 D_801D35C8;    /**< Base weight added to each placed card's value. */
-extern s32 D_801D35CC;    /**< Per-card value scale: D_801D35E0[i] = level*this/200 >> 12. */
-extern s32 D_801D35D0;    /**< Random-tiebreaker range: score += rand() % (D_801D35D0 + 1). */
-extern s32 D_801D35D4;    /**< AI difficulty weight (set from the per-level weight table). */
-extern s32 D_801D35D8;    /**< Hand-card potential weight (cardValue * D_801D35D8 >> 12). */
-extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
+extern s32 g_evalCardBaseWeight;    /**< Base weight added to each placed card's value. */
+extern s32 g_evalCardValueScale;    /**< Per-card value scale: g_tripleTriadCardValues[i] = level*this/200 >> 12. */
+extern s32 g_evalRandomRange;    /**< Random-tiebreaker range: score += rand() % (g_evalRandomRange + 1). */
+extern s32 g_evalDifficultyWeight;    /**< AI difficulty weight (set from the per-level weight table). */
+extern s32 g_evalHandPotentialWeight;    /**< Hand-card potential weight (cardValue * g_evalHandPotentialWeight >> 12). */
+extern s32 g_tripleTriadCardValues[];  /**< Per-card value table, indexed by card id. */
 
 /**
- * @brief 40-byte animation work node allocated by @c func_80098B80.
+ * @brief 40-byte animation work node allocated by @c scratchAlloc.
  *
  * The first 0x20 bytes are a @c MATRIX (so the GTE setup calls take it
- * directly): @c func_80041274 fills the rotation @c mat.m, and the translation
+ * directly): @c RotMatrixYXZ fills the rotation @c mat.m, and the translation
  * @c mat.t[0..2] holds the element's world X/Y/Z. The low 16 bits of
  * @c mat.t[0]/@c mat.t[1] double as the screen-space sprite anchor read by
  * @c drawCardOverlaySprite. The trailing @c base is the pre-transform position written
- * by @c func_8009A6EC (its @c pad slot carries the display-list sort key).
+ * by @c layoutCardSlot (its @c pad slot carries the display-list sort key).
  *
- * Per-frame: @c func_8009A6EC writes @c base, then the caller adds
+ * Per-frame: @c layoutCardSlot writes @c base, then the caller adds
  * @c TripleTriadCardObject.offX/Y/Z into @c mat.t[0..2] and @c offSort into @c base.pad.
  */
 typedef struct {
     /* 0x00 */ MATRIX  mat;   /**< Transform: rotation + translation (t[0..2] = world X/Y/Z). */
-    /* 0x20 */ SVECTOR base;  /**< Base position from @c func_8009A6EC; @c pad = OT sort key. */
-} BattleAnimNode;             /* 40 bytes */
+    /* 0x20 */ SVECTOR base;  /**< Base position from @c layoutCardSlot; @c pad = OT sort key. */
+} CardAnimNode;             /* 40 bytes */
 
 /**
  * @brief Per-frame handler context wrapping a @c TripleTriadCardObject.
@@ -225,15 +271,14 @@ typedef struct {
 typedef struct {
     /* 0x00 */ u8           pad00[0x0C];
     /* 0x0C */ TripleTriadCardObject *entry;
-} BattleObjectCtl;
+} CardObjectCtl;
 
-extern TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT *out);
-extern void   func_8009C12C(TripleTriadCardObject *entity);
-extern void   transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket);
+/* drawCardOverlaySprite / animateCardEffect / transformCardEffect prototypes
+   live in be_object2.h (their owner). */
 
 /**
- * @brief 60-byte work buffer staged by @c func_80098B80 for one card
- *        render pass (used by @c func_8009AE6C and related helpers).
+ * @brief 60-byte work buffer staged by @c scratchAlloc for one card
+ *        render pass (used by @c drawTriadCard and related helpers).
  *
  * Holds the 4 digit-corner SVECTORs computed for each rank inside the
  * digit loop, the 4 transformed screen positions of the card outline
@@ -263,16 +308,118 @@ typedef enum {
 /** @brief Low bit of @c TripleTriadCardObject.initFlags / a card's owner: the owning
  *         seat (player 0 or 1). This is the seat index only — whether a seat
  *         is human, AI, or demo is the separate per-seat "player type". */
-#define TT_OWNER_MASK      0x01
+#define TT_OWNER_MASK            0x01 // Blue or pink
+#define TT_USE_STATS             0x02 // Show the card's rank digits (drawTriadCard)
+#define TT_SHOW_LIGHT_OVERLAY    0x04 // Card gets light purple/blue overlay depending on what bit 1 is set to
+#define TT_SHOW_ELEMENT          0x10 // Draw the card's element marker (drawTriadCard)
+#define TT_SHOW_DARK_OVERLAY     0x20 // Card turns dark blue
+
 
 /** @brief Bits in @c g_tripleTriadRules controlling which optional rules are active. */
+#define TT_RULE_OPEN       0x01   /**< Open rule: both hands are shown face-up. */
 #define TT_RULE_SAME       0x02   /**< Same rule enabled. */
 #define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
 #define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */
 #define TT_RULE_ELEMENTAL  0x80   /**< FF8 Elemental rule (tile elements give +1/-1 edge modifiers). */
+#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
+
+/** @brief Bits in @c g_tripleTriadInputFlags. */
+#define TT_INPUT_DISABLED   0x04  /**< Card input suspended while a modal sub-screen is active. */
+#define TT_INPUT_HAND_BUILD 0x08  /**< Hand-building input active. */
+
+/** @brief Values of @c g_tripleTriadState — selects the next per-phase handler in
+ *  @c g_tripleTriadStateHandlers. The dispatch loop calls the handler until it
+ *  returns non-zero (-> @c TT_STATE_IDLE) or reaches @c TT_STATE_EXIT. */
+typedef enum {
+    TT_STATE_IDLE       = 0,  /**< No pending handler. */
+    TT_STATE_INIT       = 1,  /**< Startup render-list init (set only by initTripleTriad). */
+    TT_STATE_SCRIPT     = 2,  /**< Script-handler phase; replay re-entry point. */
+    TT_STATE_PLAY       = 3,  /**< Match play (battle-update callbacks). */
+    TT_STATE_CARD_CLAIM = 4,  /**< Post-match card claim (set after the win/loss tally). */
+    TT_STATE_RESTART    = 5,  /**< Redirects to TT_STATE_SCRIPT; no decompiled setter found. */
+    TT_STATE_EXIT       = 6   /**< Terminate the main loop. */
+} TripleTriadState;
 
 extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats table (~110 cards). */
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
+
+/* ── Object-list system ──────────────────────────────────────────────────────
+ * A per-frame callback list whose nodes are carved from a fixed pool. Every
+ * be_objectN TU drives its objects through this (initObjList / allocObjNode /
+ * updateObjectList in be_object1.c); the type-specific node structs all extend
+ * @c ObjListNode. */
+
+/** @brief Per-frame node callback; a return value with bit 1 set unlinks the node.
+ *  Concrete callbacks take their own node-struct pointer type, so call sites cast
+ *  to this canonical type when storing them. */
+typedef s32 (*ObjNodeFn)(struct ObjListNode *node);
+
+/** @brief Generic pool-backed list-node header (0xC bytes). Type-specific nodes
+ *  (e.g. @c HandlerNode) extend this; the pool allocator/iterator only touches
+ *  this header. */
+typedef struct ObjListNode {
+    u16                 flags;     /* 0x0 — bit 0 = active/allocated */
+    u16                 field02;   /* 0x2 — cleared on allocation */
+    struct ObjListNode *next;      /* 0x4 — next node in the list */
+    ObjNodeFn           callback;  /* 0x8 — per-frame callback */
+} ObjListNode;
+
+/** @brief Pool-backed singly-linked list header (0x10 bytes). Nodes are carved
+ *  from a fixed @c pool of @c count entries, each @c stride bytes. */
+typedef struct {
+    ObjListNode *head;    /* 0x0 */
+    ObjListNode *tail;    /* 0x4 */
+    void        *pool;    /* 0x8 — node-pool base */
+    s16          stride;  /* 0xC — node size in bytes */
+    s16          count;   /* 0xE — node count */
+} ObjList;
+
+/* ── Shared overlay globals ──────────────────────────────────────────────────
+ * Referenced across the be_objectN translation units of the tripletriad overlay. */
+extern s32           g_cardFlipPhase;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
+extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame counter (volatile forces lw, not lbu). */
+extern s32           g_tripleTriadInputFlags;       /**< Input-state flags (TT_INPUT_*). */
+extern u8            g_tripleTriadState;        /**< Current phase / next handler to dispatch (TripleTriadState). */
+extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
+extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
+extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
+extern ObjList            D_801D3028[];      /**< Battle-update callback list header. */
+extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
+extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
+#define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
+extern u8            D_8012E66C[];      /**< Vblank flip callback. */
+extern ObjList            g_taskList[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
+
+/* Per-pad button-mask buffers (held / pressed / repeat), seeded by @c sampleInput.
+   Indexed by the menu pad source (0/1), or OR'd across both; [2] is the
+   result-screen pad input. */
+extern u16 g_padRepeat[];    /**< Auto-repeat mask. */
+extern u16 g_padPressed[];   /**< Newly-pressed (rising-edge) mask; [2] is the result-screen pad input. */
+extern u16 g_padHeld[];      /**< Held (currently-down) mask. */
+
+/** @brief Display-list OT base — points at the active buffer's OT
+ *         (@c g_orderingTables[g_drawBufferIndex]); index by sort key. */
+extern u32  *g_otBase;
+extern void *g_primCursor;   /**< Current primitive-pool tail (advanced by display helpers). */
+
+extern u8    D_801A2C70[2];  /**< Per-player layout type; 3 selects the offset-hand layout. */
+
+/**
+ * @brief Per-substate parameter slot (4 bytes). One entry of @c D_801D3340 —
+ * each substate handler interprets its two halfwords differently (some use only
+ * @c field0, some only @c field2; the board substate uses both).
+ */
+typedef struct {
+    /* 0x00 */ s16 field0;
+    /* 0x02 */ s16 field2;
+} SubstateSlot;
+
+extern SubstateSlot D_801D3340[6]; /**< Per-substate parameter table (one slot per substate 0..5). */
+extern u8           g_substatePhase;    /**< Substate completion phase (see TriadSubstatePhase). */
+extern SubstateSlot D_801D335C;    /**< 4-byte snapshot of @c D_801D3340[g_activeSubstate]. */
+
+/* Cross-TU function prototypes live in the owning module's header
+   (be_object1.h .. be_object4.h), not here. */
 
 #endif /* TRIPLETRIAD_H */

@@ -36,6 +36,7 @@ typedef struct {
 /* --- GTE matrix operations (signatures match PsyQ 4.6 LIBGTE.H) --- */
 
 MATRIX *RotMatrix(SVECTOR *r, MATRIX *m);
+MATRIX *RotMatrixYXZ(SVECTOR *r, MATRIX *m);
 MATRIX *CompMatrix(MATRIX *m0, MATRIX *m1, MATRIX *m2);
 MATRIX *MulMatrix(MATRIX *m0, MATRIX *m1);
 MATRIX *ScaleMatrix(MATRIX *m, VECTOR *scale);

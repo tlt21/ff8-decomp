@@ -25,7 +25,7 @@ s32 func_80021300(void);
 void func_80023D60(s32);
 void cdReadAsyncSync(s32, s32, s32, s32);
 void func_80099D30(void);
-void func_80098304(void);
+void tripleTriadMainLoop(void);
 void func_80035360(void);
 
 /**
@@ -684,7 +684,7 @@ case8:
     g_renderMode = 0;
     cdReadAsyncSync(D_800974B8[0], D_800974B8[1], 0x80098000, 0);
     func_8001F5C8();
-    func_80098304();
+    tripleTriadMainLoop();
     goto top;
 
 case5:

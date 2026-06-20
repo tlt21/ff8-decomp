@@ -56,7 +56,10 @@ typedef union {
 #define SET_FLAG(flags, bitPos)   ((flags)[(bitPos) > 0x1F] |=  (1U << ((bitPos) & 0x1F)))
 #define CLEAR_FLAG(flags, bitPos) ((flags)[(bitPos) > 0x1F] &= ~(1U << ((bitPos) & 0x1F)))
 
-/* Keep a variable alive to prevent the compiler from optimizing it away. */
+/* Keep a variable alive to prevent the compiler from optimizing it away.
+ * Emits no instructions; forces `x` into a register at this point and
+ * counts as a use, so an initialised-but-never-read variable keeps its
+ * register (e.g. the $t5 local in menututo/func_801E4BD0). */
 #define KEEP_ALIVE(x) asm volatile("" :: "r"(x))
 
 /*
@@ -92,10 +95,10 @@ typedef union {
         : "=r"(ret) : "r"(saved))
 
 /*
- * Hand-tuned addPrim variant — the 4-instruction sll/lwl/swl/swl
- * sequence that swaps the 24-bit P_TAG.addr field while leaving the
- * adjacent len byte untouched. Equivalent semantics to PsyQ's standard
- * addPrim(ot, p), but 4 instructions instead of 6+.
+ * Hand-tuned addPrim — the 4-instruction sll/lwl/swl/swl sequence that
+ * swaps the 24-bit P_TAG.addr field while leaving the adjacent len byte
+ * untouched. Equivalent semantics to PsyQ's standard addPrim(ot, p), but
+ * 4 instructions instead of 14.
  *
  * Universal asm shape (identical across all 94 occurrences in the FF8
  * binary):
@@ -104,60 +107,38 @@ typedef union {
  *   swl $at, 0x2(ot)
  *   swl tmp, 0x2(prim)
  *
- * Only `tmp` varies — gcc picks it based on which registers are alive at
- * the call site. We can't reconcile all 94 sites into a single macro:
- * even within one function multiple addPrim calls pick different temps,
- * and there's no single clobber list that produces every observed
- * choice. Instead we expose several variants whose name describes which
- * caller-saved regs they tell gcc to avoid for the asm output. Pick the
- * variant that matches the target's chosen temp register at each site.
- *
- * Observed temp-register distribution across the binary (see
- * docs/addprim-sites.md for the full per-site map):
- *   0× $v0 — always avoided; suggests $v0 was clobbered everywhere.
- *   2× $v1 — only when $v1 was genuinely free (early in the function).
- *   majority — $a3, $t0..$t9, $s0..$s7 depending on local pressure.
- *
- * If a new call site lands on a temp the variants below don't cover,
- * add a new variant rather than parameterising — the explicit name at
- * the call site documents the register-allocation contract.
+ * Only `tmp` varies per site, and it varies in ways no compiler-allocated
+ * operand can reproduce (func_80031224 links four prims with ascending
+ * $t5,$t6,$t7,$t8 where gcc coalesces any "=&r" temp into one register;
+ * $v0 never appears — return-register etiquette; tiny leaves use
+ * callee-saved temps). The original developers hand-picked the temp at
+ * each call site, so the macro takes it as an explicit parameter.
  */
 
-/* $v0 only — gcc will pick $v1 next. Use at sites where the target's
- * temp is $v1 (rare, see bc_object16/func_800CF418 site 1 and
- * bc_object21/func_800DD80C). */
-#define addPrimFastNoV0(ot, p) do {                      \
-    u32 _saved;                                          \
+/* Single parameterized form. The link temp register is named per call
+ * site as a bare token, e.g. addPrimFast(ot, p, t4) — reading exactly
+ * like the assembler-macro invocation the original almost certainly was.
+ *
+ * This mirrors how the original code demonstrably worked: the temp varies
+ * per site in ways no compiler-allocated operand can reproduce (e.g.
+ * func_80031224 links four prims with ascending $t5,$t6,$t7,$t8 — gcc
+ * coalesces any allocated temp into one register there), $v0 is never
+ * used (return-register etiquette), and tiny leaf functions pick
+ * callee-saved temps an allocator would not. The devs hand-picked the
+ * register at each site; the third argument reconstructs that choice.
+ * See docs/addprim-sites.md for the per-site register map. */
+#define addPrimFast(ot, p, treg) do {                    \
     __asm__ __volatile__(                                \
         ".set push\n"                                    \
         ".set noat\n"                                    \
-        "sll $at, %2, 8\n"                               \
-        "lwl %0, 2(%1)\n"                                \
-        "swl $at, 2(%1)\n"                               \
-        "swl %0, 2(%2)\n"                                \
+        "sll $at, %1, 8\n"                               \
+        "lwl $" #treg ", 2(%0)\n"                         \
+        "swl $at, 2(%0)\n"                               \
+        "swl $" #treg ", 2(%1)\n"                         \
         ".set pop\n"                                     \
-        : "=&r"(_saved)                                  \
+        :                                                \
         : "r"(ot), "r"(p)                                \
-        : "v0", "memory");                               \
-} while (0)
-
-/* $v0 and $v1 — gcc walks to the next free register, usually $a3 or a
- * caller-saved temp depending on what else is live. Most common shape
- * for tiny "first-arg" leaf functions (e.g. func_8003334C,
- * func_800CF2D0). */
-#define addPrimFastNoV0V1(ot, p) do {                    \
-    u32 _saved;                                          \
-    __asm__ __volatile__(                                \
-        ".set push\n"                                    \
-        ".set noat\n"                                    \
-        "sll $at, %2, 8\n"                               \
-        "lwl %0, 2(%1)\n"                                \
-        "swl $at, 2(%1)\n"                               \
-        "swl %0, 2(%2)\n"                                \
-        ".set pop\n"                                     \
-        : "=&r"(_saved)                                  \
-        : "r"(ot), "r"(p)                                \
-        : "v0", "v1", "memory");                         \
+        : "memory", #treg);                               \
 } while (0)
 
 /**

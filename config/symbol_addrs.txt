@@ -1401,6 +1401,7 @@ D_80083857 = 0x80083857;
 D_80083858 = 0x80083858;
 D_80083868 = 0x80083868;
 g_ovlCmdQueue = 0x80085168;
+tripleTriadMainLoop = 0x80098304;
 g_meshRenderCtx = 0x801F0000;
 g_fieldVars = 0x800562C4;
 g_seedSalaryTable = 0x800C5F70;
