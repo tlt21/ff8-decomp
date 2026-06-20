@@ -95,7 +95,7 @@ enum AiSearchResult {
     AI_RESULT_ROOT_NEXT = 3   /**< Root ply advanced to its next hand card. */
 };
 
-/** @brief Active interactive menu substate — @c D_801D3358, and the @c mode
+/** @brief Active interactive menu substate — @c g_activeSubstate, and the @c mode
  *         selector of @ref drawMenuPrim (which HUD cursor to draw). */
 enum TriadMenuSubstate {
     TT_SUBSTATE_NONE     = 0,  /**< No substate armed. */
@@ -106,14 +106,14 @@ enum TriadMenuSubstate {
     TT_SUBSTATE_CONFIG_B = 5   /**< Second config-param row. */
 };
 
-/** @brief Pad-input source for the menu tick — @c D_801D3338 (@ref updateTriadMenu). */
+/** @brief Pad-input source for the menu tick — @c g_menuPadSource (@ref updateTriadMenu). */
 enum TriadMenuPadSource {
     TT_PAD_SRC_P0   = 0,  /**< Player 0's controller only. */
     TT_PAD_SRC_P1   = 1,  /**< Player 1's controller only. */
     TT_PAD_SRC_BOTH = 2   /**< Both controllers OR'd together. */
 };
 
-/** @brief Completion phase of the armed substate — @c D_801D3359. */
+/** @brief Completion phase of the armed substate — @c g_substatePhase. */
 enum TriadSubstatePhase {
     TT_SUBPHASE_IDLE    = 0,  /**< No substate running. */
     TT_SUBPHASE_ACTIVE  = 1,  /**< Running; awaiting input. */
@@ -189,7 +189,7 @@ typedef struct {
 typedef struct { s32 w0, w1, w2, w3, w4; } WeightSet;  /* 0x14 */
 
 /**
- * @brief 20-byte linked-list node owned by the @c D_801D3380 list and
+ * @brief 20-byte linked-list node owned by the @c g_cursorList list and
  *        driven by the @ref updateCardSelectCursor callback.
  *
  * @c state is a @ref CardSelectState for the card-selection cursor;
@@ -207,21 +207,21 @@ typedef struct {
 } SubstateMachineNode;
 
 /* Data — list pools / heads */
-extern ObjList D_801D3110[];
-extern u8 D_801D3120[];
-extern u8 D_801D3360[];
-extern ObjList D_801D3380[];
-extern u8 D_801D3798[];
-extern s32 D_801D3328;
+extern ObjList g_cardObjList[];
+extern u8 g_cardObjPool[];
+extern u8 g_cursorPool[];
+extern ObjList g_cursorList[];
+extern u8 g_taskPool[];
+extern s32 g_substateMask;
 
 /* Data — menu/cursor substate (be_object2-private) */
 extern SVECTOR D_80182D10[]; /**< 4-entry direction-vector table for animateCardEffect (CARD_FX_SLIDE_*). */
-extern u16 D_801D332C;       /**< Latched held mask (from g_padHeld). */
-extern u16 D_801D332E;       /**< Latched repeat mask (from g_padRepeat). */
-extern u16 D_801D3330;       /**< Latched pressed mask (bits 0xC0/0x10 trigger completion). */
-extern s32 D_801D3334;       /**< Completion-suppress flags (bits 1, 2). */
-extern u8  D_801D3338;       /**< Pad-input source / state byte (TriadMenuPadSource; -1 = idle). */
-extern u8  D_801D3358;       /**< Active substate index (TriadMenuSubstate). */
+extern u16 g_padHeldLatch;       /**< Latched held mask (from g_padHeld). */
+extern u16 g_padRepeatLatch;       /**< Latched repeat mask (from g_padRepeat). */
+extern u16 g_padPressedLatch;       /**< Latched pressed mask (bits 0xC0/0x10 trigger completion). */
+extern s32 g_substateSuppress;       /**< Completion-suppress flags (bits 1, 2). */
+extern u8  g_menuPadSource;       /**< Pad-input source / state byte (TriadMenuPadSource; -1 = idle). */
+extern u8  g_activeSubstate;       /**< Active substate index (TriadMenuSubstate). */
 
 /* Data — AI move search */
 extern AiMove    g_aiSearchStack[9];   /* AI move-search workspace (root = [0], one entry per ply) */
@@ -233,8 +233,8 @@ extern s32       g_tripleTriadCurrentSeat;      /* current player / seat index *
 extern u8        g_aiSearchDepthTable[8][9]; /* [difficulty][cards-left] → AI search-depth param */
 extern WeightSet g_aiWeightTable[8];    /* per-difficulty AI evaluation-weight rows */
 extern u8        D_80082C97;       /* = D_80082C90.field_07 (distinct splat symbol) */
-extern u8        D_801D3540[];     /* AI turn-node pool */
-extern ObjList        D_801D3560[];     /* AI turn-node list head */
+extern u8        g_aiTurnPool[];     /* AI turn-node pool */
+extern ObjList        g_aiTurnList[];     /* AI turn-node list head */
 
 /* Data — card render path (drawTriadCard) */
 extern SVECTOR g_cardFaceQuad[4];   /* main card-face quad corners */

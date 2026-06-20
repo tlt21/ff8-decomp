@@ -389,7 +389,7 @@ extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. *
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
-extern ObjList            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
+extern ObjList            g_taskList[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
 
 /* Per-pad button-mask buffers (held / pressed / repeat), seeded by @c sampleInput.
    Indexed by the menu pad source (0/1), or OR'd across both; [2] is the
@@ -416,8 +416,8 @@ typedef struct {
 } SubstateSlot;
 
 extern SubstateSlot D_801D3340[6]; /**< Per-substate parameter table (one slot per substate 0..5). */
-extern u8           D_801D3359;    /**< Substate completion phase (see TriadSubstatePhase). */
-extern SubstateSlot D_801D335C;    /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
+extern u8           g_substatePhase;    /**< Substate completion phase (see TriadSubstatePhase). */
+extern SubstateSlot D_801D335C;    /**< 4-byte snapshot of @c D_801D3340[g_activeSubstate]. */
 
 /* Cross-TU function prototypes live in the owning module's header
    (be_object1.h .. be_object4.h), not here. */

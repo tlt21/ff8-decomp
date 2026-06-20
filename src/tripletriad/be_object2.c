@@ -156,7 +156,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
  * @brief Per-frame update of the card-object list.
  */
 void processCardObjects(s32 arg) {
-    updateObjectList(D_801D3110);
+    updateObjectList(g_cardObjList);
 }
 
 /**
@@ -174,7 +174,7 @@ void setupTripleTriadHands(void) {
     CardObjectCtl *node;
     u8 *hand;
 
-    initObjList(D_801D3110, D_801D3120, sizeof(CardObjectCtl), 10);
+    initObjList(g_cardObjList, g_cardObjPool, sizeof(CardObjectCtl), 10);
 
     entity = g_tripleTriadCardHands;
     for (player = 0; player < 2; player++) {
@@ -182,7 +182,7 @@ void setupTripleTriadHands(void) {
         hand = D_801A2C48[player];
         for (slot = 0; slot < 5; slot++) {
             playerType = &D_801A2C70[player];
-            node = (CardObjectCtl *)allocObjNode(D_801D3110, (ObjNodeFn)updateCardObject);
+            node = (CardObjectCtl *)allocObjNode(g_cardObjList, (ObjNodeFn)updateCardObject);
             node->entry = entity;
             entity->cardId = hand[slot];
             entity->state      = CARD_FX_IDLE;
@@ -414,8 +414,8 @@ POLY_F4 *drawCardShadow(u32 *ot, POLY_F4 *prim) {
  * 2D board substate's row/column are seeded to 1).
  */
 void resetTriadMenuState(void) {
-    D_801D3328 = 0;
-    D_801D3359 = TT_SUBPHASE_IDLE;
+    g_substateMask = 0;
+    g_substatePhase = TT_SUBPHASE_IDLE;
     D_801D3340[1].field2 = 0;
     D_801D3340[2].field2 = 0;
     D_801D3340[3].field0 = 1;
@@ -493,19 +493,19 @@ void initMenuObjectHandler(s32 groupId, s32 fieldD, s32 priority) {
  *             callback signature).
  */
 void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
-    if ((D_801D332E & 0x1000) && findCardSlot(0, 0, slot->field2 - 1) >= 0) {
+    if ((g_padRepeatLatch & 0x1000) && findCardSlot(0, 0, slot->field2 - 1) >= 0) {
         playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
-    } else if ((D_801D332E & 0x4000) && findCardSlot(0, 0, slot->field2 + 1) >= 0) {
+    } else if ((g_padRepeatLatch & 0x4000) && findCardSlot(0, 0, slot->field2 + 1) >= 0) {
         playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
-    } else if (D_801D332E & 0x2000) {
-        if (D_801D3328 & 0x8) {
-            D_801D3358 = 3;
+    } else if (g_padRepeatLatch & 0x2000) {
+        if (g_substateMask & 0x8) {
+            g_activeSubstate = 3;
             return;
         }
-        if (D_801D3328 & 0x4) {
-            D_801D3358 = 2;
+        if (g_substateMask & 0x4) {
+            g_activeSubstate = 2;
             return;
         }
     }
@@ -525,19 +525,19 @@ void handleCursorSubstate1(SubstateSlot *slot, s32 idx) {
  *             callback signature).
  */
 void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
-    if ((D_801D332E & 0x1000) && findCardSlot(1, 0, slot->field2 - 1) >= 0) {
+    if ((g_padRepeatLatch & 0x1000) && findCardSlot(1, 0, slot->field2 - 1) >= 0) {
         playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
-    } else if ((D_801D332E & 0x4000) && findCardSlot(1, 0, slot->field2 + 1) >= 0) {
+    } else if ((g_padRepeatLatch & 0x4000) && findCardSlot(1, 0, slot->field2 + 1) >= 0) {
         playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
-    } else if (D_801D332E & 0x8000) {
-        if (D_801D3328 & 0x8) {
-            D_801D3358 = 3;
+    } else if (g_padRepeatLatch & 0x8000) {
+        if (g_substateMask & 0x8) {
+            g_activeSubstate = 3;
             return;
         }
-        if (D_801D3328 & 0x2) {
-            D_801D3358 = 1;
+        if (g_substateMask & 0x2) {
+            g_activeSubstate = 1;
             return;
         }
     }
@@ -558,33 +558,33 @@ void handleCursorSubstate2(SubstateSlot *slot, s32 idx) {
  *             callback signature).
  */
 void handleCursorSubstate3(SubstateSlot *slot, s32 idx) {
-    if (D_801D332E & 0x8000) {
+    if (g_padRepeatLatch & 0x8000) {
         slot->field0 = slot->field0 - 1;
         if (slot->field0 >= 0) {
             playTriadSfx(1);
         }
-    } else if (D_801D332E & 0x2000) {
+    } else if (g_padRepeatLatch & 0x2000) {
         slot->field0 = slot->field0 + 1;
         if (slot->field0 < 3) {
             playTriadSfx(1);
         }
-    } else if ((D_801D332E & 0x1000) && slot->field2 > 0) {
+    } else if ((g_padRepeatLatch & 0x1000) && slot->field2 > 0) {
         playTriadSfx(1);
         slot->field2 = slot->field2 - 1;
-    } else if ((D_801D332E & 0x4000) && slot->field2 < 2) {
+    } else if ((g_padRepeatLatch & 0x4000) && slot->field2 < 2) {
         playTriadSfx(1);
         slot->field2 = slot->field2 + 1;
     }
 
     if (slot->field0 < 0) {
         slot->field0 = 0;
-        if (D_801D3328 & 0x2) {
-            D_801D3358 = 1;
+        if (g_substateMask & 0x2) {
+            g_activeSubstate = 1;
         }
     } else if (slot->field0 >= 3) {
         slot->field0 = 2;
-        if (D_801D3328 & 0x4) {
-            D_801D3358 = 2;
+        if (g_substateMask & 0x4) {
+            g_activeSubstate = 2;
         }
     }
 
@@ -602,7 +602,7 @@ void handleCursorSubstate3(SubstateSlot *slot, s32 idx) {
 void adjustConfigParam(u16 *param) {
     u16 val;
 
-    if (D_801D332E & 0x8000) {
+    if (g_padRepeatLatch & 0x8000) {
         if (*(s16 *)param > 0) {
             playTriadSfx(1);
             val = *param - 1;
@@ -610,7 +610,7 @@ void adjustConfigParam(u16 *param) {
             goto store;
         }
     }
-    if (D_801D332E & 0x2000) {
+    if (g_padRepeatLatch & 0x2000) {
         if (*(s16 *)param < 4) {
             playTriadSfx(1);
             val = *param + 1;
@@ -630,27 +630,27 @@ store:
  * Finally checks the completion triggers that commit or cancel the substate.
  */
 void updateTriadMenu(void) {
-    s32 state = *(u8 *)&D_801D3338;
+    s32 state = *(u8 *)&g_menuPadSource;
 
     switch (state) {
     case TT_PAD_SRC_P0:
     case TT_PAD_SRC_P1:
-        D_801D332C = g_padHeld[state];
-        D_801D332E = g_padRepeat[state];
-        D_801D3330 = g_padPressed[state];
+        g_padHeldLatch = g_padHeld[state];
+        g_padRepeatLatch = g_padRepeat[state];
+        g_padPressedLatch = g_padPressed[state];
         break;
     case TT_PAD_SRC_BOTH:
-        D_801D332C = g_padHeld[0] | g_padHeld[1];
-        D_801D332E = g_padRepeat[0] | g_padRepeat[1];
-        D_801D3330 = g_padPressed[0] | g_padPressed[1];
+        g_padHeldLatch = g_padHeld[0] | g_padHeld[1];
+        g_padRepeatLatch = g_padRepeat[0] | g_padRepeat[1];
+        g_padPressedLatch = g_padPressed[0] | g_padPressed[1];
         break;
     }
 
-    if (D_801D3359 == TT_SUBPHASE_ACTIVE) {
-        s32   idx = D_801D3358 * 4;
-        void *p   = &D_801D3340[D_801D3358];
+    if (g_substatePhase == TT_SUBPHASE_ACTIVE) {
+        s32   idx = g_activeSubstate * 4;
+        void *p   = &D_801D3340[g_activeSubstate];
 
-        switch (D_801D3358) {
+        switch (g_activeSubstate) {
         case TT_SUBSTATE_NONE: break;
         case TT_SUBSTATE_HAND_P0: handleCursorSubstate1(p, idx); break;
         case TT_SUBSTATE_HAND_P1: handleCursorSubstate2(p, idx); break;
@@ -659,17 +659,17 @@ void updateTriadMenu(void) {
         case TT_SUBSTATE_CONFIG_B: adjustConfigParam(p);      break;
         }
 
-        drawMenuPrim(D_801D3358, &D_801D3340[D_801D3358]);
+        drawMenuPrim(g_activeSubstate, &D_801D3340[g_activeSubstate]);
 
-        if (!(D_801D3334 & 1)) {
-            if (D_801D3330 & 0xC0) {
-                D_801D3359 = TT_SUBPHASE_CONFIRM;
-                memcpy(&D_801D335C, &D_801D3340[D_801D3358], 4);
+        if (!(g_substateSuppress & 1)) {
+            if (g_padPressedLatch & 0xC0) {
+                g_substatePhase = TT_SUBPHASE_CONFIRM;
+                memcpy(&D_801D335C, &D_801D3340[g_activeSubstate], 4);
                 return;
             }
         }
-        if (!(D_801D3334 & 2) && (D_801D3330 & 0x10)) {
-            D_801D3359 = TT_SUBPHASE_CANCEL;
+        if (!(g_substateSuppress & 2) && (g_padPressedLatch & 0x10)) {
+            g_substatePhase = TT_SUBPHASE_CANCEL;
         }
     }
 }
@@ -689,11 +689,11 @@ void updateTriadMenu(void) {
  * @param suppressFlags Completion-suppress flags latched for the dispatcher.
  */
 void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
-    D_801D3358 = idx;
-    D_801D3328 = mask | (1 << idx);
-    D_801D3359 = TT_SUBPHASE_ACTIVE;
-    D_801D3338 = stateByte;
-    D_801D3334 = suppressFlags;
+    g_activeSubstate = idx;
+    g_substateMask = mask | (1 << idx);
+    g_substatePhase = TT_SUBPHASE_ACTIVE;
+    g_menuPadSource = stateByte;
+    g_substateSuppress = suppressFlags;
 
     if (idx >= 3) return;
     if (idx <= 0) return;
@@ -733,7 +733,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             p->state = CARD_SEL_WAIT_PICK;
             break;
         case CARD_SEL_WAIT_PICK:
-            if (D_801D3359 == s1) return 0;
+            if (g_substatePhase == s1) return 0;
             if (findCardSlot(p->fieldD, 0, D_801D335C.field2) >= 0) {
                 p->snapshot = D_801D335C;
                 p->state = CARD_SEL_BEGIN_PLACE;
@@ -752,7 +752,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
                 drawMenuPrim(p->fieldD + 1, &p->snapshot);
             }
             highlightCardSlot(p->fieldD, p->snapshot.field2);
-            trig = D_801D3359;
+            trig = g_substatePhase;
             switch (trig) {
             case TT_SUBPHASE_CONFIRM:
                 if (findCardSlot(2, D_801D335C.field0, D_801D335C.field2) < 0) {
@@ -791,10 +791,10 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
  * @return The cursor list head.
  */
 u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte) {
-    ObjList *list = D_801D3380;
+    ObjList *list = g_cursorList;
     SubstateMachineNode *node;
 
-    initObjList(list, D_801D3360, sizeof(SubstateMachineNode), 1);
+    initObjList(list, g_cursorPool, sizeof(SubstateMachineNode), 1);
     node = (SubstateMachineNode *)allocObjNode(list, (ObjNodeFn)updateCardSelectCursor);
     node->state = CARD_SEL_BEGIN_PICK;
     node->fieldD = rowSeed;
@@ -1965,8 +1965,8 @@ u8 *spawnAiTurn(s32 seat) {
         }
     }
 
-    initObjList(D_801D3560, D_801D3540, sizeof(AiTurnNode), 1);
-    node = (AiTurnNode *)allocObjNode(D_801D3560, (ObjNodeFn)updateAiTurn);
+    initObjList(g_aiTurnList, g_aiTurnPool, sizeof(AiTurnNode), 1);
+    node = (AiTurnNode *)allocObjNode(g_aiTurnList, (ObjNodeFn)updateAiTurn);
     g_tripleTriadCurrentSeat = seat;
     node->seat = seat;
     {
@@ -1988,19 +1988,19 @@ u8 *spawnAiTurn(s32 seat) {
         g_tripleTriadCardValues[i] = (g_tripleTriadCardStats[i].pad05[0] * weight / 200) >> 12;
     }
 
-    return D_801D3560;
+    return g_aiTurnList;
 }
 
 /**
  * @brief Initialize the Triple Triad task list.
  */
 void initTriadTaskPool(void) {
-    initObjList(D_801D3C58, D_801D3798, 76, 16);
+    initObjList(g_taskList, g_taskPool, 76, 16);
 }
 
 /**
  * @brief Per-frame update of the Triple Triad task list.
  */
 void processTriadTasks(void) {
-    updateObjectList(D_801D3C58);
+    updateObjectList(g_taskList);
 }

@@ -161,10 +161,10 @@ extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new 
 extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */
 extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the sequence. */
 
-/** @brief Allocate a tripletriad object from the @c D_801D3C58 pool with the
+/** @brief Allocate a tripletriad object from the @c g_taskList pool with the
  *         given per-frame callback; returns the new object (0 if pool is full). */
 s32 func_8009E248(ObjNodeFn a0) {
-    return allocObjNode(D_801D3C58, a0);
+    return allocObjNode(g_taskList, a0);
 }
 
 /**
@@ -1640,7 +1640,7 @@ s32 func_800A0AD4(void) {
  * State 0 builds a banner string into @c D_801D4188 — a prefix (string-pool entry
  * @c D_8018268A), the acting seat as a letter (@c D_801D4448 + '!'), then a suffix
  * (@c D_8018268E) — and shows it. State 1 runs the picker: it opens a selection
- * substate, then on the player's choice (@c D_801D3359) either shows a card's detail
+ * substate, then on the player's choice (@c g_substatePhase) either shows a card's detail
  * (1), toggles a card for capture while tracking the remaining budget @c D_801D4178
  * (2), or deselects one (3). State 2 confirms via @c func_800A20F4: on accept it sets
  * @c D_801D444C and returns 2; on cancel it returns to the picker.
@@ -1692,7 +1692,7 @@ s32 func_800A0B24(ScriptStateNode *node) {
                 node->field0D++;
                 break;
             }
-            switch (D_801D3359) {
+            switch (g_substatePhase) {
             case 1:
                 showCardDetail(D_801D4308[D_801D335C.field0].cardId);
                 return 0;

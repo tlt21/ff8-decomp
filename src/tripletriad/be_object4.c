@@ -191,10 +191,10 @@ void playTriadSfxParam(s32 sfxId, s32 param) {
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A238C);
 
 /**
- * @brief Initialize animation handler and attach to D_801D3C58 list.
+ * @brief Initialize animation handler and attach to g_taskList list.
  *
  * Loads animation data from D_80182EC8 via sndProcessAudio, then
- * allocates a node in D_801D3C58 with func_800A238C as callback.
+ * allocates a node in g_taskList with func_800A238C as callback.
  * Clears the node's fields at offsets 0xC and 0xE.
  */
 void func_800A247C(void) {
