@@ -74,6 +74,17 @@ typedef enum {
     MATCH_FLOW_FADE     = 9,  /**< Fade out, record the result, exit the match.  */
 } MatchFlowState;
 
+/**
+ * @brief Callback node in the tripletriad list at @c D_801D3C68.
+ *
+ * Minimal view: a list-node header followed by a list-head pointer. Other fields
+ * (byte flags at 0x0E, 0x22; s16 at 0x20; etc.) are not yet modeled.
+ */
+typedef struct {
+    u8  pad00[0xC];
+    u8 *listPtr;    /* 0x0C: pointer to an inner list head */
+} CallbackNode;
+
 /* Data */
 extern u8  D_80082C9C;  /**< Match-result category byte (a @c TT_RESULT_* value). */
 extern s32 D_801D3018;  /**< Result-screen SFX handle. */

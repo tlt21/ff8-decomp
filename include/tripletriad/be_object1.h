@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "tripletriad.h"
+#include "tim.h"          /* Tim / TimSection (queued VRAM image uploads) */
 
 /* Declarations for be_object1.c (Triple Triad board/card setup, draw-buffer
    init, deferred VRAM transfers, and the tetrahedral 3D icon). */
@@ -17,8 +18,6 @@
 #define TT_SCREEN_H  224  /**< Display / draw-buffer height. */
 #define TT_SCREEN_Y    8  /**< Display vertical offset. */
 #define TT_PROJ_DIST 512  /**< GTE projection distance (SetGeomScreen). */
-
-/* TIM file structs (Tim / TimSection) come from tim.h via battle.h. */
 
 typedef struct {
     u32 type;
@@ -161,6 +160,14 @@ extern void *findFreeNode(ObjList *list);
 extern void *allocObjNode(ObjList *list, ObjNodeFn callback);
 extern void *allocObjNodeFront(ObjList *list, ObjNodeFn callback);
 extern s32   updateObjectList(ObjList *list);
+
+/** @brief Scratch-pool allocator (LIFO): reserve / release @c size bytes of work RAM. */
+extern s32   scratchAlloc(s32 size);
+extern void  scratchFree(s32 size);
+
+/* SDK / main-binary math helpers used by be_object1.c. */
+extern void  func_8003F884(SVECTOR *a, SVECTOR *b, s32 wa, s32 wb, SVECTOR *out);
+extern void  func_80041794(s32 angle, MATRIX *m);
 
 /* Card-flip animation handler + per-match card setup. */
 extern s32  cardFlipHandler(HandlerNode *node);

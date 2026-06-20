@@ -2,7 +2,6 @@
 #define TRIPLETRIAD_BE_OBJECT2_H
 
 #include "common.h"
-#include "battle.h"        /* SubstateSlot */
 #include "tripletriad.h"   /* board/card types, SVECTOR / CVECTOR / VECTOR */
 
 /* Declarations for be_object2.c (Triple Triad card objects, the rules engine,
@@ -59,6 +58,9 @@ extern void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFl
 extern u8 *spawnCardSelectCursor(s32 rowSeed, s32 stateByte);
 
 /* Card render / per-frame effect. */
+/** @brief Render one Triple Triad card to the primitive buffer; returns the advanced @c out.
+ *         @c flags are the card object's initFlags (TT_OWNER_MASK / TT_USE_STATS / …). */
+extern void  *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out);
 extern TSPRT *drawCardOverlaySprite(CardAnimNode *node, s32 variant, void *ot, TSPRT *out);
 extern void   animateCardEffect(TripleTriadCardObject *entity);
 extern void   transformCardEffect(TripleTriadCardObject *entity, CardAnimNode *node, void *otBucket);
@@ -129,6 +131,14 @@ enum CardSelectState {
 };
 
 /* Typedefs */
+
+/**
+ * @brief 4-byte byte-aggregate for unaligned struct-copy codegen. @ref animateCardEffect
+ *        copies the @c TripleTriadCardObject @c param0.. quartet (0x10) over the
+ *        @c groupId.. quartet (0x0C) as one aggregate assignment; the byte alignment
+ *        makes gcc 2.7.2 emit the original lwl/lwr/swl/swr pair.
+ */
+typedef struct { u8 a, b, c, d; } Tetra4;
 
 /**
  * @brief Per-ply state of the AI move search (one node of @ref searchBestMoveStack).
@@ -203,6 +213,15 @@ extern u8 D_801D3360[];
 extern ObjList D_801D3380[];
 extern u8 D_801D3798[];
 extern s32 D_801D3328;
+
+/* Data — menu/cursor substate (be_object2-private) */
+extern SVECTOR D_80182D10[]; /**< 4-entry direction-vector table for animateCardEffect (CARD_FX_SLIDE_*). */
+extern u16 D_801D332C;       /**< Latched held mask (from g_padHeld). */
+extern u16 D_801D332E;       /**< Latched repeat mask (from g_padRepeat). */
+extern u16 D_801D3330;       /**< Latched pressed mask (bits 0xC0/0x10 trigger completion). */
+extern s32 D_801D3334;       /**< Completion-suppress flags (bits 1, 2). */
+extern u8  D_801D3338;       /**< Pad-input source / state byte (TriadMenuPadSource; -1 = idle). */
+extern u8  D_801D3358;       /**< Active substate index (TriadMenuSubstate). */
 
 /* Data — AI move search */
 extern AiMove    g_aiSearchStack[9];   /* AI move-search workspace (root = [0], one entry per ply) */

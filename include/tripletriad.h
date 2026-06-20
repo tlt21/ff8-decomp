@@ -391,6 +391,34 @@ extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); al
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */
 extern ObjList            D_801D3C58[];      /**< Card-claim/AI shared scratch (be_object2/3/4). */
 
+/* Per-pad button-mask buffers (held / pressed / repeat), seeded by @c sampleInput.
+   Indexed by the menu pad source (0/1), or OR'd across both; [2] is the
+   result-screen pad input. */
+extern u16 g_padRepeat[];    /**< Auto-repeat mask. */
+extern u16 g_padPressed[];   /**< Newly-pressed (rising-edge) mask; [2] is the result-screen pad input. */
+extern u16 g_padHeld[];      /**< Held (currently-down) mask. */
+
+/** @brief Display-list OT base — points at the active buffer's OT
+ *         (@c g_orderingTables[g_drawBufferIndex]); index by sort key. */
+extern u32  *g_otBase;
+extern void *g_primCursor;   /**< Current primitive-pool tail (advanced by display helpers). */
+
+extern u8    D_801A2C70[2];  /**< Per-player layout type; 3 selects the offset-hand layout. */
+
+/**
+ * @brief Per-substate parameter slot (4 bytes). One entry of @c D_801D3340 —
+ * each substate handler interprets its two halfwords differently (some use only
+ * @c field0, some only @c field2; the board substate uses both).
+ */
+typedef struct {
+    /* 0x00 */ s16 field0;
+    /* 0x02 */ s16 field2;
+} SubstateSlot;
+
+extern SubstateSlot D_801D3340[6]; /**< Per-substate parameter table (one slot per substate 0..5). */
+extern u8           D_801D3359;    /**< Substate completion phase (see TriadSubstatePhase). */
+extern SubstateSlot D_801D335C;    /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
+
 /* Cross-TU function prototypes live in the owning module's header
    (be_object1.h .. be_object4.h), not here. */
 

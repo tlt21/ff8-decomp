@@ -1,5 +1,4 @@
 #include "common.h"
-#include "battle.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
 

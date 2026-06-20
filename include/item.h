@@ -11,4 +11,9 @@ extern s32 func_80023D04(void);
 /** @brief Add @p delta to the owned quantity of card/item @p itemId; returns the new count. */
 extern s32 modifyItemQuantity(s32 itemId, s32 delta);
 
+/** @brief Owned quantity of card/item @p idx; negative when the index is invalid.
+ *  @note Some callers (menuext/menucrd) invoke it with no argument via an implicit
+ *        declaration, so this prototype is intentionally kept out of common.h. */
+extern s32 func_80023B14(s32 idx);
+
 #endif /* ITEM_H */

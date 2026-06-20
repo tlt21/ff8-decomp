@@ -273,20 +273,6 @@ typedef struct {
     BattleEntityData *data;  /* 0x00: pointer to the entity's linked data block. */
 } BattleEntityLinked;
 
-/**
- * @brief 4-byte byte-aggregate used for unaligned struct-copy codegen.
- *
- * Used in @c animateCardEffect to copy the @c TripleTriadCardObject @c param0..pad13
- * quartet (offset 0x10) over the @c groupId..pad0F quartet (offset 0x0C)
- * as a single aggregate assignment. Cast a pointer to the first byte of
- * each block to @c Tetra4* and assign — gcc 2.7.2 emits the original's
- * lwl/lwr/swl/swr pair because the aggregate has byte alignment.
- */
-typedef struct { u8 a, b, c, d; } Tetra4;
-
-/** @brief 4-entry direction-vector table used by @c animateCardEffect (cases 2..5). */
-extern SVECTOR D_80182D10[];
-
 #define ENTITY_FLAG_1 1
 #define ENTITY_FLAG_4 8
 typedef struct {
@@ -686,17 +672,6 @@ typedef struct {
 extern BattleSceneCtx *D_800D244C;
 
 /**
- * @brief Callback-node in the tripletriad list at D_801D3C68.
- *
- * Minimal view: a header followed by a list-head pointer. Other fields
- * (byte flags at 0x0E, 0x22; s16 at 0x20; etc.) are not yet modeled.
- */
-typedef struct {
-    u8 pad00[0xC];
-    u8 *listPtr;    /* 0x0C: pointer to an inner list head */
-} CallbackNode;
-
-/**
  * @brief Spell record in the battle scene buffer (D_80078E00.spells, stride 60).
  *
  * Only byte 0 (magicId) is read by the known callers.
@@ -1010,71 +985,6 @@ void func_800A554C(s32 idx);
  *         @c charData->statusFlags bit @c 0x10000 is not set. */
 void func_800A559C(s32 idx);
 
-/* ---------------------------------------------------------------- *
- *  tripletriad state region (overlay @ 0x801C2000..0x801D4000).
- * ---------------------------------------------------------------- */
-
-/** @brief Per-pad button-mask buffers (held / pressed / repeat), seeded by
- *  @c sampleInput. Each is indexed by @c D_801D3338 (state byte, 0..1) or OR'd
- *  across the first two entries when state == 2. */
-extern u16 g_padRepeat[];   /**< Auto-repeat mask. */
-extern u16 g_padPressed[];  /**< Newly-pressed (rising-edge) mask; [2] is the result-screen pad input. */
-extern u16 g_padHeld[];     /**< Held (currently-down) mask. */
-
-/** @brief Battle-engine frame-state region. */
-extern u16 D_801D332C;     /**< Latched held mask (from g_padHeld). */
-extern u16 D_801D332E;     /**< Latched repeat mask (from g_padRepeat). */
-extern u16 D_801D3330;     /**< Latched pressed mask (bits 0xC0/0x10 trigger completion). */
-extern s32 D_801D3334;     /**< Completion-suppress flags (bits 1, 2). */
-extern u8  D_801D3338;     /**< State byte (-1 = idle, 0..2 = active). */
-/**
- * @brief Per-substate parameter slot (4 bytes).
- *
- * One entry of @c D_801D3340 — each substate handler interprets its two
- * halfwords differently. Some use only @c field0, some only @c field2,
- * substate 3 uses both.
- */
-typedef struct {
-    /* 0x00 */ s16 field0;
-    /* 0x02 */ s16 field2;
-} SubstateSlot;
-
-extern SubstateSlot D_801D3340[6]; /**< Per-substate parameter table (one slot per substate 0..5). */
-extern u8  D_801D3358;     /**< Substate index (0..5). */
-extern u8  D_801D3359;     /**< Completion code (1 = arm, 2/3 = fired). */
-extern SubstateSlot D_801D335C;     /**< 4-byte snapshot of @c D_801D3340[D_801D3358]. */
-
-/** @brief Battle-engine display-node spawner state (used by func_8009FED0). */
-extern u32 *g_otBase;    /**< Display-list OT base — points at the active buffer's OT (g_orderingTables[g_drawBufferIndex]); index by sort key. */
-extern void *g_primCursor;   /**< Current primitive-pool tail (advanced by display helpers). */
-extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
-extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
-extern s32 D_801D3EB8;     /**< Phase mirror counter (running scale). */
-extern s32 D_801D44FC;     /**< Current battle slot index (must be < 0x6E). */
-extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
-
-/**
- * @brief 40-byte display node allocated by @c scratchAlloc and chained
- * via @c RotMatrixYXZ / @c func_800406A4 / @c func_80040734.
- */
-typedef struct {
-    /* 0x00 */ s16 angle;             /**< Rotation/animation angle. */
-    /* 0x02 */ s16 phase;             /**< Phase counter (mirror of @c D_801D3EB8). */
-    /* 0x04 */ s16 unk04;             /**< Always zeroed at init. */
-    /* 0x06 */ u8 pad06[2];
-    /* 0x08 */ u8 subNode[0x14];      /**< Sub-node passed to chain calls. */
-    /* 0x1C */ s32 charType;          /**< Set to @c 0x44 ('D'). */
-    /* 0x20 */ s32 scale;             /**< Scale factor (computed or 0x18). */
-    /* 0x24 */ s32 unk24;             /**< Set to 0x200. */
-} DispNode;                            /* 0x28 bytes */
-
-extern s32  func_80023B14(s32 idx);
-extern void func_8003F884(SVECTOR *a, SVECTOR *b, s32 wa, s32 wb, SVECTOR *out);
-extern void func_80041794(s32 angle, MATRIX *m);
-extern s32  scratchAlloc(s32 size);
-extern void scratchFree(s32 size);
-extern void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out);
-
 /* --- Battle animation lifecycle --- */
 extern void activateBattleAnim(s32 idx);
 
@@ -1082,8 +992,6 @@ extern void activateBattleAnim(s32 idx);
 extern void func_800406A4(u8 *p);
 extern void func_80040734(u8 *p);
 extern s32  func_80040DE4(SVECTOR *v, s32 *sxy, s32 *p, s32 *flag);
-
-extern u8                   D_801A2C70[2];                     /**< Per-player layout type; 3 selects the offset-hand layout. */
 
 /** @brief Reset battle-transition state (clears @c btl_color flags). */
 extern void initBattleTransition(void);

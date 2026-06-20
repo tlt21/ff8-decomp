@@ -1,5 +1,4 @@
 #include "common.h"
-#include "battle.h"
 #include "item.h"
 #include "tripletriad.h"
 #include "psxsdk/libgpu.h"

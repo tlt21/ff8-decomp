@@ -1,5 +1,4 @@
 #include "common.h"
-#include "battle.h"
 #include "item.h"
 #include "tripletriad.h"
 #include "tripletriad/be_object1.h"
@@ -97,7 +96,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
     node = scratchAlloc(sizeof(CardAnimNode));
     entity = ctl->entry;
 
-    if (entity->flags & CTRL_FLAG_02) {
+    if (entity->flags & TT_CARD_ROTATE_CW) {
         if (entity->angle < 0x1000) {
             s16 newAngle = entity->angle + 0x800;
             entity->angle = newAngle;
@@ -105,7 +104,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
                 entity->angle = 0x1000;
             }
         }
-        entity->flags &= ~CTRL_FLAG_02;
+        entity->flags &= ~TT_CARD_ROTATE_CW;
     } else {
         if (entity->angle != 0) {
             s16 newAngle = entity->angle - 0x800;
