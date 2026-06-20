@@ -100,7 +100,7 @@ extern void func_80047C74(u8 *dst, u8 *src); /**< Append a string to the work bu
 extern s32 isItemPresent(s32 cardId);        /**< Non-zero if the card is in the collection. */
 
 /* Per-frame input-edge flags: two separate u16s at 0x801D3E74 / 0x801D3E76,
-   refreshed from D_801C2EBC / D_801C2EC4 at the top of func_8009F17C. */
+   refreshed from D_801C2EBC / g_padPressed[2] at the top of func_8009F17C. */
 extern u16 D_801D3E74;   /**< Edge flag A: 0x10 == remove-card request. */
 extern u16 D_801D3E76;   /**< Edge flag B: 0x40/0x80 == add-card request. */
 extern s32 D_801D3E78;   /**< Number of cards built into the active hand (0..5). */
@@ -779,7 +779,7 @@ s32 func_8009F17C(ScriptCtx *node) {
     u8 *handRow;
 
     D_801D3E74 = D_801C2EBC;
-    D_801D3E76 = D_801C2EC4;
+    D_801D3E76 = g_padPressed[2];
     while (1) {
         switch (node->state) {
         case 0:
@@ -1956,7 +1956,7 @@ s32 func_800A1260(ScriptStateNode *node) {
  * State 2 sweeps the acting seat's row (@c D_801D4450): each card NOT owned by it is
  * flagged @c field8 = 4. State 3 returns every acting-seat card to its collection
  * (@c markItemPresent) and finishes, setting @c D_801D444D and returning 2 — unless held
- * by @c D_801D4454 / @c D_801C2EC4, in which case it returns 0.
+ * by @c D_801D4454 / @c g_padPressed[2], in which case it returns 0.
  *
  * @param node State node (state 0x0C, per-pass guard 0x0D, cell index 0x0F).
  * @return 0 while a pass is pending or gated; 2 once the cleanup completes.
@@ -2029,7 +2029,7 @@ s32 func_800A1374(ScriptStateNode *node) {
                 node->field0D++;
             } else {
                 if (D_801D4454 == 0) {
-                    if (D_801C2EC4 == 0) {
+                    if (g_padPressed[2] == 0) {
                         return 0;
                     }
                 }

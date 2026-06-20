@@ -1018,7 +1018,7 @@ void func_800A559C(s32 idx);
  *  @c sampleInput. Each is indexed by @c D_801D3338 (state byte, 0..1) or OR'd
  *  across the first two entries when state == 2. */
 extern u16 g_padRepeat[];   /**< Auto-repeat mask. */
-extern u16 g_padPressed[];  /**< Newly-pressed (rising-edge) mask; [2] aliased as D_801C2EC4. */
+extern u16 g_padPressed[];  /**< Newly-pressed (rising-edge) mask; [2] is the result-screen pad input. */
 extern u16 g_padHeld[];     /**< Held (currently-down) mask. */
 
 /** @brief Battle-engine frame-state region. */

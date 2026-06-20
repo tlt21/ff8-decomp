@@ -158,11 +158,11 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     D_801D3018 = func_8009EB30(mode);
                     ctl->counter++;
                 }
-                if (D_801C2EC4 & PAD_UP) {
+                if (g_padPressed[2] & PAD_UP) {
                     if (D_801D3018 != 0) { func_8009EB90(D_801D3018, 1); D_801D3018 = 0; }
                     return 0;
                 }
-                if (D_801C2EC4 == 0) return 0;
+                if (g_padPressed[2] == 0) return 0;
                 func_800A2054(3);
                 if (D_801D30FC == TT_WINNER_DRAW && (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH)) {
                     if (D_801D3018 != 0) func_8009EB90(D_801D3018, 1);

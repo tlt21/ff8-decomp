@@ -386,7 +386,6 @@ extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
 extern ObjList            D_801D3028[];      /**< Battle-update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
-extern u16           D_801C2EC4;        /**< Result-screen pad input. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
 extern u8            D_8012E66C[];      /**< Vblank flip callback. */

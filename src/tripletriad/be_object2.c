@@ -721,7 +721,7 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
 s32 updateCardSelectCursor(SubstateMachineNode *p) {
     s32 s1;
 
-    if (!(g_tripleTriadInputFlags & TT_INPUT_DISABLED) && (D_801C2EC4 & 0x20)) {
+    if (!(g_tripleTriadInputFlags & TT_INPUT_DISABLED) && (g_padPressed[2] & 0x20)) {
         openTriadMenu();
         return 0;
     }
