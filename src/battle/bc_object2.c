@@ -1117,7 +1117,44 @@ void func_8009E5C0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     func_800A4320(func_800B02AC(func_800B0248(temp_s1, *getMenuString(0xB), func_800B04A0(var_s2, &sp10))));
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009E684);
+s32 func_8009E684(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    s32 var_a0;
+    u8 temp_a1;
+    u8 temp_s0;
+
+    if (!(D_800ED148.entities[arg1].controlFlags & 0x8000)) {
+        temp_s0 = D_800EEBBA;
+        
+        if (func_8009B15C() < temp_s0) {
+            temp_a1 = D_800ED148.entities[arg1].unkCC;
+            
+            var_a0 = temp_a1 * arg2 / 8; 
+            if (var_a0 == 0) {
+                var_a0 = 1;
+            }
+
+            if (var_a0 >= 101) {
+                var_a0 = 100;
+            }
+            
+            D_800ED148.entities[arg1].unkCC = var_a0;
+            func_8009E5C0(var_a0, temp_a1, arg3, arg1);
+            func_800A8430(arg1);
+            D_800ED148.unk1318 = 1;
+            D_800EE4C0.flags5 |= 1;
+        } 
+        
+        else {
+            D_800EE4C0.flags6 |= 4;
+        }
+    } 
+        
+    else {
+        D_800EE4C0.flags6 |= 4;
+    }
+   
+    return 0;
+}
 
 s32 func_8009E7B0(void) {
     s32 var_v0_2;

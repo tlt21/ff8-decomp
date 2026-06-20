@@ -478,11 +478,13 @@ typedef struct {
     /* 0x130D */ u8 unk130D;
     /* 0x130E */ u8 unk130E;
     /* 0x130F */ s8 unk130F;                    /**< Upper 3 bits of a packed s16 field (sign-extended). */
-    /* 0x1310 */ u8 unk1310;                 /**< Pad to actionType. */
+    /* 0x1310 */ u8 unk1310;
     /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
     /* 0x1312 */ u8 actionByte0;                /**< Queued action arg 0 (stat ID for type 1). */
     /* 0x1313 */ u8 actionByte1;                /**< Queued action arg 1 (count for type 1). */
-    /* 0x1314 */ u8 pad1314[0x5];               /**< More misc state. */
+    /* 0x1314 */ u8 pad1314[3];                 /**< More misc state. */
+    /* 0x1317 */ u8 unk1317;
+    /* 0x1318 */ u8 unk1318;
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
     /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
