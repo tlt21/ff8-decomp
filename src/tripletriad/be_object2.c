@@ -8,7 +8,7 @@
 #include "tripletriad/be_object4.h"
 
 /**
- * @brief Set up a battle object slot and cancel lower-priority siblings in its group.
+ * @brief Set up a card-object slot and cancel lower-priority siblings in its group.
  *
  * Stores the three action params in slot @p idx, marks it active
  * (@c CARD_FX_FLIP), then sweeps the 10 slots: any sibling sharing @c groupId
@@ -19,7 +19,7 @@
  * @param param1  Second action parameter (stored at @c slot.param1).
  * @param param2  Third action parameter (stored at @c slot.param2).
  */
-void setBattleObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
+void setCardObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
     s32 i;
 
     g_tripleTriadCardHands[idx].param0 = param0;
@@ -57,7 +57,7 @@ void setBattleObjectAction(s32 idx, s32 param0, s32 param1, s32 param2) {
  * @param out      Output primitive buffer (pre-allocated by caller).
  * @return         Pointer to the next free TSPRT slot in @p out.
  */
-TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT *out) {
+TSPRT *drawCardOverlaySprite(CardAnimNode *node, s32 variant, void *ot, TSPRT *out) {
     s32 i = 0;
 
     do {
@@ -95,7 +95,7 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
  * @c setupTripleTriadHands). For one @c TripleTriadCardObject the function:
  *  - Advances @c angle toward 0x1000 (clockwise) or 0 (counter-clockwise)
  *    based on the @c CTRL_FLAG_02 bit, and clamps the result.
- *  - Allocates a 40-byte @c BattleAnimNode work buffer.
+ *  - Allocates a 40-byte @c CardAnimNode work buffer.
  *  - Runs the transform chain (@c animateCardEffect, @c layoutCardSlot,
  *    @c func_80041274) to populate the node's base position, then folds
  *    in @c offX/Y/Z and @c offSort to produce the world position.
@@ -106,15 +106,15 @@ TSPRT *drawCardOverlaySprite(BattleAnimNode *node, s32 variant, void *ot, TSPRT 
  *    elemental modifier overlay sprite via @c drawCardOverlaySprite.
  *  - Calls the per-frame render helpers (@c drawTriadCard and
  *    @c transformCardEffect) to draw the rest of the object.
- *  - Frees the @c BattleAnimNode.
+ *  - Frees the @c CardAnimNode.
  *
  * @param ctl Handler context whose @c entry slot points at the
  *            @c TripleTriadCardObject being driven.
  * @return 0 (kept on the stack for compat with @c s32 callback signature).
  */
-s32 updateCardObject(BattleObjectCtl *ctl) {
+s32 updateCardObject(CardObjectCtl *ctl) {
     TripleTriadCardObject *entity;
-    BattleAnimNode *node;
+    CardAnimNode *node;
 
     node = scratchAlloc(0x28);
     entity = ctl->entry;
@@ -188,7 +188,7 @@ void processCardObjects(s32 arg) {
  * Builds the linked list at @c D_801D3110 (10 nodes from the @c D_801D3120 pool,
  * 16 bytes each), then for each of the two players sets up 5 hand-card entries
  * in @c g_tripleTriadCardHands. Each entry is wired up so that its per-frame
- * @c updateCardObject callback can find it via @c BattleObjectCtl.entry.
+ * @c updateCardObject callback can find it via @c CardObjectCtl.entry.
  *
  * Per-entry fields:
  *  - @c cardId   ← @c D_801A2C48[player][slot] (card id into @c g_tripleTriadCardStats).
@@ -204,7 +204,7 @@ void setupTripleTriadHands(void) {
     s32 player;
     s32 slot;
     TripleTriadCardObject *entity;
-    BattleObjectCtl *node;
+    CardObjectCtl *node;
     u8 *hand;
 
     initObjList(D_801D3110, D_801D3120, 0x10, 0xA);
@@ -215,7 +215,7 @@ void setupTripleTriadHands(void) {
         hand = D_801A2C48[player];
         for (slot = 0; slot < 5; slot++) {
             playerType = &D_801A2C70[player];
-            node = (BattleObjectCtl *)allocObjNode(D_801D3110, (s32)updateCardObject);
+            node = (CardObjectCtl *)allocObjNode(D_801D3110, (s32)updateCardObject);
             node->entry = entity;
             entity->cardId = hand[slot];
             entity->state      = CARD_FX_IDLE;
@@ -850,8 +850,8 @@ void activateMenuSubstate(s32 idx, s32 mask, u8 stateByte, s32 suppressFlags) {
  *                  * @c 2 : commit the chosen card. If the destination
  *                          board slot is already occupied (returned >= 0),
  *                          play SFX @c 0x10 and stay; otherwise allocate
- *                          a new battle entity, prime it with
- *                          @ref setBattleObjectAction and @ref commitCardToBoard,
+ *                          a new card object, prime it with
+ *                          @ref setCardObjectAction and @ref commitCardToBoard,
  *                          play SFX 1, and return 2 (placement done).
  *                  * @c 1 : exit (return 0).
  *                  * @c 3 (matches current state) : cancel — play SFX 9,
@@ -906,7 +906,7 @@ s32 updateCardSelectCursor(SubstateMachineNode *p) {
             case 2:
                 if (findCardSlot(2, D_801D335C.field0, D_801D335C.field2) < 0) {
                     s32 entIdx = findCardSlot(p->fieldD, 0, p->snapshot.field2);
-                    setBattleObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
+                    setCardObjectAction(entIdx, 2, D_801D335C.field0, D_801D335C.field2);
                     commitCardToBoard(&D_801D3398, entIdx, D_801D335C.field0, D_801D335C.field2);
                     func_800A233C(1);
                     return 2;
@@ -1019,7 +1019,7 @@ s32 anyCardEffectActive(void) {
  *    @c rsin; on the last frame the cleanup clears @c offY / @c state /
  *    @c field02 and increments @c priority (the byte at @c 0x0E).
  *
- * @param entity Battle object slot being driven this frame.
+ * @param entity Card object being driven this frame.
  */
 void animateCardEffect(TripleTriadCardObject *entity) {
     s32 state;
@@ -1118,7 +1118,7 @@ void animateCardEffect(TripleTriadCardObject *entity) {
  * brighten/dim out of phase with each other as @p angle rotates.
  *
  * The quad spans pixels (spriteX+0xA1, spriteY+0x51) to (+0xDF, +0x8F)
- * relative to the @c BattleAnimNode anchor.
+ * relative to the @c CardAnimNode anchor.
  *
  * @param node     Display-list node providing the screen-space anchor
  *                 (@c spriteX / @c spriteY at offsets 0x14 / 0x18).
@@ -1129,7 +1129,7 @@ void animateCardEffect(TripleTriadCardObject *entity) {
  *                 (8 bytes).
  * @return Pointer past the emitted primitives (@p primBuf + 0x2C).
  */
-u8 *drawCardEffectQuad(BattleAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
+u8 *drawCardEffectQuad(CardAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
     POLY_G4 *poly = (POLY_G4 *)primBuf;
 
     D_801D3390 = ((CVECTOR *)poly) + 1;
@@ -1188,7 +1188,7 @@ u8 *drawCardEffectQuad(BattleAnimNode *node, s32 angle, void *ot, u8 *primBuf) {
  * @param node     Its render node (transform matrix + base position).
  * @param otBucket OT layer the slide-in primitive links into.
  */
-void transformCardEffect(TripleTriadCardObject *entity, BattleAnimNode *node, void *otBucket) {
+void transformCardEffect(TripleTriadCardObject *entity, CardAnimNode *node, void *otBucket) {
     VECTOR scaleVec = func_80098154;
     s32 state = entity->state;
     u8 stateCopy;
@@ -1313,7 +1313,7 @@ TripleTriadBoardSlot *placeCard(TripleTriadBoard *board, s32 cardId, s32 owner, 
 }
 
 /**
- * @brief Place a battle entity's card onto the Triple Triad board.
+ * @brief Place a card object onto the Triple Triad board.
  *
  * Looks up the @c TripleTriadCardObject at @p entityIdx, places its
  * @c cardId (owner taken from @c initFlags & @c TT_OWNER_MASK) at board
@@ -2042,7 +2042,7 @@ s32 searchBestMove(TripleTriadBoard *board, s32 player, AiMove *node, s32 depth)
  *        else advance to state 2.
  *  - @b State @b 2 — animate the placement card (@c D_801D3466) for 15 frames, then
  *    enter state 3.
- *  - @b State @b 3 — set the card object's action (@ref setBattleObjectAction) and
+ *  - @b State @b 3 — set the card object's action (@ref setCardObjectAction) and
  *    commit it to the board (@ref commitCardToBoard).
  *
  * @param a AI turn/placement controller for the current player.
@@ -2120,7 +2120,7 @@ s32 updateAiTurn(AiTurnNode *node) {
             node->sub = 0;
             break;
         case AI_TURN_PLACE:
-            setBattleObjectAction(
+            setCardObjectAction(
                 D_801D3570[D_801D35C0].cards[D_801D3460[0].bestCard].entityIdx, 2,
                 D_801D3460[0].bestCol, D_801D3460[0].bestRow);
             commitCardToBoard(&D_801D3398,

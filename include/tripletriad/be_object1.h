@@ -70,8 +70,8 @@ typedef struct {
 
 typedef struct { u8 r, g, b; } RGB;
 
-/** @brief Battle-state handler signature (entries of @c g_tripleTriadStateHandlers). */
-typedef u8 *(*BattleStateFn)(void);
+/** @brief Triple Triad top-level state-handler signature (entries of @c g_tripleTriadStateHandlers). */
+typedef u8 *(*TripleTriadStateFn)(void);
 
 /** @brief Generic pool-backed list-node header (0xC bytes). Type-specific nodes
  *  (e.g. @c HandlerNode) extend this; the pool allocator/iterator only touches
@@ -96,7 +96,7 @@ typedef struct {
     s16          count;   /* 0xE — node count */
 } ObjList;
 
-/** @brief Battle-state handler node: sub-state selector, frame counter, and
+/** @brief Triple Triad state-handler node: sub-state selector, frame counter, and
  *  phase bit (which side the card is showing). Shared between the card-flip
  *  handler (be_object1.c) and the match-flow driver (be_object1b.c). */
 typedef struct {
@@ -163,7 +163,7 @@ extern s8            g_fadeCounter;      /**< Display fade counter; counts towar
 extern volatile u16  g_vsyncRate;        /**< Display vsync rate (main-binary global); reset to 100 on TT exit. */
 extern RGB           g_textColor;        /**< Debug-text rgb color. */
 extern u32           g_textPalette[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
-extern BattleStateFn g_tripleTriadStateHandlers[];      /**< Battle-state handler table. */
+extern TripleTriadStateFn g_tripleTriadStateHandlers[];      /**< Triple Triad top-level state-handler table. */
 
 /* ── Entry points defined in be_object1.c (forward-declared for earlier callers) ── */
 extern void resetVramQueue(void);

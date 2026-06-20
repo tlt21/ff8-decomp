@@ -3,10 +3,12 @@
 
 #include "common.h"
 #include "psxsdk/libgpu.h"  /* TSPRT (drawCardOverlaySprite) */
-#include "psxsdk/libgte.h"  /* SVECTOR / MATRIX (CardRenderWork, BattleAnimNode) */
+#include "psxsdk/libgte.h"  /* SVECTOR / MATRIX (CardRenderWork, CardAnimNode) */
 
-/* Types, constants, and globals for the Triple Triad card mini-game
-   (played inside the battle overlay). */
+/* Types, constants, and globals for the Triple Triad card mini-game. Its code
+   is the `tripletriad` overlay, which loads at the same VRAM address
+   (0x80098000) as the `battle` overlay — they are mutually exclusive, not
+   nested. */
 
 /**
  * @brief One slot on the Triple Triad board (8 bytes).
@@ -32,7 +34,7 @@
 typedef struct {
     /* 0x00 */ u16 flags;       /**< See @c TT_CELL_* flag table below. */
     /* 0x02 */ u8  cardId;      /**< Index into @c g_tripleTriadCardStats. */
-    /* 0x03 */ u8  entityIdx;   /**< @c g_tripleTriadCardHands slot index (battle object) driving this cell's animation. */
+    /* 0x03 */ u8  entityIdx;   /**< @c g_tripleTriadCardHands slot index (card object) driving this cell's animation. */
     /* 0x04 */ u8  owner;       /**< Player 0 or 1. */
     /* 0x05 */ u8  element;     /**< Cell element bitmask (board-tile element; 0 = none). */
     /* 0x06 */ s8  elementMod;  /**< FF8 Elemental rule: +1/-1 added to each edge if card's
@@ -255,7 +257,7 @@ extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
 typedef struct {
     /* 0x00 */ MATRIX  mat;   /**< Transform: rotation + translation (t[0..2] = world X/Y/Z). */
     /* 0x20 */ SVECTOR base;  /**< Base position from @c layoutCardSlot; @c pad = OT sort key. */
-} BattleAnimNode;             /* 40 bytes */
+} CardAnimNode;             /* 40 bytes */
 
 /**
  * @brief Per-frame handler context wrapping a @c TripleTriadCardObject.
@@ -269,7 +271,7 @@ typedef struct {
 typedef struct {
     /* 0x00 */ u8           pad00[0x0C];
     /* 0x0C */ TripleTriadCardObject *entry;
-} BattleObjectCtl;
+} CardObjectCtl;
 
 /* drawCardOverlaySprite / animateCardEffect / transformCardEffect prototypes
    live in be_object2.h (their owner). */
@@ -340,9 +342,8 @@ extern TripleTriadCard      g_tripleTriadCardStats[];          /**< Card stats t
 extern TripleTriadDirection g_tripleTriadDirectionOffsets[4];  /**< UP, DOWN, LEFT, RIGHT (see TripleTriadDirection). */
 extern s32                  g_tripleTriadRules;                /**< Active rule flags (TT_RULE_*). */
 
-/* ── Shared battle/render globals ───────────────────────────────────────────
- * Triple Triad runs inside the battle overlay's address space; these symbols
- * are referenced across the be_objectN translation units. */
+/* ── Shared overlay globals ──────────────────────────────────────────────────
+ * Referenced across the be_objectN translation units of the tripletriad overlay. */
 extern s32           g_cardFlipPhase;       /**< Current seat / phase latched at the idle->flip handoff (0/1; -1 = not started). */
 extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame counter (volatile forces lw, not lbu). */
 extern s32           g_tripleTriadInputFlags;       /**< Input-state flags (TT_INPUT_*). */

@@ -419,7 +419,7 @@ SVECTOR *layoutCardSlot(u8 *src, SVECTOR *dst) {
 }
 
 /**
- * @brief Find a battle-object slot in @c g_tripleTriadCardHands matching a search key.
+ * @brief Find a card-object slot in @c g_tripleTriadCardHands matching a search key.
  *
  * @p groupId selects the search:
  *  - @c 0 or @c 1: the active card in that group with the given @p priority.

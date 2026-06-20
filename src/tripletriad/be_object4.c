@@ -89,7 +89,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1C6C);
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1D68);
 
 /**
- * @brief Start or stop a battle object based on its type flag.
+ * @brief Start or stop an SFX entry based on its type flag.
  *
  * Looks up the entry at D_80182E70[a0 * 12], checks bit 0 of byte 0.
  * If set, calls fadeOutSfxFast (stop). Otherwise calls fadeOutSfxSlow (start).
@@ -109,7 +109,7 @@ void func_800A2054(s32 a0) {
 }
 
 /**
- * @brief Reset all 7 battle objects and finalize.
+ * @brief Reset all 7 SFX entries and finalize.
  *
  * Calls fadeOutSfxFast for each of the 7 objects (indices 0-6),
  * then calls func_800A44BC to set D_801D49E2.
@@ -133,7 +133,7 @@ void func_800A20F4(void) {
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2114);
 
 /**
- * @brief Clear all 7 battle objects by calling setSfxEntryParams with zero params.
+ * @brief Clear all 7 SFX entries by calling setSfxEntryParams with zero params.
  *
  * Iterates indices 0-6, calling setSfxEntryParams(i, 0, 0) for each.
  */

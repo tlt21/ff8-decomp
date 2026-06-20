@@ -1597,7 +1597,7 @@ s32 func_800A03DC(void) {
 }
 
 /**
- * @brief Check if any active battle object has a pending action.
+ * @brief Check if any active card object has a pending action.
  *
  * Iterates through 10 entries in D_801D4308 (stride 0x20). For each entry
  * where bit 0 of the word at offset +4 is set and the byte at offset +8

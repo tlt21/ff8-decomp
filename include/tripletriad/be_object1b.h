@@ -5,7 +5,7 @@
 #include "psxsdk/libgte.h"  /* SVECTOR (layoutCardSlot) */
 
 /* Declarations for be_object1b.c (Triple Triad match-flow controller, the
-   per-frame update-list callbacks, and battle-object search helpers). */
+   per-frame update-list callbacks, and card-object search helpers). */
 
 /* ───────────────────────────── Public ──────────────────────────────────── */
 
