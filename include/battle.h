@@ -1055,7 +1055,7 @@ extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
 
 /**
  * @brief 40-byte display node allocated by @c scratchAlloc and chained
- * via @c func_80041274 / @c func_800406A4 / @c func_80040734.
+ * via @c RotMatrixYXZ / @c func_800406A4 / @c func_80040734.
  */
 typedef struct {
     /* 0x00 */ s16 angle;             /**< Rotation/animation angle. */
@@ -1069,9 +1069,7 @@ typedef struct {
 } DispNode;                            /* 0x28 bytes */
 
 extern s32  func_80023B14(s32 idx);
-extern s32  func_8003ED64();
 extern void func_8003F884(SVECTOR *a, SVECTOR *b, s32 wa, s32 wb, SVECTOR *out);
-extern void func_80041274();
 extern void func_80041794(s32 angle, MATRIX *m);
 extern s32  scratchAlloc(s32 size);
 extern void scratchFree(s32 size);

@@ -937,7 +937,7 @@ s32 cardFlipHandler(HandlerNode *node) {
         s32 frame = node->counter;
         if (frame < 60) {
             s32 t = (frame << 12) / 60;
-            s32 sine = func_8003ED64(t / 4);
+            s32 sine = rsin(t / 4);
             g_cardFlipAngles.vx = (u32)t >> 2;
             g_cardFlipAngles.vy = ((g_cardFlipSpin + 0xA000) * sine) >> 12;
             g_cardFlipXform->vec = g_cardFlipUpVec;
@@ -949,7 +949,7 @@ s32 cardFlipHandler(HandlerNode *node) {
             g_cardFlipAngles.vx = (-(d << 10) >> 12) + 0x400;
             g_cardFlipAngles.vy = g_cardFlipSpin + (((-g_cardFlipSpin) * d) >> 12);
             func_8003F884(&g_cardFlipUpVec, &g_cardFlipTarget, 0x1000 - tmp, d, &g_cardFlipXform->vec);
-            d = (func_8003ED64(d / 2) << 4) >> 12;
+            d = (rsin(d / 2) << 4) >> 12;
             g_cardFlipXform->vec.vy -= d;
         } else {
             g_cardFlipAngles.vx = 0;
@@ -977,13 +977,13 @@ s32 cardFlipHandler(HandlerNode *node) {
     }
     case CARD_FLIP_REFLIP: {
         s32 t = (node->counter << 12) / 10;
-        s32 sine = func_8003ED64(t / 4);
+        s32 sine = rsin(t / 4);
         if (node->phase) {
             sine = 0x1000 - sine;
         }
         g_cardFlipXform->vec.vx = ((sine * 0x118) >> 12) - 0x8C;
         g_cardFlipXform->vec.vy = -0x5C;
-        g_cardFlipXform->vec.vz = (-(func_8003ED64(t / 2) << 6) >> 12) + 0x200;
+        g_cardFlipXform->vec.vz = (-(rsin(t / 2) << 6) >> 12) + 0x200;
         node->counter++;
         if (node->counter >= 10) {
             node->state = CARD_FLIP_IDLE;
@@ -993,7 +993,7 @@ s32 cardFlipHandler(HandlerNode *node) {
         break;
     }
     }
-    func_80041274(&g_cardFlipAngles, &g_cardFlipXform->mat);
+    RotMatrixYXZ(&g_cardFlipAngles, &g_cardFlipXform->mat);
     g_cardFlipXform->mat.t[0] = g_cardFlipXform->vec.vx;
     g_cardFlipXform->mat.t[1] = g_cardFlipXform->vec.vy;
     g_cardFlipXform->mat.t[2] = g_cardFlipXform->vec.vz;

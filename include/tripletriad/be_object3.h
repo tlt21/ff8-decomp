@@ -34,7 +34,7 @@ typedef struct {
     /* 0x09 */ u8  field9;
     /* 0x0A */ u8  fieldA;   /**< Owning side. */
     /* 0x0B */ u8  pad0B[5];
-    /* 0x10 */ s16 rotX;     /**< Rotation vector X (passed to func_80041274). */
+    /* 0x10 */ s16 rotX;     /**< Rotation vector X (passed to RotMatrixYXZ). */
     /* 0x12 */ s16 rotY;     /**< Rotation vector Y (card-flip angle). */
     /* 0x14 */ s16 rotZ;     /**< Rotation vector Z. */
     /* 0x16 */ u8  pad16[2];

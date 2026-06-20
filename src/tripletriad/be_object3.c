@@ -24,7 +24,7 @@ typedef struct {
     /* 0x03 */ u8 row;          /**< Row index (cached on init). */
     /* 0x04 */ u8 col;          /**< Column index (cached on init). */
     /* 0x05 */ u8 pad05;
-    /* 0x06 */ u16 field06;     /**< Rotation-vector base fed to func_80041274 (rotX); rotY at 0x08, rotZ at 0x0A. */
+    /* 0x06 */ u16 field06;     /**< Rotation-vector base fed to RotMatrixYXZ (rotX); rotY at 0x08, rotZ at 0x0A. */
     /* 0x08 */ s16 actionId;    /**< Pending action ID; also the card-flip Y-rotation in func_8009EBF4. */
     /* 0x0A */ u16 field0A;
     /* 0x0C */ u8 pad0C[2];
@@ -147,7 +147,7 @@ typedef struct {
 /* GPU/colour helpers used by the fade handler (main-binary primitives). */
 extern void func_800408A4(s32 r, s32 g, s32 b);            /**< Set the interpolation target colour. */
 extern void func_80040918(u8 *startColor, s32 frac, u8 *dst); /**< Lerp startColor -> target by @p frac into @p dst. */
-extern void func_8004D584(u32 *ot, void *prim);            /**< Link a primitive into the OT bucket. */
+/* AddPrim — link a primitive into the OT bucket (psxsdk/libgpu.h). */
 extern void func_8004D724(void *prim, s32 a1, s32 a2, s32 a3); /**< Init the trailing blend-control primitive. */
 
 extern s32 func_8009EBF4(void); /**< Per-frame card slide/scale animation sweep (defined below). */
@@ -222,7 +222,7 @@ s32 func_8009E270(ScriptStateNode *node) {
     }
     prim->field14 = 0xFF;
     prim->field16 = 0x40;
-    func_8004D584(g_otBase + 3, prim);
+    AddPrim(g_otBase + 3, prim);
     g_primCursor = (u8 *)prim + 0x18;
     return 0;
 }
@@ -283,7 +283,7 @@ s32 func_8009E464(ScriptStateNode *node) {
     prim->field12 = 0x3882;
     prim->field14 = 0xFF;
     prim->field16 = 0x40;
-    func_8004D584(g_otBase + 3, prim);
+    AddPrim(g_otBase + 3, prim);
     g_primCursor = (u8 *)prim + 0x18;
     return 0;
 }
@@ -348,7 +348,7 @@ typedef struct {
  * @return 2 once @c done is set, else 0.
  *
  * @note Each layer's last colour store (@c color3) uses a @c volatile cast as a scheduling
- *       barrier: it stops cc1 pulling that store into the @c func_8004D584 jal delay slot, so
+ *       barrier: it stops cc1 pulling that store into the @c AddPrim jal delay slot, so
  *       the slot instead holds the @c g_otBase+3 pointer arithmetic, matching the original.
  */
 s32 func_8009E640(GradientFadeNode *node) {
@@ -415,7 +415,7 @@ s32 func_8009E640(GradientFadeNode *node) {
     prim->color1 = colors[2];
     prim->color2 = colors[1];
     *(volatile u32 *)&prim->color3 = colors[3];
-    func_8004D584(g_otBase + 3, prim);
+    AddPrim(g_otBase + 3, prim);
     prim++;
 
     prim->tag = 0xC000000;
@@ -441,7 +441,7 @@ s32 func_8009E640(GradientFadeNode *node) {
     prim->color1 = colors[2];
     prim->color2 = colors[1];
     *(volatile u32 *)&prim->color3 = colors[3];
-    func_8004D584(g_otBase + 3, prim);
+    AddPrim(g_otBase + 3, prim);
 
     if (node->frame < 0xFF) {
         node->frame++;
@@ -502,7 +502,7 @@ s32 func_8009E904(ScriptStateNode *node) {
         a = a | t | (a << 16);
         *(volatile u32 *)&prim->color = a;
         prim->field12 = 0x3801;
-        func_8004D584(g_otBase + 3, prim++);
+        AddPrim(g_otBase + 3, prim++);
         if (node->field0D >= 0xA) {
             node->state = 1;
             node->field0D = 0;
@@ -516,7 +516,7 @@ s32 func_8009E904(ScriptStateNode *node) {
             t2 = (a2 << 8) | 0x64000000;
             a2 = a2 | t2 | (a2 << 16);
             *(volatile u32 *)&prim->color = a2;
-            func_8004D584(g_otBase + 3, prim++);
+            AddPrim(g_otBase + 3, prim++);
         } else {
             prim->color = 0x64808080;
             prim->field12 = 0x3801;
@@ -528,7 +528,7 @@ s32 func_8009E904(ScriptStateNode *node) {
             prim->width = 0x40;
             prim->field0E = 0x58;
             prim->field14 = 0xFF;
-            func_8004D584(g_otBase + 3, prim++);
+            AddPrim(g_otBase + 3, prim++);
         }
         break;
     }
@@ -619,7 +619,7 @@ s32 func_8009EBF4(void)
                 }
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
-                s0 = func_8003ED64(s0 / 4);
+                s0 = rsin(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
                 layoutCardSlot((u8 *)tmp, &tmp->pos);
@@ -635,7 +635,7 @@ s32 func_8009EBF4(void)
             case 2:
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
-                s0 = func_8003ED64(s0 / 4);
+                s0 = rsin(s0 / 4);
                 tmp->f0 = e->row;
                 tmp->f2 = e->col;
                 layoutCardSlot((u8 *)tmp, &tmp->pos);
@@ -652,7 +652,7 @@ s32 func_8009EBF4(void)
                 frame = ++e->field02;
                 s0 = ((frame & 0xFF) << 12) / 15;
                 e->actionId = (-(s0 << 11) >> 12) + 0x800;
-                s0 = func_8003ED64(s0 / 2);
+                s0 = rsin(s0 / 2);
                 e->posZ = 0x200 - ((s0 << 6) >> 12);
                 if (e->field02 >= 0xF) {
                     e->status = 0;
@@ -661,7 +661,7 @@ s32 func_8009EBF4(void)
                 break;
             }
             if (e->marker != 0xFF) {
-                func_80041274((u8 *)&e->field06, &tmp->mtx);
+                RotMatrixYXZ((u8 *)&e->field06, &tmp->mtx);
                 tmp->mtx.t[0] = e->posX;
                 tmp->mtx.t[1] = e->posY;
                 tmp->mtx.t[2] = e->posZ;
@@ -1213,9 +1213,9 @@ s32 func_8009FC90(ScriptCtx *ctx) {
  * Validates the current slot index in D_801D44FC, allocates a 40-byte
  * @c DispNode via @c scratchAlloc, and initializes it based on the
  * current phase counter (@c D_801D3EB0 / @c D_801D3EB8):
- * - phase < 10:  rotating-arc setup, angle scaled via @c func_8003ED64
+ * - phase < 10:  rotating-arc setup, angle scaled via @c rsin
  * - phase < 300: simple static node (scale = 0x18)
- * - else:        squashed angle via @c func_8003ED64 + phase mirror
+ * - else:        squashed angle via @c rsin + phase mirror
  *
  * On any failure (slot out of range or @c func_80023B14 returns negative),
  * sets @c D_80182E64 = @c -1 and returns 0.
@@ -1239,11 +1239,11 @@ s32 func_8009FED0(void) {
                 s32 v = (newCur << 12) / 10;
                 D_801D3EB0 = newCur;
                 D_801D3EB4 = v;
-                D_801D3EB4 = func_8003ED64(v / 4);
+                D_801D3EB4 = rsin(v / 4);
                 node->unk04 = 0;
                 node->phase = 0;
                 node->angle = 0;
-                func_80041274(node, node->subNode);
+                RotMatrixYXZ(node, node->subNode);
                 {
                     s32 r = D_801D3EB4;
                     node->charType = 0x44;
@@ -1255,7 +1255,7 @@ s32 func_8009FED0(void) {
                 node->unk04 = 0;
                 node->phase = 0;
                 node->angle = 0;
-                func_80041274(node, node->subNode);
+                RotMatrixYXZ(node, node->subNode);
                 node->charType = 0x44;
                 node->scale = 0x18;
                 node->unk24 = 0x200;
@@ -1265,13 +1265,13 @@ s32 func_8009FED0(void) {
                 s32 v;
                 D_801D3EB8 = newScale;
                 rounded = newScale + (s32)((u32)newScale >> 31);
-                v = func_8003ED64(rounded >> 1);
+                v = rsin(rounded >> 1);
                 v = -v;
                 if (v < 0) v += 7;
                 node->angle = v >> 3;
                 node->unk04 = 0;
                 node->phase = (u16)D_801D3EB8;
-                func_80041274(node, node->subNode);
+                RotMatrixYXZ(node, node->subNode);
                 node->charType = 0x44;
                 node->scale = 0x18;
                 node->unk24 = 0x200;
@@ -1370,9 +1370,9 @@ s32 func_800A01DC(FadeObject *obj) {
     func_800408A4(obj->endColor[0], obj->endColor[1], obj->endColor[2]);
     func_80040918(obj->startColor, progress, &prim->r0);
     prim->code = 0x62;
-    func_8004D584(g_otBase + 2, prim);
+    AddPrim(g_otBase + 2, prim);
     func_8004D724((u8 *)prim + 0x10, 1, 1, 0x40);
-    func_8004D584(g_otBase + 2, (u8 *)prim + 0x10);
+    AddPrim(g_otBase + 2, (u8 *)prim + 0x10);
     g_primCursor = (u8 *)prim + 0x18;
     frame = (u16)obj->frame;
     obj->frame = frame + 1;
@@ -1452,7 +1452,7 @@ s32 func_800A03DC(void) {
     m = (MATRIX *)scratchAlloc(0x20);
     for (i = 0; i < 10; i++) {
         cell = &D_801D4308[i];
-        func_80041274(&cell->rotX, m);
+        RotMatrixYXZ(&cell->rotX, m);
         m->t[0] = cell->baseX;
         m->t[1] = cell->baseY;
         m->t[2] = cell->baseZ;
@@ -1460,7 +1460,7 @@ s32 func_800A03DC(void) {
         if (cell->field8) switch (cell->field8) {
         case 1:
             s0 = (cell->field9 << 12) / 30;
-            s0 = func_8003ED64(s0 / 4);
+            s0 = rsin(s0 / 4);
             if (cell->fieldA == 0) {
                 m->t[0] = ((cell->baseX + 0x1A0) * s0 >> 12) - 0x1A0;
             } else {
@@ -1485,7 +1485,7 @@ s32 func_800A03DC(void) {
                 cell->fieldA ^= 1;
             }
             cell->rotY = s0;
-            t = func_8003ED64(s0 / 2);
+            t = rsin(s0 / 2);
             cell->baseZ = 0x200 - ((t << 5) >> 12);
             if ((cell->field9 & 0xFF) >= 0x14) {
                 cell->field8 = 0;
@@ -1501,7 +1501,7 @@ s32 func_800A03DC(void) {
                     playTriadSfx(0x59);
                 }
                 s0 = (s0 << 12) / 30;
-                t = func_8003ED64(s0 / 2);
+                t = rsin(s0 / 2);
                 m->t[0] = cell->baseX + (-cell->baseX * s0 >> 12);
                 m->t[1] = cell->baseY + (-cell->baseY * s0 >> 12) + (-((t * 7) << 4) >> 12);
                 m->t[2] = cell->baseZ + ((0x100 - cell->baseZ) * s0 >> 12);
@@ -1547,7 +1547,7 @@ s32 func_800A03DC(void) {
                     playTriadSfx(0x59);
                 }
                 s0 = (s0 << 12) / 30;
-                t = func_8003ED64(s0 / 2);
+                t = rsin(s0 / 2);
                 m->t[0] = cell->baseX + (-cell->baseX * s0 >> 12);
                 m->t[1] = cell->baseY + (-cell->baseY * s0 >> 12) + (((t * 7) << 4) >> 12);
                 m->t[2] = cell->baseZ + ((0x100 - cell->baseZ) * s0 >> 12);

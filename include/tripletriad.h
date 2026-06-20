@@ -164,7 +164,7 @@ typedef struct {
     /* 0x11 */ u8  param1;       /**< Action parameter 1. */
     /* 0x12 */ u8  param2;       /**< Action parameter 2. */
     /* 0x13 */ u8  pad13;
-    /* 0x14 */ s16 posData[2];   /**< Local position source passed to @c func_80041274. */
+    /* 0x14 */ s16 posData[2];   /**< Local rotation source passed to @c RotMatrixYXZ. */
     /* 0x18 */ s16 field18;
     /* 0x1A */ s16 field1A;
     /* 0x1C */ s16 offX;         /**< Added to node @c baseX to produce world X. */
@@ -245,7 +245,7 @@ extern s32 D_801D35E0[];  /**< Per-card value table, indexed by card id. */
  * @brief 40-byte animation work node allocated by @c scratchAlloc.
  *
  * The first 0x20 bytes are a @c MATRIX (so the GTE setup calls take it
- * directly): @c func_80041274 fills the rotation @c mat.m, and the translation
+ * directly): @c RotMatrixYXZ fills the rotation @c mat.m, and the translation
  * @c mat.t[0..2] holds the element's world X/Y/Z. The low 16 bits of
  * @c mat.t[0]/@c mat.t[1] double as the screen-space sprite anchor read by
  * @c drawCardOverlaySprite. The trailing @c base is the pre-transform position written

@@ -118,7 +118,7 @@ s32 updateCardObject(CardObjectCtl *ctl) {
 
     animateCardEffect(entity);
     layoutCardSlot(&entity->groupId, &node->base);
-    func_80041274(&entity->posData[0], node);
+    RotMatrixYXZ(&entity->posData[0], node);
 
     node->mat.t[0]  = node->base.vx + entity->offX;
     node->mat.t[1]  = node->base.vy + entity->offY;
@@ -127,9 +127,9 @@ s32 updateCardObject(CardObjectCtl *ctl) {
 
     if (entity->angle != 0) {
         if (entity->groupId == 0) {
-            node->mat.t[0] += (func_8003ED64(entity->angle / 4) * 12) >> 12;
+            node->mat.t[0] += (rsin(entity->angle / 4) * 12) >> 12;
         } else {
-            node->mat.t[0] -= (func_8003ED64(entity->angle / 4) * 12) >> 12;
+            node->mat.t[0] -= (rsin(entity->angle / 4) * 12) >> 12;
         }
     }
 
@@ -220,7 +220,7 @@ void setupTripleTriadHands(void) {
  * @param cardId Index into @c g_tripleTriadCardStats.
  * @param flags  Render flags: 0x2 = show ranks, 0x4 = translucent, 0x10 = show
  *               element, 0x20 = dimmed palette, 0x1 = opponent border tint.
- * @param ot     OT bucket pointer for @c func_8004D584 (AddPrim).
+ * @param ot     OT bucket pointer for @c AddPrim (AddPrim).
  * @param out    Output primitive buffer (pre-allocated by the caller).
  * @return       Pointer to the next free primitive slot in @p out.
  *
@@ -253,9 +253,9 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
         transBit = 0;
     }
     card = &g_tripleTriadCardStats[id];
-    func_80040ED4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
+    RotTransPers4(&D_80182C30[0], &D_80182C30[1], &D_80182C30[2], &D_80182C30[3],
                   &work->outXY[0], &work->outXY[1], &work->outXY[2], &work->outXY[3], &work->P, &work->flag);
-    if (func_80040EA4(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
+    if (NormalClip(work->outXY[0], work->outXY[1], work->outXY[2]) >= 0) {
         if (flags & 0x2) {
             SVECTOR *rowAddr;
             s32 i;
@@ -270,7 +270,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                     work->digitVerts[j].vz = rowAddr->vz + D_80182C70[j].vz;
                 }
 
-                func_80040ED4(&work->digitVerts[0], &work->digitVerts[1], &work->digitVerts[2], &work->digitVerts[3],
+                RotTransPers4(&work->digitVerts[0], &work->digitVerts[1], &work->digitVerts[2], &work->digitVerts[3],
                               (s32 *)&((POLY_FT4 *)out)->x0, (s32 *)&((POLY_FT4 *)out)->x1,
                               (s32 *)&((POLY_FT4 *)out)->x2, (s32 *)&((POLY_FT4 *)out)->x3, &work->P, &work->flag);
                 ((POLY_FT4 *)out)->tag = 0x09000000;
@@ -285,7 +285,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                     u8 rank = card->sides[i];
                     setUVWH(anchor, rank * 16, 0, 11, 11);
                 }
-                func_8004D584(ot, ftPrim);
+                AddPrim(ot, ftPrim);
                 anchor++;
             }
         }
@@ -305,7 +305,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                 ftPrim = (POLY_FT4 *)out;
                 ftPrim->tag = 0x09000000;
                 *(u32 *)&ftPrim->r0 = 0x2C808080;
-                func_80040ED4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
+                RotTransPers4(&D_80182CD0[0], &D_80182CD0[1], &D_80182CD0[2], &D_80182CD0[3],
                               (s32 *)&ftPrim->x0, (s32 *)&ftPrim->x1, (s32 *)&ftPrim->x2, (s32 *)&ftPrim->x3,
                               &work->P, &work->flag);
                 ftPrim->tpage = 0xC;
@@ -315,7 +315,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
                     s32 vTop = ((bit / 4) * 16) + 16;
                     setUVWH(ftPrim, uLeft, vTop, 15, 15);
                 }
-                func_8004D584(ot, ftPrim);
+                AddPrim(ot, ftPrim);
                 out = ftPrim + 1;
             }
         }
@@ -329,13 +329,13 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
         setUVWH(ftPrim, (id & 0x1) << 6, ((u8)(id << 5)) & 0xC0, 0x3F, 0x3F);
         ftPrim->clut = (((id >> 1) + 0xC8) << 6) | ((((id & 0x1) << 7) + 0x300) >> 4);
         ftPrim->tpage = ((id >> 3) + 0x10) | 0x80;
-        func_8004D584(ot, ftPrim);
+        AddPrim(ot, ftPrim);
         out = ftPrim + 1;
         {
             u32 color0;
             u32 color1;
             u32 color2;
-            func_80040ED4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
+            RotTransPers4(&D_80182C50[0], &D_80182C50[1], &D_80182C50[2], &D_80182C50[3],
                           (s32 *)&((POLY_G4 *)out)->x0, (s32 *)&((POLY_G4 *)out)->x1,
                           (s32 *)&((POLY_G4 *)out)->x2, (s32 *)&((POLY_G4 *)out)->x3, &work->P, &work->flag);
             ((POLY_G4 *)out)->tag = 0x08000000;
@@ -358,7 +358,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
             *(u32 *)&((POLY_G4 *)out)->r2 = color2;
             *(u32 *)&((POLY_G4 *)out)->r3 = color2;
             do { argP = gPrim; } while (0); /* BB boundary: block the front/back AddPrim cross-jump */
-            func_8004D584(ot, argP);
+            AddPrim(ot, argP);
             out = gPrim + 1;
         }
     } else {
@@ -372,7 +372,7 @@ void *drawTriadCard(s32 cardId, s32 flags, void *ot, void *out) {
         setUV4(ftPrim, 0x3F, 0xC0, 0, 0xC0, 0x3F, 0xFF, 0, 0xFF);
         ftPrim->tpage = 0x9D;
         ftPrim->clut = 0x3FF0;
-        func_8004D584(ot, ftPrim);
+        AddPrim(ot, ftPrim);
         out = ftPrim + 1;
     }
     scratchFree(sizeof(CardRenderWork));

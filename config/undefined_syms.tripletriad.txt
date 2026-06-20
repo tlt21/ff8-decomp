@@ -30,6 +30,7 @@ SetSprt        = 0x8004D6E4;
 SetDrawTPage   = 0x8004D724;
 NormalClip     = 0x80040EA4;
 RotTransPers4  = 0x80040ED4;
+RotMatrixYXZ   = 0x80041274;
 rsin           = 0x8003ED64;
 rcos           = 0x8003EE34;
 InitGeom       = 0x8003F41C;
