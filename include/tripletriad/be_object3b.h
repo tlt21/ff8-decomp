@@ -17,6 +17,17 @@ extern void hangForever(void);
 
 /* ───────── Private (only used in be_object3b.c; may move into the .c) ────── */
 
+/* Private enums / defines / consts */
+
+/** @brief Phase of the card-claim sequence (@c ClaimCtrlNode.state in @ref updateClaimController). */
+enum TriadClaimPhase {
+    CLAIM_PHASE_FADE_IN  = 0,  /**< Fade to black, then branch on the claim selector. */
+    CLAIM_PHASE_CLAIM    = 1,  /**< Spawn and run the chosen claim handler. */
+    CLAIM_PHASE_CLEANUP  = 2,  /**< Spawn and run the capture/cleanup sweep. */
+    CLAIM_PHASE_GATE     = 3,  /**< Poll the confirm message gate; stage the result. */
+    CLAIM_PHASE_FADE_OUT = 4   /**< Fade to white, then finish (return 2). */
+};
+
 /* Private typedefs */
 
 /**

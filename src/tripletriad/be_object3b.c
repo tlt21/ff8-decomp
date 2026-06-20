@@ -38,7 +38,7 @@ s32 updateClaimController(ClaimCtrlNode *node)
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case CLAIM_PHASE_FADE_IN:
             if (node->subState == 0) {
                 startFadeToBlack(0xF);
             }
@@ -47,18 +47,18 @@ s32 updateClaimController(ClaimCtrlNode *node)
                 return 0;
             }
             if (g_sweepTarget >= 0) {
-                nextState = 1;
+                nextState = CLAIM_PHASE_CLAIM;
             } else if (g_sweepTarget == -1) {
-                nextState = 2;
+                nextState = CLAIM_PHASE_CLEANUP;
             } else {
-                node->state = 3;
+                node->state = CLAIM_PHASE_GATE;
                 node->subState = 0;
                 break;
             }
             node->state = nextState;
             node->subState = 0;
             break;
-        case 1:
+        case CLAIM_PHASE_CLAIM:
             if (node->subState == 0) {
                 mode = D_801A2C44;
                 modeMax = 4;
@@ -99,10 +99,10 @@ s32 updateClaimController(ClaimCtrlNode *node)
             if (D_801D444C == 0) {
                 return 0;
             }
-            node->state = 2;
+            node->state = CLAIM_PHASE_CLEANUP;
             node->subState = 0;
             break;
-        case 2:
+        case CLAIM_PHASE_CLEANUP:
             if (node->subState == 0) {
                 spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)runCaptureCleanupSweep);
                 actingSeat = g_claimSeat;
@@ -115,10 +115,10 @@ s32 updateClaimController(ClaimCtrlNode *node)
             if (g_sweepDone == 0) {
                 return 0;
             }
-            node->state = 3;
+            node->state = CLAIM_PHASE_GATE;
             node->subState = 0;
             break;
-        case 3:
+        case CLAIM_PHASE_GATE:
             if (node->subState == 0) {
                 node->result = 6;
             } else {
@@ -135,10 +135,10 @@ s32 updateClaimController(ClaimCtrlNode *node)
                     return 0;
                 }
             }
-            node->state = 4;
+            node->state = CLAIM_PHASE_FADE_OUT;
             node->subState = 0;
             break;
-        case 4:
+        case CLAIM_PHASE_FADE_OUT:
             if (node->subState == 0) {
                 startFadeToWhite(0xF);
             }
