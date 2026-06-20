@@ -12,6 +12,7 @@
 #define BATTLE_ENTITY_FLAG_BIT_11  (1 << 11) /* 0x800     */
 #define BATTLE_ENTITY_FLAG_BIT_13  (1 << 13) /* 0x2000    */
 #define BATTLE_ENTITY_FLAG_BIT_14  (1 << 14) /* 0x4000    */
+#define BATTLE_ENTITY_FLAG_BIT_15  (1 << 15) /* 0x8000    */
 #define BATTLE_ENTITY_FLAG_BIT_17  (1 << 17) /* 0x20000   */
 #define BATTLE_ENTITY_FLAG_BIT_19  (1 << 19) /* 0x80000   */
 #define BATTLE_ENTITY_FLAG_BIT_20  (1 << 20) /* 0x100000  */
@@ -47,7 +48,7 @@ u16 func_8009BAC4(s32 arg0, u16 arg1) {
     result = func_800B0F9C(D_80078E00.unk3737[arg0].val) 
            | func_800B0F7C(D_80078E00.unk3737[arg0].val);
     
-    if (result & 0x8000) {
+    if (result & BATTLE_ENTITY_FLAG_BIT_15) {
         return result;
     }
     
@@ -400,7 +401,7 @@ void func_8009C798(s32 arg0, s32 arg1, s32 arg2) {
 void func_8009C8B8(s32 arg0, s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     D_800EEBC4 &= 0xFBFFFFFF;
     
-    if (D_800EEBC4 & 0x8000) {
+    if (D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_15) {
         func_8009C6E4(arg1, arg2, arg4);
         D_800EEBC4 &= 0xFFFF7FFF;
     }
@@ -1122,7 +1123,7 @@ s32 func_8009E684(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     u8 temp_a1;
     u8 temp_s0;
 
-    if (!(D_800ED148.entities[arg1].controlFlags & 0x8000)) {
+    if (!(D_800ED148.entities[arg1].controlFlags & BATTLE_ENTITY_FLAG_BIT_15)) {
         temp_s0 = D_800EEBBA;
         
         if (func_8009B15C() < temp_s0) {
