@@ -8,6 +8,10 @@
    Populated as functions/data are decompiled — move the file-scope externs,
    typedefs, and prototypes out of be_object4.c into here as you go. */
 
+/* Public data */
+extern u8 g_cardDetailMsg[];    /**< Work buffer for the card-detail popup message (built by showCardDetail). */
+extern u8 g_cardDetailSuffix[]; /**< String appended after the card name in the detail message. */
+
 /* Public prototypes */
 /** @brief Queue a Triple Triad sound effect (center pan, full volume). */
 extern void playTriadSfx(s32 sfxId);

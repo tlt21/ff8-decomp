@@ -359,8 +359,7 @@ extern s32 g_lastActiveSlot;     /**< Last-active slot index (-1 = none). */
 /* Private prototypes — be_object3.c internal forward declaration */
 extern s32 updateScriptCardAnims(void); /**< Per-frame card slide/scale animation sweep. */
 
-/* Prototypes imported by be_object3.c / be_object3b.c. */
-extern void func_80047C74(u8 *dst, u8 *src); /**< Append a string to the work buffer. */
+/* Prototype imported by be_object3.c / be_object3b.c. */
 extern s32  func_800A20F4(s32 a0);           /**< Poll the player-input gate: <0 = still
                                                   waiting, 0 or 1 = the player's decision. */
 

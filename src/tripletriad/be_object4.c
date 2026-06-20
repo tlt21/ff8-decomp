@@ -1,4 +1,6 @@
 #include "common.h"
+#include "item.h"
+#include "psxsdk/libc.h"
 #include "psxsdk/libgpu.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object4.h"
@@ -130,7 +132,35 @@ void func_800A20F4(void) {
     func_8002CE84();
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", showCardDetail);
+/**
+ * @brief Show the card-detail popup for a card.
+ *
+ * When the player owns at least one copy (count > 0) it shows the card's name
+ * directly. Otherwise it builds the detail message in @c g_cardDetailMsg — a 6
+ * header byte, a type byte (@c 0x22 when the owned count is exactly 0, @c 0x25
+ * when it is negative), the card name, then @c g_cardDetailSuffix — and shows that.
+ *
+ * @param cardId Card index (into @c g_tripleTriadCardCounts and the name table).
+ */
+void showCardDetail(s32 cardId) {
+    s32 count = g_tripleTriadCardCounts[cardId];
+
+    if (count > 0) {
+        func_800A1D68(0, func_80023A54(cardId), 1);
+    } else if (count == 0) {
+        g_cardDetailMsg[0] = 6;
+        g_cardDetailMsg[1] = 0x22;
+        strcpy((char *)&g_cardDetailMsg[2], func_80023A54(cardId));
+        func_80047C74(g_cardDetailMsg, g_cardDetailSuffix);
+        func_800A1D68(0, g_cardDetailMsg, 1);
+    } else {
+        g_cardDetailMsg[0] = 6;
+        g_cardDetailMsg[1] = 0x25;
+        strcpy((char *)&g_cardDetailMsg[2], func_80023A54(cardId));
+        func_80047C74(g_cardDetailMsg, g_cardDetailSuffix);
+        func_800A1D68(0, g_cardDetailMsg, 1);
+    }
+}
 
 /**
  * @brief Clear all 7 SFX entries by calling setSfxEntryParams with zero params.

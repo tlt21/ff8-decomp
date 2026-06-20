@@ -128,7 +128,7 @@ extern u8           *g_textFbPtr;
 extern u8           *g_textOtPtr;
 extern u8           *g_tripleTriadActiveList;
 extern u8            g_hexDigits[];
-extern u8            g_tripleTriadCardCounts[];
+extern s8            g_tripleTriadCardCounts[];  /**< Per-card owned count (signed; <0 = not in collection). */
 
 /* ── Debug text / misc state ──────────────────────────────────────────────── */
 extern s32           g_vramQueueCount;
