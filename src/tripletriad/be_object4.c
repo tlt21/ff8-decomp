@@ -46,6 +46,8 @@ extern s32 sndCmd11(s32 arg0);
 extern s16 sndCmd10(s32 bank);
 extern s32 sndCmdC0(s32 channel, s32 value);
 extern void func_800485C4(void *dst, void *src, s32 size);
+extern DR_AREA *func_8002B898(P_TAG *ot, DR_AREA *prim, RECT *rect, s32 color);
+extern DR_AREA *func_8002B8BC(P_TAG *ot, DR_AREA *prim, RECT *rect, s32 color, s32 a4);
 extern u8  g_battleConfig[];   /**< Shared battle config; [9] bit 0 = sound-bank selector. */
 extern u8  D_80082C11;         /**< Sound-bank selector flag (same byte as g_battleConfig[9]). */
 extern u8  D_8005F388[];       /**< Sound-bank buffer A. */
@@ -534,20 +536,23 @@ DR_AREA *func_800A3248(P_TAG *ot, DR_AREA *prim, RECT *srcRect) {
  * @param ot   Ordering-table slot passed through to @c func_800A3248.
  * @param prim Primitive storage passed through to @c func_800A3248.
  * @param rect Rect to inset (x, y, w, h); saved and restored before return.
+ * @return The advanced packet cursor from @c func_800A3248.
  */
-void func_800A3320(P_TAG *ot, DR_AREA *prim, RECT *rect) {
+DR_AREA *func_800A3320(P_TAG *ot, DR_AREA *prim, RECT *rect) {
     /* Save/restore the rect as its two 32-bit words (x|y, w|h) so the inset is
        cheaply reversible. */
     s32 *words = (s32 *)rect;
     s32 saved0 = words[0];
     s32 saved1 = words[1];
+    DR_AREA *result;
     rect->x += 1;
     rect->y += 1;
     rect->w -= 2;
     rect->h -= 2;
-    func_800A3248(ot, prim, rect);
+    result = func_800A3248(ot, prim, rect);
     words[0] = saved0;
     words[1] = saved1;
+    return result;
 }
 
 /**
@@ -591,7 +596,42 @@ void func_800A3398(s32 scale, RECT *in, RECT *out) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A343C);
+/**
+ * @brief Scale the cursor's view rectangle and render the framed result.
+ *
+ * Uses @c abs(scale) as a fixed-point factor (@c 0x1000 == 1.0). When non-zero,
+ * scales @c D_801D49C8.view into @c D_801D49C8.work via @c func_800A3398, then
+ * renders the frame with the packed color: the two fill passes (@c func_8002B898
+ * over the work rect, @c func_8002B8BC over the view rect), bracketed — when the
+ * scale is below 1.0 — by the inset and clamped draw-area borders
+ * (@c func_800A3320 before, @c func_800A3248 after).
+ *
+ * @param ot    Ordering-table slot for the primitives.
+ * @param prim  Current packet cursor.
+ * @param scale Fixed-point scale factor (@c 0x1000 == 1.0); its sign is ignored.
+ * @return The advanced packet cursor.
+ */
+DR_AREA *func_800A343C(P_TAG *ot, DR_AREA *prim, s32 scale) {
+    s32 absScale = scale;
+    s32 color;
+    DR_AREA *result;
+
+    color = D_801D49C8.packedColor;
+    absScale = absScale >= 0 ? absScale : -absScale;
+
+    if (absScale != 0) {
+        func_800A3398(absScale, &D_801D49C8.view, &D_801D49C8.work);
+        if (absScale < 0x1000) {
+            prim = func_800A3320(ot, prim, &D_801D49C8.work);
+        }
+        result = func_8002B898(ot, prim, &D_801D49C8.work, color);
+        prim = func_8002B8BC(ot, result, &D_801D49C8.view, color, 8);
+        if (absScale < 0x1000) {
+            prim = func_800A3248(ot, prim, &D_801D49C8.work);
+        }
+    }
+    return prim;
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3528);
 
