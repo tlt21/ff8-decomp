@@ -62,9 +62,12 @@ extern s16 D_801D4B18;
 extern s16 D_801D4B1A;
 extern u16 D_801D4AF8[2][4]; /**< Per-(entity,side) previous edge flags (see func_800A29D4). */
 extern s16 D_801D4B08[2][4]; /**< Per-(entity,side) edge countdown timer (see func_800A29D4). */
-extern s32 D_801D4B20[];
-extern s32 D_801D4B28[];
-extern s32 D_801D4B30[];
+extern s32 D_801D4B20[]; /**< Per-controller current held-button mask. */
+extern s32 D_801D4B28[]; /**< Per-controller auto-repeat mask. */
+extern s32 D_801D4B30[]; /**< Per-controller newly-pressed mask. */
+extern s32 D_801D4B24;   /**< = D_801D4B20[1] (player 2); split symbol for the readPads write. */
+extern s32 D_801D4B2C;   /**< = D_801D4B28[1] (player 2). */
+extern s32 D_801D4B34;   /**< = D_801D4B30[1] (player 2). */
 extern s32 g_menuColor[];
 extern SfxConfig D_80182E70[];
 extern u8 D_80182EC8[];
@@ -82,6 +85,11 @@ extern void renderAndUpdateDisplay(s32 mode);
 extern s32  renderBattleDisplayList(u32 *ot);
 extern void func_800281A4(s32 entity, s32 side, s32 value);
 extern s32  func_800300F8(s32 renderCtx, s32 prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
+extern void func_800275D4();                          /**< Refresh the raw controller buffers. */
+extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-frame parameter. */
+extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask. */
+extern s32  func_80027DB4(s32 a, s32 b, s32 c);       /**< Read an analog axis (b: 2 = X, 3 = Y). */
+extern s32  func_80027CF8(s32 a, s32 b, s32 c);       /**< Fold a recentred analog stick into d-pad bits. */
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
@@ -445,9 +453,11 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A29D4);
  *
  * @param entryIndex Index of the entity in @c g_battleAnims to evaluate.
  * @param arg1       Per-edge value forwarded to @c func_800A29D4.
- * @return Combined 16-bit result mask from the four edge evaluations.
+ * @return Combined 16-bit result mask from the four edge evaluations. Typed @c s32
+ *         (not @c u16) because @c readPads re-masks the value, which requires the
+ *         caller to not assume it is already 16-bit-clean.
  */
-u16 func_800A2A8C(s32 entryIndex, u16 arg1)
+s32 func_800A2A8C(s32 entryIndex, u16 arg1)
 {
     BattleAnimEntity *link = &g_battleAnims.entities[g_battleAnims.entities[entryIndex].linkedIdx];
     u16 result = 0;
@@ -475,7 +485,52 @@ s32 getPadRepeat(s32 a0) {
     return D_801D4B28[a0];
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", readPads);
+/**
+ * @brief Sample both controllers and update the per-pad input state.
+ *
+ * For each of the two controllers, reads the raw button mask, and when no d-pad
+ * direction is held (no 0xF000 bits) and the analog stick is valid, folds the
+ * analog stick — recentred around 0x80 — into directional bits. The result is
+ * recorded per controller as the current held mask (@c D_801D4B20[n]), the
+ * newly-pressed mask (@c D_801D4B30[n], bits set this frame but not last), and
+ * the auto-repeat mask (@c D_801D4B28[n], via @c func_800A2A8C).
+ *
+ * @note The player-2 writes go through the split element symbols
+ *       (@c D_801D4B24 / @c D_801D4B2C / @c D_801D4B34, each the [1] element of
+ *       its array) so the compiler re-emits a fresh address rather than reusing
+ *       player 1's base pointer.
+ */
+void readPads(void)
+{
+    s32 padRaw;
+    s32 oldPad;
+    s32 held;
+    s32 repeat;
+
+    func_800275D4();
+
+    padRaw = func_80030F10(getAnimFrameParam(0, 0));
+    oldPad = D_801D4B20[0];
+    held = func_80027DB4(0, 2, 0);
+    if (!(padRaw & 0xF000) && held >= 0) {
+        padRaw |= func_80027CF8(0, held - 0x80, func_80027DB4(0, 3, 0) - 0x80);
+    }
+    D_801D4B20[0] = padRaw;
+    D_801D4B30[0] = (padRaw ^ oldPad) & padRaw;
+    repeat = func_800A2A8C(0, padRaw & 0xFFFF) & 0xFFFF;
+    D_801D4B28[0] = repeat;
+
+    padRaw = func_80030F10(getAnimFrameParam(1, 0));
+    oldPad = D_801D4B20[1];
+    held = func_80027DB4(1, 2, 0);
+    if (!(padRaw & 0xF000) && held >= 0) {
+        padRaw |= func_80027CF8(0, held - 0x80, func_80027DB4(1, 3, 0) - 0x80);
+    }
+    D_801D4B24 = padRaw;
+    D_801D4B34 = (padRaw ^ oldPad) & padRaw;
+    repeat = func_800A2A8C(1, padRaw & 0xFFFF) & 0xFFFF;
+    D_801D4B2C = repeat;
+}
 
 /**
  * @brief Reset the Triple Triad per-edge animation state for both entities.
