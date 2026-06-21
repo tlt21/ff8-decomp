@@ -8,6 +8,12 @@ g_addCardEdge  = 0x801D3E76;
 /* Result-screen SFX node handle (be_object1b.c matchFlowHandler). */
 g_resultSfxHandle = 0x801D3018;
 
+/* Shared battle-animation state (main RAM). The Triple Triad board reuses the
+   battle-animation entities to drive its card animations, so be_object4.c's
+   decompiled C references it by its canonical name. The auto symbol list still
+   carries the D_80082DD0 alias at the same address for func_800A29D4's INCLUDE_ASM. */
+g_battleAnims = 0x80082DD0;
+
 /* Triple Triad state-handler dispatch table. The base (0x800A4588) overlaps
    func_800A4504's last word, so it can't be a symbol_addrs label (splat would
    split the function); a linker assignment defines it without touching the
