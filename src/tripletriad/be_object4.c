@@ -19,11 +19,8 @@ typedef struct {
  * fields; func_800A44CC resets the cursor; func_800A390C runs the per-frame
  * cursor/timer state machine. */
 typedef struct {
-    /* 0x00 */ s16 x;            /**< View X position. */
-    /* 0x02 */ s16 y;            /**< View Y position. */
-    /* 0x04 */ s16 w;            /**< View width. */
-    /* 0x06 */ s16 h;            /**< View height. */
-    u8 pad08[8];
+    /* 0x00 */ RECT view;        /**< Board view rectangle (position + size). */
+    /* 0x08 */ RECT work;        /**< Scratch rectangle scaled from @ref view (see func_800A343C). */
     /* 0x10 */ s32 packedColor;  /**< Packed RGB+0x64 brightness (see func_800A4478). */
     /* 0x14 */ s16 slideOffset;  /**< Fixed-point row-slide animation offset. */
     /* 0x16 */ u8 row;           /**< Current cursor row. */
@@ -859,11 +856,11 @@ void func_800A44CC(void) {
  * @param a1 View Y position.
  */
 void func_800A4504(s32 a0, s32 a1) {
-    D_801D49C8.x = a0;
-    D_801D49C8.w = 0xA1;
-    D_801D49C8.h = 0x9F;
+    D_801D49C8.view.x = a0;
+    D_801D49C8.view.w = 0xA1;
+    D_801D49C8.view.h = 0x9F;
     D_801D49C8.unk21 = 0xB;
-    D_801D49C8.y = a1;
+    D_801D49C8.view.y = a1;
     D_801D49C8.timerStep = 0;
     D_801D49C8.timer = 0;
     D_801D49C8.cursorPos = 0;
