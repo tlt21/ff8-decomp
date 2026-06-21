@@ -7,10 +7,11 @@
 
 /** @brief One 0x0C-byte entry of the D_80182E70 per-SFX configuration table. */
 typedef struct {
-    /* 0x00 */ u8 flags;   /**< Bit 0 selects the stop-vs-start fade (see func_800A2054). */
-    /* 0x01 */ u8 field2F; /**< Value written to each SFX entry's field 0x2F. */
-    /* 0x02 */ u8 pitch;   /**< Pitch value. */
-    /* 0x03 */ u8 pad03[9];
+    /* 0x00 */ u8 flags;     /**< Bit 0 selects the stop-vs-start fade (see func_800A2054). */
+    /* 0x01 */ u8 field2F;   /**< Value written to each SFX entry's field 0x2F. */
+    /* 0x02 */ u8 pitch;     /**< Pitch value. */
+    /* 0x03 */ u8 fadeTimer; /**< Frame countdown; on reaching 0 the entry is faded out (see func_800A1C6C). */
+    /* 0x04 */ u8 pad04[8];
 } SfxConfig;
 
 /** @brief The Triple Triad board view + cursor state at D_801D49C8.
@@ -84,9 +85,16 @@ extern u8 D_801D49EC;
 extern u8 D_801D4A88[]; /**< Per-cell lookup value, indexed by cursor grid position. */
 extern u8 D_801D4AF6;   /**< Total cell count of the cursor grid (rows of 11). */
 extern TriadEntry D_80082DD0[]; /**< Triple Triad placed-card entry array (stride 0xC4). */
+extern u16 D_801C2EBC;  /**< Idle-state input snapshot fed to the cursor state machine. */
+extern u16 D_801C2EC4;  /**< Slide-state input snapshot fed to the cursor state machine. */
+extern s32 g_cardDisplaySlot;   /**< Current card-display slot index (-1 when none). */
+extern void renderAndUpdateDisplay(s32 mode);
+extern s32  renderBattleDisplayList(u32 *ot);
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(TriadEntry *base, TriadEntry *elem, u16 arg1, s32 side, s32 entryIndex);
+extern s32 func_800A390C(s32 flags0, s32 flags1); /**< Cursor/timer state machine; defined below. */
+extern s32 func_800A443C(s32 a0);                 /**< VSync-locked display-list apply; defined below. */
 extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
 
 /**
@@ -111,7 +119,44 @@ void func_800A1BE0(void)
     }
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1C6C);
+/**
+ * @brief Per-frame Triple Triad hand-build/display update.
+ *
+ * While hand-building input is active (@ref TT_INPUT_HAND_BUILD), drives the
+ * cursor state machine with the current input snapshots and records the
+ * resulting card-display slot; otherwise idles the state machine and clears the
+ * slot. Then refreshes the display, renders the battle ordering table, and
+ * counts down each SFX entry's fade timer — firing a fast or slow fade-out (per
+ * the entry's flag bit 0) on the frame a timer reaches zero.
+ */
+void func_800A1C6C(void)
+{
+    s32 i;
+
+    if (g_tripleTriadInputFlags & TT_INPUT_HAND_BUILD) {
+        g_cardDisplaySlot = func_800A390C(D_801C2EBC, D_801C2EC4);
+    } else {
+        func_800A390C(0, 0);
+        g_cardDisplaySlot = -1;
+    }
+
+    renderAndUpdateDisplay(1);
+    renderBattleDisplayList(g_otBase);
+    func_800A443C((s32)&g_otBase[1]);
+
+    for (i = 0; i < 7; i++) {
+        if (D_80182E70[i].fadeTimer != 0) {
+            D_80182E70[i].fadeTimer--;
+            if (D_80182E70[i].fadeTimer == 0) {
+                if (D_80182E70[i].flags & 1) {
+                    fadeOutSfxFast(i);
+                } else {
+                    fadeOutSfxSlow(i);
+                }
+            }
+        }
+    }
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1D68);
 
