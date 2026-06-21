@@ -1333,7 +1333,26 @@ void func_8009F168(s32 arg0, s32 arg1) {
     addCharMaxHp(arg0, D_80078E00.unk4C0A[arg1].maxHP);
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F23C);
+s32 func_8009F23C(s32 arg0, s32 arg1) {
+    s32 var_s2;
+    s32 temp_a3;
+
+    temp_a3 = D_80078E00.unk4C0A[D_800ED148.unk1327].unk4;
+    var_s2 = D_800ED148.entities[arg1].field2C * temp_a3 / 16;
+    
+    switch (D_80078E00.unk4C0A[D_800ED148.unk1327].unk3) {
+    case 30:
+        D_800EE4C0.flags6 |= 1;
+        func_8009DD2C(arg1, temp_a3, D_800EEBC2, D_800EEBC4);
+        func_8009F168(arg1, D_800ED148.unk1327);
+        break;
+    case 31:
+        func_8009C8B8(1, arg0, arg1, temp_a3, var_s2);
+        break;
+    }
+    
+    return var_s2;
+}
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F350);
 

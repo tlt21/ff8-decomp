@@ -487,7 +487,7 @@ typedef struct {
     /* 0x1324 */ u8 unk1324; 
     /* 0x1325 */ u8 unk1325; 
     /* 0x1326 */ u8 unk1326; 
-    /* 0x1327 */ u8 unk1327; 
+    /* 0x1327 */ u8 unk1327;
     /* 0x1328 */ u8 unk1328; 
     /* 0x1329 */ u8 unk1329;
 } BattleSystem; /* 0x132A */
@@ -737,10 +737,12 @@ typedef struct {
  * at address 0x4C16 and 0x4C17 (func_8009F168) 
  */
 typedef struct {
-    u8 pad0[0xA]; 
-    u8 flags; /* 0xA */
-    u8 maxHP; /* 0xB */
-    
+    u8 pad0[0x2];
+    u8 unk3;
+    u8 unk4;
+    u8 pad5[0x6];
+    u8 flags;  /* 0xA */
+    u8 maxHP;  /* 0xB */
 } Struct_4C0A; /* 0xC */
 
 
@@ -831,6 +833,7 @@ extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
 extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456;     /**< 0x800EE456: status flags byte. */
+extern u8 D_800EE45D;
 extern u8 D_800EE46E;
 extern u8 D_800EE476;     /**< 0x800EE476: entity index latch. */
 
