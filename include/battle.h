@@ -738,13 +738,14 @@ typedef struct {
  * this struct must be 0xC size, flags and maxHP must be accessed 
  * at address 0x4C16 and 0x4C17 (func_8009F168) 
  */
+
 typedef struct {
-    u8 pad0[0x2];
-    u8 unk3;
-    u8 unk4;
+    u16 lookupId;/*0x4C0C*/
+    u8 unk3; // 0x4C0E
+    u8 unk4; // 0x4C0F
     u8 pad5[0x6];
-    u8 flags;  /* 0xA */
-    u8 maxHP;  /* 0xB */
+    u8 flags;  /* 0x4C16 */
+    u8 maxHP;  /* 0x4C17 */
 } Struct_4C0A; /* 0xC */
 
 
@@ -762,7 +763,9 @@ typedef struct {
     /* 0x00A4 */ s32 entriesA0Arg;              /**< resolveKernelPtr arg paired with entriesA0[]. */
     /* 0x00A8 */ u8 pad00A8[0x2C];
     /* 0x00D4 */ s32 rows8Arg;                  /**< resolveKernelPtr arg paired with rows8[]. */
-    /* 0x00D8 */ u8 pad00D8[0x14E];
+    /* 0x00D8 */ u8 pad00D8[4];                
+    /* 0x00DC */ s32 unk4C0AArg;                /**< resolveKernelPtr arg paired with unk4C0A[]. */
+    /* 0x00E0 */ u8 pad00E0[0x146]; 
     /* 0x0226 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
     /* 0x0262 */ u8 pad0262[0xD16];
     /* 0x0F78 */ BattleSceneRow rows132[1];     /**< 132-byte stride (size unknown, index past). */
@@ -882,6 +885,7 @@ extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
 extern u8 D_800EEBBF;
 extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
+extern u8  D_800EE470;      /*   0x800EE470: used in func_8009F040*/
 extern u8  D_800EE471;
 extern u8  D_800EE4C4;
 extern u16 D_80077E5C;

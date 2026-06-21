@@ -1313,7 +1313,43 @@ s32 func_8009EF64(s32 arg0, s32 unused, s32 unused2, s32 arg3) {
     return 1; 
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F040);
+u8 func_8009F040(s32 arg0, s32 arg1) {
+    s32 entity0;
+    s32 entity1;
+    
+
+    entity0 = D_800ED148.entities[arg0].field28;
+    entity1 = D_800ED148.entities[arg1].field28;
+    
+    if (entity0 >= entity1) {
+        if (func_8009B79C(((entity0 - entity1) * 255 / entity0), 255) != 0) {
+            D_800ED148.entities[arg1].flags |= 0x10000;
+            D_800ED148.unk1326 = 1;
+            D_800EE4C0.flags5 |= 1;
+            
+        
+            func_800A4320(resolveKernelPtr(
+                D_80078E00.unk4C0A[D_800ED148.unk1327].lookupId, 
+                D_80078E00.unk4C0AArg, 
+                &D_80078E00
+            ));
+        }
+            
+        else {
+            D_800ED148.unk1326 = 0;
+            D_800ED148.unk1328 = 8;
+            D_800EE4C0.flags6 |= 4;
+        }
+    }
+        
+    else {
+        D_800ED148.unk1326 = 0;
+        D_800ED148.unk1328 = 8;
+        D_800EE4C0.flags6 |= 4;
+    }
+
+    return D_800EE470;
+}
 
 void func_8009F168(s32 arg0, s32 arg1) {
     u8 temp_s0;
