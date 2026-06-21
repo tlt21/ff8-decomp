@@ -478,7 +478,9 @@ typedef struct {
     /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
     /* 0x1312 */ u8 actionByte0;                /**< Queued action arg 0 (stat ID for type 1). */
     /* 0x1313 */ u8 actionByte1;                /**< Queued action arg 1 (count for type 1). */
-    /* 0x1314 */ u8 pad1314[3];                 /**< More misc state. */
+    /* 0x1314 */ u8 unk1314;  
+    /* 0x1315 */ u8 unk1315;  
+    /* 0x1316 */ u8 unk1316;
     /* 0x1317 */ u8 unk1317;
     /* 0x1318 */ u8 unk1318;
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */

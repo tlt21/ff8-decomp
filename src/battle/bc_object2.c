@@ -1118,7 +1118,7 @@ void func_8009E5C0(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
     func_800A4320(func_800B02AC(func_800B0248(temp_s1, *getMenuString(0xB), func_800B04A0(var_s2, &sp10))));
 }
 
-s32 func_8009E684(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+s32 func_8009E684(s32 unused, s32 arg1, s32 arg2, s32 arg3) {
     s32 var_a0;
     u8 temp_a1;
     u8 temp_s0;
@@ -1271,9 +1271,22 @@ void func_8009EAEC(s32 charIdx) {
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009ED2C);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EE44);
+void func_8009EE44(s32 unused, s32 arg1) {
+    u8* temp_s0_2;
+    u8* temp_s1_2;
 
-s32 func_8009EF64(s32 arg0, s32 arg1, s32 arg2, s32 arg3) {
+    if (D_800ED148.unk1315 == 255) {
+        D_800EE4C0.flags6 |= 4;
+        return;
+    }
+    D_800ED148.entities[arg1].flags |= 0x10000;
+    D_800EE4C0.flags5 |= 1;
+    temp_s0_2 = func_800B0248(getMenuString(9), *getMenuString(0xB), getMenuString(0x47));
+    temp_s1_2 = func_800B0248(temp_s0_2, 7, func_80023A54(D_800ED148.unk1315));
+    func_800A4320(func_800B02AC(func_800B0248(temp_s1_2, *getMenuString(0xB), getMenuString(0x10))));
+}
+
+s32 func_8009EF64(s32 arg0, s32 unused, s32 unused2, s32 arg3) {
     BattleEntityData* curr;
 
     curr = D_800ED148.entities[arg0].linkedPtr->data;
