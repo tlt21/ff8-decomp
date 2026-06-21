@@ -513,7 +513,43 @@ void func_800A2D34(void)
     func_800281A4(1, 3, 0x900);
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2E44);
+/**
+ * @brief Rebuild the cursor grid's valid-cell list and clamp the cursor into range.
+ *
+ * Scans candidate indices 0..0x6D, and for each one accepted by @c func_80023B14
+ * (returns > 0) appends the index to @c D_801D4A88, recording the running total in
+ * @c D_801D4AF6. The grid is laid out in rows of 11 cells; if the current cursor
+ * position now sits past the last populated row, it is clamped back onto the last
+ * row at the same column (@ref CursorState::cursorPos and @ref CursorState::row).
+ */
+void func_800A2E44(void)
+{
+    CursorState *cs = &D_801D49C8;
+    u8 *dst = D_801D4A88;
+    s32 i;
+    s32 count;
+    s32 gridSize;
+    s16 idx;
+
+    count = 0;
+    for (i = 0; i < 0x6E; i++) {
+        if (func_80023B14(i) > 0) {
+            *dst = i;
+            dst++;
+            count++;
+        }
+    }
+    D_801D4AF6 = count;
+
+    gridSize = (D_801D4AF6 + 0xA) / 11 * 11;
+    idx = (s16)cs->cursorPos;
+    if (idx >= gridSize) {
+        s32 col = idx % 11;
+        s32 row = gridSize / 11 - 1;
+        cs->cursorPos = row * 11 + col;
+        cs->row = row;
+    }
+}
 
 /**
  * @brief Build the geometric falloff table @c D_801D49F8 (each step * 9/10).
