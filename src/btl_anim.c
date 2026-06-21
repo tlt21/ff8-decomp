@@ -5,7 +5,7 @@
 #include "battle.h"
 
 
-u8 *emitDrawEnvPackets(u32 *ot, u8 *pkt);
+u8 *emitDrawEnvPackets(u8 *ot, u8 *pkt);
 void callCdTick(void);
 void shutdownCardSubsystem(void);
 void initBattleSubsystems(void);
@@ -2020,7 +2020,7 @@ void copyDisplayCoords(DVECTOR *dst) {
  * @param pkt GPU packet allocation pointer.
  * @return Updated packet pointer (pkt + 24 bytes: two 12-byte packets).
  */
-u8* emitDrawEnvPackets(u32* ot, u8* pkt) {
+u8 *emitDrawEnvPackets(u8 *ot, u8 *pkt) {
     RECT rect;
     DR_AREA *area;
     DR_OFFSET *offset;
