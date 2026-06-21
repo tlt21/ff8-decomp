@@ -377,9 +377,13 @@ typedef struct {
 
 /** @brief 20-byte action-queue entry in @c BattleSystem.entries. */
 typedef struct {
-    u8 unk_00;
-    u8 pad01[0x13];
-} BattleEntry; /* 0x14 */
+    u8 unk0;       
+    u8 pad01[13];
+    u8 unkE;           
+    u8 pad0F[1];
+    u8 unk10;
+    u8 pad11[3];
+} BattleEntry; /*  0x14 (20 byte) */
 
 /** @brief Linked-list node for the @c BattleSystem.taskLinks queue.
  *
@@ -417,9 +421,9 @@ typedef struct {
     /* 0x05C1 */ u8 pad5C1[0x1];
     /* 0x05C2 */ u8 unk5C2;                     /**< Misc state byte (init to 1 by func_8009A1E0/ACEC). */
     /* 0x05C3 */ u8 unk5C3;                     /**< Misc state byte (init to 1 by func_80099FE8). */
-    /* 0x05C4 */ u8 pad5C4[0x11];
-    /* 0x05D5 */ BattleEntry entries[90];       /**< Action queue (stride 0x14). */
-    /* 0x0CDD */ u8 padCDD[0x7];                /**< Pad to unkCE4. */
+    /* 0x05C4 */ u8 unk5C4;
+    /* 0x05C5 */ BattleEntry entries[90];       /**< Action queue (stride 0x14)*/
+    /* 0x0CDD */ u8 padCDD[0x17];                /**< Pad to unkCE4. */
     /* 0x0CE4 */ BattleVec3u unkCE4[8];         /**< 8-entry x/y/z position table (read by @c func_8009A528). */
     /* 0x0D14 */ u8 unkD14[0x8];                /**< Hit-type byte table (8 entries). */
     /* 0x0D1C */ u8 padD1C[0x40];               /**< Misc state. */

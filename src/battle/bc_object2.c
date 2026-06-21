@@ -81,7 +81,14 @@ s32 func_8009BB3C(s32 a0) {
  *
  * @return Index of matching entry (0-31), or 0 if none found.
  */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BB98);
+s32 func_8009BB98(void) {
+    s32 i;
+    for (i = 0; i < 32; i++) {
+        if (D_800ED148.entries[i].unk0 == 250) {
+            return i;
+        }
+    }
+}
 
 /**
  * @brief Look up entity status and store it to D_800EE4C0 buffer.
@@ -91,16 +98,14 @@ INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BB98);
  * into D_800EE4C0 buffer with command byte 0xF9.
  */
 BattleEntry* func_8009BBD0(void) {
-    s32 idx;
-    BattleEntry* entry;
+    BattleEntry* currentEntry;
 
-    idx = func_8009BB98();
-    entry = &D_800ED70C[idx];
-
-    D_800EE4C0.unk0 = entry->unk_00;
+    currentEntry = &D_800ED70C[func_8009BB98()];
+    D_800EE4C0.unk0 = currentEntry->unk0;
     D_800EE4C0.unk1 = 249;
-    D_800EE4C0.unk3 = ((u8*)D_800ED70C)[0xD6A];
-    return entry;
+    D_800EE4C0.unk3 = D_800ED70C[171].unkE; /* 0xD6A */ 
+
+    return currentEntry;
 }
 
 INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BC28);
