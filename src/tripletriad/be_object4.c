@@ -408,30 +408,58 @@ DR_AREA *func_800A31EC(P_TAG *ot, DR_AREA *prim) {
     return ++prim;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3248);
+/**
+ * @brief Build a clamped, draw-env-relative draw-area primitive and link it.
+ *
+ * Copies the rectangle at @p srcRect, offsets its origin by the active draw
+ * environment's clip origin, and clamps its width and height to a minimum of 2.
+ * It then packs the @c SetDrawArea GP0 command for that rectangle into the
+ * @c DR_AREA at @p prim, links @p prim into the ordering-table slot @p ot via
+ * @c addPrimFast (hand-picked temp @c $s1), and returns the next packet slot.
+ *
+ * Sibling of @c func_800A31EC, which packs the draw env's clip rectangle
+ * directly; this one takes an explicit source rectangle to clamp and offset.
+ *
+ * @param ot      Ordering-table slot to link the primitive into.
+ * @param prim    Storage for the @c DR_AREA primitive.
+ * @param srcRect Source rectangle (offset by the clip origin, then clamped).
+ * @return Cursor for the next primitive (@c prim @c + @c 1).
+ */
+DR_AREA *func_800A3248(P_TAG *ot, DR_AREA *prim, RECT *srcRect) {
+    RECT local = *srcRect;
+    local.x += g_activeDrawEnv->clip.x;
+    local.y += g_activeDrawEnv->clip.y;
+    if (local.w < 2) local.w = 2;
+    if (local.h < 2) local.h = 2;
+    SetDrawArea((u8 *)prim, &local);
+    addPrimFast(ot, prim, s1);
+    return prim + 1;
+}
 
 /**
- * @brief Temporarily adjust a rect's position/size, call func_800A3248, then restore.
+ * @brief Temporarily shrink a rect by one pixel on each edge, link it, restore.
  *
- * Saves the original 8 bytes of the rect at a2, increments x/y by 1,
- * decrements w/h by 2, calls func_800A3248(a0, a1), then restores
- * the original values.
+ * Saves the rect's original 8 bytes, insets it (x/y += 1, w/h -= 2), links a
+ * draw-area primitive clamped to that inset rect via @c func_800A3248, then
+ * restores the original rect.
  *
- * @param a0 First parameter passed to func_800A3248.
- * @param a1 Second parameter passed to func_800A3248.
- * @param a2 Pointer to rect structure (4 halfwords: x, y, w, h).
+ * @param ot   Ordering-table slot passed through to @c func_800A3248.
+ * @param prim Primitive storage passed through to @c func_800A3248.
+ * @param rect Rect to inset (x, y, w, h); saved and restored before return.
  */
-void func_800A3320(s32 a0, s32 a1, u8 *a2) {
-    u8 *base = a2;
-    s32 saved0 = *(s32 *)(base + 0);
-    s32 saved1 = *(s32 *)(base + 4);
-    *(u16 *)(base + 0) = *(u16 *)(base + 0) + 1;
-    *(u16 *)(base + 2) = *(u16 *)(base + 2) + 1;
-    *(u16 *)(base + 4) = *(u16 *)(base + 4) - 2;
-    *(u16 *)(base + 6) = *(u16 *)(base + 6) - 2;
-    func_800A3248(a0, a1);
-    *(s32 *)(base + 0) = saved0;
-    *(s32 *)(base + 4) = saved1;
+void func_800A3320(P_TAG *ot, DR_AREA *prim, RECT *rect) {
+    /* Save/restore the rect as its two 32-bit words (x|y, w|h) so the inset is
+       cheaply reversible. */
+    s32 *words = (s32 *)rect;
+    s32 saved0 = words[0];
+    s32 saved1 = words[1];
+    rect->x += 1;
+    rect->y += 1;
+    rect->w -= 2;
+    rect->h -= 2;
+    func_800A3248(ot, prim, rect);
+    words[0] = saved0;
+    words[1] = saved1;
 }
 
 /**
