@@ -81,6 +81,7 @@ extern s32 g_cardDisplaySlot;   /**< Current card-display slot index (-1 when no
 extern void renderAndUpdateDisplay(s32 mode);
 extern s32  renderBattleDisplayList(u32 *ot);
 extern void func_800281A4(s32 entity, s32 side, s32 value);
+extern s32  func_800300F8(s32 renderCtx, s32 prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
@@ -575,7 +576,44 @@ void func_800A2F78(void) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2FCC);
+/**
+ * @brief Draw the blinking corner markers around the Triple Triad cursor's view rect.
+ *
+ * Emits up to two glyphs through @c func_800300F8, selected by @p corners:
+ * bit 0 draws the left marker (glyph 0x5C) just inside the view's top-left, and
+ * bit 1 draws the right marker (glyph 0x5D) just inside the top-right. Both sit
+ * near the bottom of the view (@c view.y + view.h - 10). The markers blink in
+ * step with @c CursorState::frameCounter: bit 3 of the counter selects a blink
+ * parameter of 0 or 0x140, toggling every 8 frames. The running @p prim cursor
+ * is threaded through each call and returned.
+ *
+ * @param renderCtx Render context forwarded to @c func_800300F8.
+ * @param prim      Primitive/cursor threaded through and advanced by each glyph.
+ * @param color     Color parameter forwarded to @c func_800300F8.
+ * @param corners   Bitmask: bit 0 = left marker, bit 1 = right marker.
+ * @return The advanced @p prim cursor.
+ */
+s32 func_800A2FCC(s32 renderCtx, s32 prim, s32 color, s32 corners)
+{
+    s32 yc;
+    CursorState *cs = &D_801D49C8;
+    s32 blink;
+
+    blink = 0x140;
+    if ((cs->frameCounter >> 3) & 1) {
+        blink = 0;
+    }
+
+    if (corners & 1) {
+        yc = cs->view.y + cs->view.h - 10;
+        prim = func_800300F8(renderCtx, prim, 0x5C, cs->view.x + 2, yc, color, blink);
+    }
+    if (corners & 2) {
+        yc = cs->view.y + cs->view.h - 10;
+        prim = func_800300F8(renderCtx, prim, 0x5D, (cs->view.x + cs->view.w) - 9, yc, color, blink);
+    }
+    return prim;
+}
 
 /**
  * @brief Render a number (with a fixed prefix glyph) into the ordering table.
