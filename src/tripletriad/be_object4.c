@@ -60,6 +60,8 @@ extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
 extern s16 D_801D4B1A;
+extern u16 D_801D4AF8[2][4]; /**< Per-(entity,side) previous edge flags (see func_800A29D4). */
+extern s16 D_801D4B08[2][4]; /**< Per-(entity,side) edge countdown timer (see func_800A29D4). */
 extern s32 D_801D4B20[];
 extern s32 D_801D4B28[];
 extern s32 D_801D4B30[];
@@ -78,6 +80,7 @@ extern u16 D_801C2EC4;  /**< Slide-state input snapshot fed to the cursor state 
 extern s32 g_cardDisplaySlot;   /**< Current card-display slot index (-1 when none). */
 extern void renderAndUpdateDisplay(s32 mode);
 extern s32  renderBattleDisplayList(u32 *ot);
+extern void func_800281A4(s32 entity, s32 side, s32 value);
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
@@ -473,7 +476,42 @@ s32 getPadRepeat(s32 a0) {
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", readPads);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2D34);
+/**
+ * @brief Reset the Triple Triad per-edge animation state for both entities.
+ *
+ * Clears the per-(entity, side) bookkeeping tables — previous edge flags
+ * (@c D_801D4AF8), edge countdown timers (@c D_801D4B08), and the three
+ * @c D_801D4B20 / @c D_801D4B28 / @c D_801D4B30 word tables — for both
+ * animation entities, then seeds @c func_800281A4 with the fixed per-side
+ * parameters (one set per side 0..3) for each entity.
+ */
+void func_800A2D34(void)
+{
+    s32 i;
+
+    for (i = 0; i < 2; i++) {
+        D_801D4AF8[i][0] = 0;
+        D_801D4AF8[i][1] = 0;
+        D_801D4AF8[i][2] = 0;
+        D_801D4AF8[i][3] = 0;
+        D_801D4B08[i][0] = 0;
+        D_801D4B08[i][1] = 0;
+        D_801D4B08[i][2] = 0;
+        D_801D4B08[i][3] = 0;
+        D_801D4B20[i] = 0;
+        D_801D4B28[i] = 0;
+        D_801D4B30[i] = 0;
+    }
+
+    func_800281A4(0, 0, 0xFFF);
+    func_800281A4(0, 1, 0x5000);
+    func_800281A4(0, 2, 0xA000);
+    func_800281A4(0, 3, 0x900);
+    func_800281A4(1, 0, 0xFFF);
+    func_800281A4(1, 1, 0x5000);
+    func_800281A4(1, 2, 0xA000);
+    func_800281A4(1, 3, 0x900);
+}
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2E44);
 
