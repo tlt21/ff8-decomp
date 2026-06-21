@@ -87,6 +87,6 @@ typedef struct {
 
 /* Data */
 extern u8  D_80082C9C;  /**< Match-result category byte (a @c TT_RESULT_* value). */
-extern s32 D_801D3018;  /**< Result-screen SFX handle. */
+extern s32 g_resultSfxHandle;  /**< Result-screen SFX node handle (from @c spawnGradientFade); dismissed on input. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT1B_H */

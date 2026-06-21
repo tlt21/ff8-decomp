@@ -15,6 +15,9 @@ s32 drawBoardElements(void);
 s32 updateChildList(CallbackNode *node);
 s32 drawScoreDigits(void);
 
+/* Imported from be_object4.c (called only here). */
+extern void func_800A247C(s32 mode);
+
 /**
  * @brief Per-frame Triple Triad match controller (an update-list callback).
  *
@@ -154,17 +157,17 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                     if (D_801D30FC == TT_WINNER_DRAW) mode = 4;
                     else if (D_801A2C70[D_801D30FC] >= 3) mode = 3;
                     else { mode = 3; func_800A247C(mode); mode = 2; }
-                    D_801D3018 = spawnGradientFade(mode);
+                    g_resultSfxHandle = spawnGradientFade(mode);
                     ctl->counter++;
                 }
                 if (g_padPressed[2] & PAD_UP) {
-                    if (D_801D3018 != 0) { setNodeDoneFlag(D_801D3018, 1); D_801D3018 = 0; }
+                    if (g_resultSfxHandle != 0) { setNodeDoneFlag(g_resultSfxHandle, 1); g_resultSfxHandle = 0; }
                     return 0;
                 }
                 if (g_padPressed[2] == 0) return 0;
                 func_800A2054(3);
                 if (D_801D30FC == TT_WINNER_DRAW && (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH)) {
-                    if (D_801D3018 != 0) setNodeDoneFlag(D_801D3018, 1);
+                    if (g_resultSfxHandle != 0) setNodeDoneFlag(g_resultSfxHandle, 1);
                     initCardHands();
                     g_cardFlipPhase ^= 1;
                     ctl->state = MATCH_FLOW_TURN;
@@ -178,7 +181,7 @@ s32 matchFlowHandler(HandlerNode *ctl) {
                 if (ctl->counter == 0) startFadeToWhite(TT_HOLD_FRAMES_FADE);
                 ctl->counter++;
                 if ((u8)ctl->counter < TT_HOLD_FRAMES_FADE) return 0;
-                if (D_801D3018 != 0) setNodeDoneFlag(D_801D3018, 1);
+                if (g_resultSfxHandle != 0) setNodeDoneFlag(g_resultSfxHandle, 1);
                 {
                     TripleTriadData *inv = getTripleTriadData();
                     /* do/while(0) pins each bump after its D_80082C9C store — a
@@ -231,12 +234,12 @@ s32 drawBoardElements(void) {
     /* Cells are addressed by byte offset (mirroring the original's hand-coded
        walk) and read through TripleTriadBoardSlot once the address is formed. */
     s32 boardBase = (s32)&g_tripleTriadBoard;
-    s32 pixelY = 0x28;
+    s32 pixelY = 40;
     s32 rowByteOffset = TT_ROW_BYTES;
 
     for (; row <= 3; row++) {
         s32 col = 1;
-        s32 pixelX = 0x78;
+        s32 pixelX = 120;
         s32 colByteOffset = rowByteOffset + TT_SLOT_BYTES;
 
         for (; col <= 3; col++) {
@@ -267,18 +270,18 @@ s32 drawBoardElements(void) {
                 prim->y0       = pixelY;
                 prim->u0       = ((bit % 4) << 6) + ((g_tripleTriadFrameCount << 2) & 0x30);
                 prim->v0       = ((bit / 4) << 4) + 0x10;
-                prim->h        = 0xF;
-                prim->w        = 0xF;
+                prim->h        = 15;
+                prim->w        = 15;
 
-                AddPrim((s32 *)&g_otBase[0x1B], prim);
+                AddPrim((s32 *)&g_otBase[27], prim);
                 prim++;
             }
 
-            pixelX += 0x40;
+            pixelX += 64;
             colByteOffset += TT_SLOT_BYTES;
         }
 
-        pixelY += 0x40;
+        pixelY += 64;
         rowByteOffset += TT_ROW_BYTES;
     }
 
@@ -292,6 +295,8 @@ s32 drawBoardElements(void) {
  *
  * Runs @c updateObjectList on the node's child list and returns @c 2 once that
  * list is empty, otherwise @c 0.
+ *
+ * @note Not called from any decompiled code yet.
  */
 s32 updateChildList(CallbackNode *node) {
     return (updateObjectList(node->listPtr) == 0) << 1;
@@ -323,14 +328,14 @@ s32 drawScoreDigits(void) {
         prim->tag      = 0x05000000;
         prim->tpageCmd = 0xE100060C;
         prim->sprtCmd  = 0x64808080;
-        if (!(i & 1)) prim->x0 = 0x28;
-        else          prim->x0 = 0x140;
-        prim->y0       = 0xC0;
-        prim->u0       = (cnt[i & 1] * 3 * 8) - 0x18;
+        if (!(i & 1)) prim->x0 = 40;
+        else          prim->x0 = 320;
+        prim->y0       = 192;
+        prim->u0       = (cnt[i & 1] * 3 * 8) - 24;
         prim->v0       = 0x30;
         prim->clut     = 0x3A40;
-        prim->h        = 0x18;
-        prim->w        = 0x18;
+        prim->h        = 24;
+        prim->w        = 24;
 
         AddPrim((s32 *)&g_otBase[4], prim);
         prim++;
@@ -354,7 +359,7 @@ u8 *initTripleTriadUpdateList(void) {
     HandlerNode *node;
     resetTriadBoard();
     list = D_801D3028;
-    initObjList(list, D_801D3038, 0x18, 8);
+    initObjList(list, D_801D3038, sizeof(HandlerNode), 8);
     node = (HandlerNode *)allocObjNode(list, (ObjNodeFn)matchFlowHandler);
     node->state = 0;
     node->counter = 0;
@@ -381,32 +386,32 @@ SVECTOR *layoutCardSlot(u8 *src, SVECTOR *dst) {
 
     switch (type) {
     case TT_CARDSLOT_STRIP_L:
-        dst->vx = -0x8C;
+        dst->vx = -140;
         {
             u8 row = src[2];
-            s32 depth = 0x200;
+            s32 depth = 512;
             dst->vz = depth;
-            dst->vy = row * 32 - 0x40;
+            dst->vy = row * 32 - 64;
         }
-        dst->pad = -(s32)src[2] + 0xE;
+        dst->pad = -(s32)src[2] + 14;
         break;
     case TT_CARDSLOT_STRIP_R:
-        dst->vx = 0x8C;
+        dst->vx = 140;
         {
             u8 row = src[2];
-            s32 depth = 0x200;
+            s32 depth = 512;
             dst->vz = depth;
-            dst->vy = row * 32 - 0x40;
+            dst->vy = row * 32 - 64;
         }
-        dst->pad = -(s32)src[2] + 0xE;
+        dst->pad = -(s32)src[2] + 14;
         break;
     case TT_CARDSLOT_GRID: {
         s32 col = src[1];
         dst->vx = (col - 1) * 64;
         {
             u8 row = src[2];
-            dst->vz = 0x200;
-            dst->pad = 0x12;
+            dst->vz = 512;
+            dst->pad = 18;
             dst->vy = (row - 1) * 64;
         }
         break;

@@ -5,6 +5,9 @@
    reusing the g_removeCardEdge base (matches the original codegen). */
 g_addCardEdge  = 0x801D3E76;
 
+/* Result-screen SFX node handle (be_object1b.c matchFlowHandler). */
+g_resultSfxHandle = 0x801D3018;
+
 /* Triple Triad state-handler dispatch table. The base (0x800A4588) overlaps
    func_800A4504's last word, so it can't be a symbol_addrs label (splat would
    split the function); a linker assignment defines it without touching the
