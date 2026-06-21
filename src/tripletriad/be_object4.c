@@ -84,7 +84,7 @@ extern s32 g_cardDisplaySlot;   /**< Current card-display slot index (-1 when no
 extern void renderAndUpdateDisplay(s32 mode);
 extern s32  renderBattleDisplayList(u32 *ot);
 extern void func_800281A4(s32 entity, s32 side, s32 value);
-extern s32  func_800300F8(s32 renderCtx, s32 prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
+extern void *func_800300F8(void *renderCtx, void *prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
 extern void func_800275D4();                          /**< Refresh the raw controller buffers. */
 extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-frame parameter. */
 extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask. */
@@ -92,6 +92,7 @@ extern s32  func_80027DB4(s32 a, s32 b, s32 c);       /**< Read an analog axis (
 extern s32  func_80027CF8(s32 a, s32 b, s32 c);       /**< Fold a recentred analog stick into d-pad bits. */
 extern void *func_800A3EE0(void *a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5); /**< Tail-called by func_800A4098; defined below. */
 extern void *func_800A3D2C(void *otBase, void *pkt, s32 x, s32 y, s32 cardImg, s32 col); /**< Card-image primitive; defined below. */
+extern void *func_800A3528(void *otBase, void *pkt, void *(*drawCell)(void *, void *, s32, s32, s32)); /**< Per-cell slide-render iterator; defined below. */
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
@@ -650,7 +651,7 @@ void func_800A2F78(void) {
  * @param corners   Bitmask: bit 0 = left marker, bit 1 = right marker.
  * @return The advanced @p prim cursor.
  */
-s32 func_800A2FCC(s32 renderCtx, s32 prim, s32 color, s32 corners)
+void *func_800A2FCC(void *renderCtx, void *prim, s32 color, s32 corners)
 {
     s32 yc;
     CursorState *cs = &D_801D49C8;
@@ -711,8 +712,8 @@ void *func_800A30C8(void *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value,
  *
  * Forwards its arguments to @c func_800A30C8 with the @c twoDigit flag set.
  */
-void func_800A31B8(void *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value) {
-    func_800A30C8(otBase, pkt, pos, w, col, value, 1);
+void *func_800A31B8(void *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value) {
+    return func_800A30C8(otBase, pkt, pos, w, col, value, 1);
 }
 
 /**
@@ -1197,7 +1198,48 @@ void *func_800A4250(s32 *otBase, void *pkt, func_800A4250_arg2 *ctx, s32 a3) {
                          ctx->unk10);
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A42D0);
+/**
+ * @brief Render the Triple Triad board overlay for the current cursor frame.
+ *
+ * Does nothing (returns @p pkt) until the cursor timer (@ref CursorState::timer)
+ * is positive. While it is, emits the board chrome — at full scale (timer ==
+ * 0x1000) and only when @ref CursorState::unk24 is set, the highlighted cursor
+ * cell via @c func_800A4250 — then the frame border glyphs and, once at least
+ * 0xC cells exist, the blinking corner markers (@c func_800A2FCC) and the count
+ * (@c func_800A31B8). Finally it scales the view rect into the work rect by the
+ * timer (@c func_800A3398), draws the clamped frame (@c func_800A3320), and
+ * renders every populated cell through @c func_800A3528 with @c func_800A40F0
+ * as the per-cell callback. The packet cursor is threaded through and returned.
+ *
+ * @param otBase Ordering-table base forwarded to each emitter.
+ * @param pkt    Packet cursor, advanced by each primitive and returned.
+ * @return The advanced packet cursor (or @p pkt unchanged if the timer is idle).
+ */
+void *func_800A42D0(void *otBase, void *pkt)
+{
+    CursorState *cs = &D_801D49C8;
+
+    if (cs->timer <= 0) {
+        return pkt;
+    }
+
+    if (cs->timer == 0x1000 && cs->unk24 != 0) {
+        pkt = func_800A4250(otBase, pkt, (func_800A4250_arg2 *)cs, cs->cursorPos);
+    }
+
+    pkt = func_800A31EC(otBase, pkt);
+    pkt = func_8002FF34(otBase, pkt, 0x4D, cs->view.x + 0x7F, cs->view.y, cs->packedColor);
+
+    if (D_801D4AF6 >= 0xC) {
+        pkt = func_800A2FCC(otBase, pkt, cs->packedColor, 3);
+        pkt = func_800A31B8(otBase, pkt, cs->view.x + 0x28, cs->view.y, cs->packedColor, cs->row);
+    }
+
+    pkt = func_8002FF34(otBase, pkt, 0x59, cs->view.x, cs->view.y, cs->packedColor);
+    func_800A3398(cs->timer, &cs->view, &cs->work);
+    pkt = func_800A3320(otBase, pkt, &cs->work);
+    return func_800A3528(otBase, pkt, func_800A40F0);
+}
 
 /**
  * @brief Apply func_800A42D0 with VSync lock/unlock.
@@ -1208,7 +1250,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A42D0);
 s32 func_800A443C(s32 a0) {
     s32 saved = a0;
     s32 lock = getDisplayListHead();
-    s32 result = func_800A42D0(saved, lock);
+    s32 result = (s32)func_800A42D0((void *)saved, (void *)lock);
     return storeGpuPacket(result);
 }
 
