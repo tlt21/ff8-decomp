@@ -41,6 +41,17 @@ extern void intToDecStringShort(u32 value, u8 *buf, s32 digitBase);
 extern void replaceLeadingZeros(u8 *buf, s32 count, s32 digitBase, s32 replacement);
 extern void sendSpuCommand(s32 idx);
 extern void sndPlaySfx(s32 voiceMask, s32 addr, s32 volume, s32 pan);
+extern s32 sndGetEngineState(void);
+extern s32 sndCmd11(s32 arg0);
+extern s16 sndCmd10(s32 bank);
+extern s32 sndCmdC0(s32 channel, s32 value);
+extern void func_800485C4(void *dst, void *src, s32 size);
+extern u8  g_battleConfig[];   /**< Shared battle config; [9] bit 0 = sound-bank selector. */
+extern u8  D_80082C11;         /**< Sound-bank selector flag (same byte as g_battleConfig[9]). */
+extern u8  D_8005F388[];       /**< Sound-bank buffer A. */
+extern u8  D_80063388[];       /**< Sound-bank buffer B. */
+extern u8  D_801A1B88[];       /**< Start of the Triple Triad sound region uploaded to a bank. */
+extern s16 D_8005F11C;
 extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
@@ -242,21 +253,68 @@ void playTriadSfxParam(s32 sfxId, s32 param) {
     queueTriadSfx(sfxId, 0x80, 0x7F, param);
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A238C);
+/** @brief Per-frame node for the sound-bank swap task (@ref func_800A238C). */
+typedef struct {
+    u8  pad00[0xC];
+    u16 state;      /**< 0xC — task state (0 = wait for engine, 1 = swap bank). */
+    u16 field0E;    /**< 0xE — cleared when entering state 1. */
+} SndTaskNode;
 
 /**
- * @brief Initialize animation handler and attach to g_taskList list.
+ * @brief Sound-bank swap task: wait for the engine, then upload and play a bank.
  *
- * Loads animation data from D_80182EC8 via sndProcessAudio, then
- * allocates a node in g_taskList with func_800A238C as callback.
- * Clears the node's fields at offsets 0xC and 0xE.
+ * Two-state task callback driven off @c node->state:
+ *  - 0: wait until the sound engine is idle (@c sndGetEngineState), then issue
+ *       @c sndCmd11(0) and advance to state 1.
+ *  - 1: copy the Triple Triad sound region @c [D_801A1B88, g_tripleTriadActiveList)
+ *       into the inactive bank buffer (@c D_8005F388 / @c D_80063388, chosen by
+ *       @c D_80082C11), flip the bank selector @c g_battleConfig[9], then play the
+ *       uploaded bank via @c sndCmd10 / @c sndCmdC0.
+ *
+ * @param node Task node.
+ * @return 0 while still running, 2 once the bank has been uploaded and played.
+ */
+s32 func_800A238C(SndTaskNode *node) {
+    void *buf;
+    s16  sample;
+
+    switch (node->state) {
+    case 0:
+        if (sndGetEngineState() == 0) {
+            sndCmd11(0);
+            node->state = 1;
+            node->field0E = 0;
+        }
+        return 0;
+    case 1:
+        if (D_80082C11 == 0) {
+            buf = D_8005F388;
+        } else {
+            buf = D_80063388;
+        }
+        g_battleConfig[9] ^= 1;
+        func_800485C4(buf, D_801A1B88, (s32)&g_tripleTriadActiveList - (s32)D_801A1B88);
+        sample = sndCmd10((s32)buf);
+        D_8005F11C = sample;
+        sndCmdC0(sample, 0x7F);
+        return 2;
+    }
+    return 0;
+}
+
+/**
+ * @brief Spawn the sound-bank swap task and seed its state.
+ *
+ * Loads the Triple Triad audio data from @c D_80182EC8 via @c sndProcessAudio,
+ * then allocates a @c g_taskList node driven by @c func_800A238C with its state
+ * and field0E cleared.
  */
 void func_800A247C(void) {
-    u8 *node;
+    SndTaskNode *node;
     sndProcessAudio(D_80182EC8, 0);
-    node = (u8 *)spawnTaskNode((ObjNodeFn)func_800A238C);
-    *(s16 *)(node + 0xC) = 0;
-    *(s16 *)(node + 0xE) = 0;
+    node = (SndTaskNode *)spawnTaskNode((ObjNodeFn)func_800A238C);
+    node->state = 0;
+    node->field0E = 0;
 }
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A24B4);
