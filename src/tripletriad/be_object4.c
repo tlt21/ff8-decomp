@@ -36,6 +36,18 @@ typedef struct {
     /* 0x24 */ u8 unk24;
 } CursorState;
 
+/** @brief One 0xC4-byte entry of the @c D_80082DD0 array.
+ *
+ * Indexed by a slot/card index; byte 0xC2 links to another entry in the same
+ * array. Only the link field is mapped so far.
+ * @note Purpose uncertain — appears to be the Triple Triad placed-card array
+ *       (each entry holds per-edge values read by @c func_800A29D4). */
+typedef struct {
+    /* 0x00 */ u8 pad00[0xC2];
+    /* 0xC2 */ u8 linkIndex; /**< Index of the linked entry in @c D_80082DD0. */
+    /* 0xC3 */ u8 padC3;
+} TriadEntry;
+
 extern void *func_8002FF34(void *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void intToDecStringShort(u32 value, u8 *buf, s32 digitBase);
 extern void replaceLeadingZeros(u8 *buf, s32 count, s32 digitBase, s32 replacement);
@@ -71,8 +83,10 @@ extern CursorState D_801D49C8;
 extern u8 D_801D49EC;
 extern u8 D_801D4A88[]; /**< Per-cell lookup value, indexed by cursor grid position. */
 extern u8 D_801D4AF6;   /**< Total cell count of the cursor grid (rows of 11). */
+extern TriadEntry D_80082DD0[]; /**< Triple Triad placed-card entry array (stride 0xC4). */
 extern s32 func_800A238C();
 extern s32 func_800A279C();
+extern s32 func_800A29D4(TriadEntry *base, TriadEntry *elem, u16 arg1, s32 side, s32 entryIndex);
 extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
 
 /**
@@ -384,7 +398,31 @@ u8 *initTripleTriadRenderList(void) {
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A29D4);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2A8C);
+/**
+ * @brief Evaluate all four edges of board entry @p entryIndex against its neighbour.
+ *
+ * Resolves the neighbour entry through the link index at byte 0xC2 of
+ * @c D_80082DD0[entryIndex], then evaluates each of the four edges (0..3) via
+ * @c func_800A29D4, OR-ing the per-edge results into a single 16-bit mask.
+ *
+ * @param entryIndex Index of the entry in @c D_80082DD0 to evaluate.
+ * @param arg1       Per-edge value forwarded to @c func_800A29D4.
+ * @return Combined 16-bit result mask from the four edge evaluations.
+ * @note Purpose uncertain — appears to resolve Triple Triad card captures for one
+ *       placed card against its linked neighbour across all four edges.
+ */
+u16 func_800A2A8C(s32 entryIndex, u16 arg1)
+{
+    TriadEntry *link = &D_80082DD0[D_80082DD0[entryIndex].linkIndex];
+    u16 result = 0;
+
+    result |= func_800A29D4(D_80082DD0, link, arg1, 0, entryIndex);
+    result |= func_800A29D4(D_80082DD0, link, arg1, 1, entryIndex);
+    result |= func_800A29D4(D_80082DD0, link, arg1, 2, entryIndex);
+    result |= func_800A29D4(D_80082DD0, link, arg1, 3, entryIndex);
+
+    return result & 0xFFFF;
+}
 
 /** @brief Held-button mask for pad @p a0 (buttons currently down). */
 s32 getPadHeld(s32 a0) {
