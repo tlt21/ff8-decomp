@@ -37,6 +37,8 @@ typedef struct {
 } CursorState;
 
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
+extern void intToDecStringShort(u32 value, u8 *buf, s32 digitBase);
+extern void replaceLeadingZeros(u8 *buf, s32 count, s32 digitBase, s32 replacement);
 extern void sendSpuCommand(s32 idx);
 extern void sndPlaySfx(s32 voiceMask, s32 addr, s32 volume, s32 pan);
 extern s16 D_801D49E2;
@@ -371,16 +373,47 @@ void func_800A2F78(void) {
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2FCC);
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A30C8);
+/**
+ * @brief Render a number (with a fixed prefix glyph) into the ordering table.
+ *
+ * Formats @p value @c +1 to a decimal glyph string and blanks its leading zero,
+ * then emits a fixed prefix glyph (@c 0x32) followed by the digit(s) via
+ * @c func_8002FF34, advancing the glyph position between each. When @p twoDigit
+ * is set both the tens and units digits are drawn (advancing 9 then 6);
+ * otherwise only the units digit is drawn after the prefix.
+ *
+ * @param otBase   Ordering-table base for the glyph primitives.
+ * @param pkt      Current GPU packet cursor.
+ * @param pos      Starting glyph position (passed to @c func_8002FF34; advanced per glyph).
+ * @param w        Glyph width forwarded to @c func_8002FF34.
+ * @param col      Glyph color/palette forwarded to @c func_8002FF34.
+ * @param value    Number to display (rendered as @c value @c + @c 1).
+ * @param twoDigit Non-zero to draw the tens digit as well as the units digit.
+ * @return The advanced packet cursor.
+ */
+void *func_800A30C8(s32 *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value, s32 twoDigit) {
+    u8 buf[16];
+
+    intToDecStringShort(value + 1, buf, 0x28);
+    replaceLeadingZeros(&buf[3], 1, 0x28, 7);
+
+    pkt = func_8002FF34(otBase, pkt, 0x32, pos, w, col);
+    pos += 9;
+    if (twoDigit != 0) {
+        pkt = func_8002FF34(otBase, pkt, buf[3], pos, w, col);
+        pos += 6;
+    }
+    pkt = func_8002FF34(otBase, pkt, buf[4], pos, w, col);
+    return pkt;
+}
 
 /**
- * @brief Wrapper for func_800A30C8 that appends flag=1 as the 7th argument.
+ * @brief Two-digit form of @c func_800A30C8 (always draws both digits).
  *
- * Passes through a0-a3 plus two stack arguments, appending 1 as
- * the final argument to form a 7-arg call to func_800A30C8.
+ * Forwards its arguments to @c func_800A30C8 with the @c twoDigit flag set.
  */
-void func_800A31B8(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0, s32 stack1) {
-    func_800A30C8(a0, a1, a2, a3, stack0, stack1, 1);
+void func_800A31B8(s32 *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value) {
+    func_800A30C8(otBase, pkt, pos, w, col, value, 1);
 }
 
 /**
