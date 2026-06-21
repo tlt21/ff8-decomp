@@ -2022,15 +2022,19 @@ void copyDisplayCoords(DVECTOR *dst) {
  */
 u8* emitDrawEnvPackets(u32* ot, u8* pkt) {
     RECT rect;
+    DR_AREA *area;
+    DR_OFFSET *offset;
 
     copyDisplayRect(&rect);
-    SetDrawArea(pkt, &rect);
-    addPrim(ot, pkt);
+
+    area = (DR_AREA *)pkt;
+    SetDrawArea(area, &rect);
+    addPrim(ot, area);
     pkt += 0xC;
 
-    SetDrawOffset(pkt, &rect);
-    addPrim(ot, pkt);
-
+    offset = (DR_OFFSET *)pkt;
+    SetDrawOffset(offset, &rect);
+    addPrim(ot, offset);
     pkt += 0xC;
 
     return pkt;

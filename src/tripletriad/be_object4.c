@@ -403,7 +403,7 @@ void func_800A31B8(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0, s32 stack1) {
  *       cross-call references and @c ot wins the lower saved register.
  */
 DR_AREA *func_800A31EC(P_TAG *ot, DR_AREA *prim) {
-    SetDrawArea((u8 *)prim, &g_activeDrawEnv->clip);
+    SetDrawArea(prim, &g_activeDrawEnv->clip);
     addPrimFast(ot, prim, s2);
     return ++prim;
 }
@@ -431,7 +431,7 @@ DR_AREA *func_800A3248(P_TAG *ot, DR_AREA *prim, RECT *srcRect) {
     local.y += g_activeDrawEnv->clip.y;
     if (local.w < 2) local.w = 2;
     if (local.h < 2) local.h = 2;
-    SetDrawArea((u8 *)prim, &local);
+    SetDrawArea(prim, &local);
     addPrimFast(ot, prim, s1);
     return prim + 1;
 }
