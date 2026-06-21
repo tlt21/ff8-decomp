@@ -273,7 +273,7 @@ s32 drawBoardElements(void) {
                 prim->h        = 15;
                 prim->w        = 15;
 
-                AddPrim((s32 *)&g_otBase[27], prim);
+                AddPrim(&g_otBase[27], prim);
                 prim++;
             }
 
@@ -337,7 +337,7 @@ s32 drawScoreDigits(void) {
         prim->h        = 24;
         prim->w        = 24;
 
-        AddPrim((s32 *)&g_otBase[4], prim);
+        AddPrim(&g_otBase[4], prim);
         prim++;
     }
 

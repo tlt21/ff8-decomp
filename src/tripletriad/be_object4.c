@@ -36,7 +36,7 @@ typedef struct {
     /* 0x24 */ u8 unk24;
 } CursorState;
 
-extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
+extern void *func_8002FF34(void *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void intToDecStringShort(u32 value, u8 *buf, s32 digitBase);
 extern void replaceLeadingZeros(u8 *buf, s32 count, s32 digitBase, s32 replacement);
 extern void sendSpuCommand(s32 idx);
@@ -391,7 +391,7 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2FCC);
  * @param twoDigit Non-zero to draw the tens digit as well as the units digit.
  * @return The advanced packet cursor.
  */
-void *func_800A30C8(s32 *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value, s32 twoDigit) {
+void *func_800A30C8(void *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value, s32 twoDigit) {
     u8 buf[16];
 
     intToDecStringShort(value + 1, buf, 0x28);
@@ -412,7 +412,7 @@ void *func_800A30C8(s32 *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value, 
  *
  * Forwards its arguments to @c func_800A30C8 with the @c twoDigit flag set.
  */
-void func_800A31B8(s32 *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value) {
+void func_800A31B8(void *otBase, void *pkt, s32 pos, s32 w, s32 col, s32 value) {
     func_800A30C8(otBase, pkt, pos, w, col, value, 1);
 }
 

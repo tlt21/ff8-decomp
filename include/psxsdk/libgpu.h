@@ -391,7 +391,7 @@ void PutDrawEnv(void *env);
 void PutDispEnv(void *env);
 void ClearImage(void *rect, u8 r, u8 g, u8 b);
 void SetDrawStp(u32 *p, s32 dfe);
-void AddPrim(s32 *ot, void *p);
+void AddPrim(void *ot, void *p);
 void AddPrims(s32 *ot, void *p0, void *p1);
 void SetDrawArea(DR_AREA *p, RECT *rect);
 void SetDrawOffset(DR_OFFSET *p, RECT *rect);
