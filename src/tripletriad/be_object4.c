@@ -41,18 +41,17 @@ typedef struct {
 
 extern void *func_8002FF34(s32 *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
 extern void sendSpuCommand(s32 idx);
+extern void sndPlaySfx(s32 voiceMask, s32 addr, s32 volume, s32 pan);
 extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
 extern s16 D_801D4B1A;
-extern s32 D_801D4560;
 extern s32 D_801D4B20[];
 extern s32 D_801D4B28[];
 extern s32 D_801D4B30[];
 extern s32 g_menuColor[];
 extern SfxConfig D_80182E70[];
 extern u8 D_80182EC8[];
-extern u8 D_801D4500[];
 extern u8 D_801D4568[];
 extern u8 D_801D4968[];
 extern u8 D_801D4978[];
@@ -182,29 +181,55 @@ void func_800A2208(void) {
     D_801D4560 = 0;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A2214);
+/**
+ * @brief Flush the queued Triple Triad sound effects to the SPU.
+ *
+ * Walks the SFX request queue (@c D_801D4500, @c D_801D4560 entries) in order and
+ * plays each active effect via @c sndPlaySfx, skipping any whose voice-channel
+ * mask (@c param) overlaps a request already played this pass — so colliding
+ * requests collapse to the first. The accumulated mask grows as it goes. Empties
+ * the queue when done.
+ */
+void flushTriadSfxQueue(void) {
+    s32 accumMask = 0;
+    s32 i;
+    SfxQueueEntry *e = D_801D4500;
+
+    for (i = 0; i < D_801D4560; i++) {
+        u32 mask = e->param;
+        if ((accumMask & mask) == 0) {
+            if (e->active == 1) {
+                sndPlaySfx(e->sfxId, mask, e->volume, e->pan);
+            }
+            accumMask |= e->param;
+        }
+        e++;
+    }
+    D_801D4560 = 0;
+}
 
 /**
  * @brief Push a sound effect onto the Triple Triad SFX queue (if not full).
  *
- * The queue holds up to 7 pending effects, drained later by the SFX subsystem.
+ * The queue holds up to 7 pending effects, drained each frame by
+ * @c flushTriadSfxQueue.
  *
  * @param sfxId  Sound-effect id.
- * @param pan    Stereo pan (callers pass center, 0x80).
- * @param volume Volume (callers pass full, 0x7F).
- * @param param  Per-effect parameter word.
+ * @param volume Volume (callers pass 0x80).
+ * @param pan    Stereo pan (callers pass 0x7F).
+ * @param param  Per-effect parameter word (also the voice-channel dedup mask).
  */
-void queueTriadSfx(s32 sfxId, s32 pan, s32 volume, s32 param) {
+void queueTriadSfx(s32 sfxId, s32 volume, s32 pan, s32 param) {
     s32 count = D_801D4560;
     if (count < 7) {
-        u8 *entry;
+        SfxQueueEntry *entry;
         D_801D4560 = count + 1;
-        entry = D_801D4500 + count * 12;
-        entry[0] = 1;
-        entry[3] = sfxId;
-        entry[1] = pan;
-        entry[2] = volume;
-        *(s32 *)(entry + 4) = param;
+        entry = &D_801D4500[count];
+        entry->active = 1;
+        entry->sfxId = sfxId;
+        entry->volume = volume;
+        entry->pan = pan;
+        entry->param = param;
     }
 }
 

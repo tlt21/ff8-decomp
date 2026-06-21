@@ -8,6 +8,21 @@
    Populated as functions/data are decompiled — move the file-scope externs,
    typedefs, and prototypes out of be_object4.c into here as you go. */
 
+/* Triple Triad SFX request queue: queueTriadSfx pushes effects here and
+   flushTriadSfxQueue drains them to sndPlaySfx once per frame. */
+typedef struct {
+    u8  active;   /**< 0x0 — 1 when this slot holds a queued effect. */
+    u8  volume;   /**< 0x1 — sndPlaySfx volume. */
+    u8  pan;      /**< 0x2 — sndPlaySfx pan. */
+    u8  sfxId;    /**< 0x3 — sndPlaySfx sound id. */
+    u32 param;    /**< 0x4 — sndPlaySfx addr; also the per-effect voice-channel
+                       mask used to drop overlapping requests. */
+    u8  pad8[4];  /**< 0x8 */
+} SfxQueueEntry;  /* 0xC */
+
+extern SfxQueueEntry D_801D4500[];  /**< SFX request queue (up to 7 pending entries). */
+extern s32 D_801D4560;              /**< Number of queued SFX requests. */
+
 /* Public data */
 extern u8 g_cardDetailMsg[];    /**< Work buffer for the card-detail popup message (built by showCardDetail). */
 extern u8 g_cardDetailSuffix[]; /**< String appended after the card name in the detail message. */
@@ -19,7 +34,8 @@ extern void playTriadSfx(s32 sfxId);
 extern void playTriadSfxParam(s32 sfxId, s32 param);
 extern void closeMenu(void);
 extern void func_800A1C6C(void);
-extern void func_800A2214(void);
+/** @brief Flush the queued Triple Triad SFX to the SPU and empty the queue. */
+extern void flushTriadSfxQueue(void);
 extern void clearAllSfx(void);
 /** @brief Show a card's name, or build its detail popup buffer. */
 extern void showCardDetail(s32 cardId);

@@ -80,7 +80,7 @@ s32 tripleTriadMainLoop(void) {
         func_800A1C6C();
         flipBuffers();
         sampleInput();
-        func_800A2214();
+        flushTriadSfxQueue();
         g_tripleTriadFrameCount++;
     } while (g_tripleTriadState != TT_STATE_EXIT);
 
