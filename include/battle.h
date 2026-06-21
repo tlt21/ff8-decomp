@@ -693,8 +693,13 @@ extern BattleSceneCtx *D_800D244C;
  * Only byte 0 (magicId) is read by the known callers.
  */
 typedef struct {
-    u8 magicId;          /**< [0x00] Magic/spell ID byte (input to ability flag funcs) */
-    u8 unk01[0x3B];      /**< [0x01..0x3F] Remaining record bytes */
+    u8 unk00;
+    u8 unk01;
+    u8 unk02;
+    u8 unk03;
+    u8 magicId; /**< [0x4 (0x226)] Magic/spell ID byte (input to ability flag funcs) */
+    u8 unk05;
+    u8 pad02[0x36];      /**< Remaining record bytes */
 } BattleSpellRow; /* 60 bytes */
 
 /**
@@ -740,13 +745,13 @@ typedef struct {
  */
 
 typedef struct {
-    u16 lookupId;/*0x4C0C*/
-    u8 unk3; // 0x4C0E
-    u8 unk4; // 0x4C0F
+    u16 lookupId;   /* 0x4C0C */
+    u8 unk3;        /* 0x4C0E */
+    u8 unk4;        /* 0x4C0F */
     u8 pad5[0x6];
-    u8 flags;  /* 0x4C16 */
-    u8 maxHP;  /* 0x4C17 */
-} Struct_4C0A; /* 0xC */
+    u8 flags;       /* 0x4C16 */
+    u8 maxHP;       /* 0x4C17 */
+} Struct_4C0A; /* 12 bytes */
 
 
 /**
@@ -765,9 +770,9 @@ typedef struct {
     /* 0x00D4 */ s32 rows8Arg;                  /**< resolveKernelPtr arg paired with rows8[]. */
     /* 0x00D8 */ u8 pad00D8[4];                
     /* 0x00DC */ s32 unk4C0AArg;                /**< resolveKernelPtr arg paired with unk4C0A[]. */
-    /* 0x00E0 */ u8 pad00E0[0x146]; 
-    /* 0x0226 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
-    /* 0x0262 */ u8 pad0262[0xD16];
+    /* 0x00E0 */ u8 pad00E0[0x142]; 
+    /* 0x0222 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
+    /* 0x025E */ u8 pad025E[0xD1A];
     /* 0x0F78 */ BattleSceneRow rows132[1];     /**< 132-byte stride (size unknown, index past). */
     /* 0x0FFC */ u8 padFFC[0x7BC];
     /* 0x17B8 */ BattleSceneEntry entries17[1]; /**< stride 20 (size unknown, index past). */

@@ -1595,7 +1595,13 @@ void func_8009FCF4(s32 cmd) {
     *(u8 *)(base + idx * 0xD0 + 0x99) = cmd;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009FD28);
+void func_8009FD28(s32 arg0, s32 arg1) {
+    u8 var;
+    func_8009FCF4(D_80078E00.spells[D_800EE4C0.statusCode].unk05);
+    var = D_80078E00.spells[D_800EE4C0.statusCode].unk02;
+    D_800EE4C0.unk4 = D_80078E00.spells[D_800EE4C0.statusCode].unk00;
+    func_8009F930( D_80078E00.spells[D_800EE4C0.statusCode].unk01, arg1, arg0, var);
+}
 
 /**
  * @brief Check if a value is at least 20.
