@@ -90,6 +90,8 @@ extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-
 extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask. */
 extern s32  func_80027DB4(s32 a, s32 b, s32 c);       /**< Read an analog axis (b: 2 = X, 3 = Y). */
 extern s32  func_80027CF8(s32 a, s32 b, s32 c);       /**< Fold a recentred analog stick into d-pad bits. */
+extern void *func_800A3EE0(void *a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5); /**< Tail-called by func_800A4098; defined below. */
+extern void *func_800A3D2C(void *otBase, void *pkt, s32 x, s32 y, s32 cardImg, s32 col); /**< Card-image primitive; defined below. */
 extern s32 func_800A238C();
 extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
@@ -1103,8 +1105,10 @@ INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3EE0);
  *
  * @param a0-a3 Parameters passed through to func_800A3EE0.
  * @param stack0 Index parameter; if >= 8, adjusted by -8 and table index 1 is used.
+ * @return The advanced packet cursor from func_800A3EE0 (returned by the tail call;
+ *         func_800A40F0 threads it through). Typed @c void* rather than @c void.
  */
-void func_800A4098(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0) {
+void *func_800A4098(void *a0, void *a1, s32 a2, s32 a3, s32 stack0) {
     s32 idx;
     if (stack0 >= 8) {
         stack0 -= 8;
@@ -1112,10 +1116,59 @@ void func_800A4098(s32 a0, s32 a1, s32 a2, s32 a3, s32 stack0) {
     } else {
         idx = 0;
     }
-    func_800A3EE0(a0, a1, a2, a3, g_menuColor[idx], stack0);
+    return func_800A3EE0(a0, a1, a2, a3, g_menuColor[idx], stack0);
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A40F0);
+/**
+ * @brief Render one Triple Triad grid cell (number + card image + frame).
+ *
+ * Maps the (@p row, @p col) position to a linear grid index (@c row*11+col) and
+ * bails — returning @p pkt unchanged — if it is past the populated cell count
+ * (@c D_801D4AF6). Otherwise it looks up the cell's card index in
+ * @c D_801D4A88, picks a highlight color (7 if the card passes @c func_80023B14,
+ * else 1), and emits three primitives at a position derived from the cursor
+ * view rect: a glyph (@c func_8002FF34), the card image (@c func_800A3D2C), and
+ * a frame (@c func_800A4098). The packet cursor is threaded through and returned.
+ *
+ * @param otBase  Ordering-table base forwarded to each emitter.
+ * @param pkt     Packet cursor, advanced by each primitive and returned.
+ * @param row     Grid row (multiplied by 11 for the linear index).
+ * @param col     Grid column (drives the vertical position; col*13).
+ * @param xOffset Horizontal offset added to the view's left edge.
+ * @return The advanced packet cursor (or @p pkt unchanged if out of range).
+ */
+void *func_800A40F0(void *otBase, void *pkt, s32 row, s32 col, s32 xOffset)
+{
+    CursorState *cs = &D_801D49C8;
+    s32 cell = row * 11 + col;
+    s32 valid;
+    s32 color;
+    s32 y;
+    s32 x;
+    s32 cardImg;
+
+    if (cell >= D_801D4AF6) {
+        return pkt;
+    }
+
+    cell = D_801D4A88[cell];
+    color = 1;
+    valid = func_80023B14(cell);
+    if (valid > 0) {
+        color = 7;
+    }
+
+    /* The X coordinate is staged through cardImg (later reused for the card
+       image) so the compiler keeps it in the register the original used. */
+    x = (cardImg = D_801D49C8.view.x + xOffset);
+    y = cs->view.y + col * 13 + 8;
+
+    pkt = func_8002FF34(otBase, pkt, 0xD7, x + 7, y, cs->packedColor);
+    cardImg = (s32)func_80023A54(cell);
+    pkt = func_800A3D2C(otBase, pkt, x + 0x15, y, cardImg, color);
+    x += 0x9A;
+    return func_800A4098(otBase, pkt, (y << 16) | (x & 0xFFFF), valid, color);
+}
 
 /** @brief Render context for @c func_800A4250 (fields named by offset — role inferred). */
 typedef struct {
