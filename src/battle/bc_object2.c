@@ -1298,7 +1298,34 @@ void func_8009EAEC(s32 charIdx) {
 
 
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009ED2C);
+s32 func_8009ED2C(s32 arg0) {
+    BattleEntityData* temp_s0;
+    
+    temp_s0 = D_800ED148.entities[arg0].linkedPtr->data;
+    if((temp_s0->unkF9 == 255) && (temp_s0->unkFA == temp_s0->unkF9)) {
+        return 0;
+    }
+    
+    if (func_8009B79C(256 - (D_800ED148.entities[arg0].field28 * 255 / D_800ED148.entities[arg0].field2C), 255) != 0) {
+        if (func_8009B15C() < 16) {
+            D_800ED148.unk1315 = temp_s0->unkFA;
+        }
+        
+        else {
+            D_800ED148.unk1315 = temp_s0->unkF9;
+        }
+
+        if (markItemPresent(D_800EE45D) != 0) {
+            return 0;
+        }
+        
+    }
+        
+    else {
+        D_800ED148.unk1315 = 255;
+    }
+    return 1;
+}
 
 void func_8009EE44(s32 unused, s32 arg1) {
     u8* temp_s0_2;

@@ -259,7 +259,9 @@ typedef enum {
 typedef struct {
     u8 unk00[0xF7];
     u8 immunityFlags;   /* 0xF7: bit 0 forces status bit 0x40 clear, bit 1 forces flags bit 0x2000 clear (read by @c func_8009AFF0). */
-    u8 padF8[0x3];
+    u8 unkF8;
+    u8 unkF9;
+    u8 unkFA;
     u8 unkFB;
     u8 unkFC;
     u8 unkFD;
