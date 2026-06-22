@@ -267,7 +267,9 @@ typedef struct {
     u8 unkFD;
     u8 unkFE;
     u8 unkFF;
-    u8 pad100[0x4F];
+    u8 pad100[0x4];
+    u8 unk104[1];       /* size unknown, probably struct, used in func_8009F65C */
+    u8 pad105[0x4A];
     u8 unk14F;          /* 0x14F: byte read by func_800AF988. */
 } BattleEntityData;
 
@@ -511,9 +513,9 @@ typedef struct {
 /** @brief 0x47-byte sub-entry in @c BattleAnimTable.subEntries. */
 typedef struct {
     u8 charId;          /* 0x00: char/scene byte, mirrored from g_gameState[+0xAF4..]. */
-    u8 unk01[0x42];     /* 0x01..0x46: unknown. */
-    u8 unkE;
-    u8 pad02[0x3];     /* 0x01..0x46: unknown. */
+    u8 pad01[0x42];     /* 0x01..0x42: padding. */
+    u8 unk43;
+    u8 pad02[0x3];     /* 0x44..0x46: padding. */
 } BattleAnimSubEntry;   /* 0x47 */
 
 /** @brief Battle anim/scene lookup table at @c D_800EE9E8. */
