@@ -1219,7 +1219,31 @@ s32 func_8009E95C(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009EA08);
+s32 func_8009EA08(s32 unused, s32 arg1) {
+    s32 var_a1;
+    s32 index;
+    TaskEntry sp10; // not confirmed to be this type
+    
+    D_800EE4C0.flags5 |= 1;
+
+    if (!(D_800ED148.entities[arg1].status & 1)) {
+        
+        var_a1 = func_800AF918(arg1, &sp10);
+        
+        if (var_a1 != 0) {
+            for (index = 0; index < var_a1; index++){
+                D_800ED148.entities[arg1].controlFlags |= 0x20000;
+            }
+        }
+    }
+    
+    if (D_800ED148.unk1322 == 0) {
+        func_800A4320(getMenuString(0x36));
+        D_800ED148.unk1322 += 1;
+    }
+    
+    return 0; 
+}
 
 /**
  * @brief Apply damage-over-time tick to GF targets and clear pending flag.
@@ -1318,7 +1342,7 @@ s32 func_8009EF64(s32 arg0, s32 unused, s32 unused2, s32 arg3) {
     return 1; 
 }
 
-u8 func_8009F040(s32 arg0, s32 arg1) {
+u8 func_8009F040(s32 arg0, s32 arg1, s32 unused) {
     s32 entity0;
     s32 entity1;
     
@@ -1602,10 +1626,11 @@ void func_8009FCF4(s32 cmd) {
 
 void func_8009FD28(s32 arg0, s32 arg1) {
     u8 var;
+
     func_8009FCF4(D_80078E00.spells[D_800EE4C0.statusCode].unk05);
     var = D_80078E00.spells[D_800EE4C0.statusCode].unk02;
     D_800EE4C0.unk4 = D_80078E00.spells[D_800EE4C0.statusCode].unk00;
-    func_8009F930( D_80078E00.spells[D_800EE4C0.statusCode].unk01, arg1, arg0, var);
+    func_8009F930(D_80078E00.spells[D_800EE4C0.statusCode].unk01, arg1, arg0, var);
 }
 
 /**

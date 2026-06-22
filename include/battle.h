@@ -488,7 +488,8 @@ typedef struct {
     /* 0x1317 */ u8 unk1317;
     /* 0x1318 */ u8 unk1318;
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
-    /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
+    /* 0x131A */ u8 pad131A[0x8];               /**< More misc state. */
+    /* 0x1322 */ u8 unk1322;
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
     /* 0x1324 */ u8 unk1324; 
     /* 0x1325 */ u8 unk1325; 
