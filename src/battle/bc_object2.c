@@ -1533,7 +1533,20 @@ s32 func_8009F4BC(s32 arg0) {
  * @param bitIndex The bit index to test.
  * @return 1 if the bit is set, 0 otherwise.
  */
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F52C);
+ 
+s32 func_8009F52C(s32 arg0) {
+    s32 var2;
+    s32 var;
+
+    var = arg0 / 32;
+    var2 = arg0 % 32;
+    
+    if ((g_gameState.mainData.array[var] & 1 << var2) != 0) {
+        return 1;
+    }
+    
+    return 0;
+}
 
 /**
  * @brief Set a bit in the battle flag array at g_gameState+0xD0C.
