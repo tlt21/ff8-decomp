@@ -46,6 +46,7 @@ extern void highlightCardSlot(s32 groupId, s32 priority);
 #define TT_RESULT_VICTORY 0
 #define TT_RESULT_DEFEAT  1
 #define TT_RESULT_DRAW    2
+#define TT_RESULT_QUIT    3   /**< Player quit at the post-match Play/Quit prompt (indexes past win/loss/draw — no record bumped). */
 
 /* Typedefs */
 

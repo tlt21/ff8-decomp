@@ -1,18 +1,29 @@
 #include "common.h"
+#include "gamestate.h"
 #include "item.h"
+#include "numstr.h"
+#include "sound.h"
+#include "snd_init.h"
+#include "thread.h"
 #include "psxsdk/libc.h"
 #include "psxsdk/libgpu.h"
+#include "drawbar.h"
 #include "battle_anim.h"
+#include "btl_anim.h"
 #include "tripletriad/be_object1.h"
+#include "tripletriad/be_object1b.h"
+#include "tripletriad/be_object2.h"
+#include "tripletriad/be_object3.h"
+#include "tripletriad/be_object3b.h"
 #include "tripletriad/be_object4.h"
 
 /** @brief One 0x0C-byte entry of the D_80182E70 per-SFX configuration table. */
 typedef struct {
-    /* 0x00 */ u8 flags;     /**< Bit 0 selects the stop-vs-start fade (see func_800A2054). */
+    /* 0x00 */ u8 flags;     /**< bit0 stop/start fade (func_800A2054); bit1 offset-params, bit2 center (func_800A1D68). */
     /* 0x01 */ u8 field2F;   /**< Value written to each SFX entry's field 0x2F. */
     /* 0x02 */ u8 pitch;     /**< Pitch value. */
     /* 0x03 */ u8 fadeTimer; /**< Frame countdown; on reaching 0 the entry is faded out (see func_800A1C6C). */
-    /* 0x04 */ u8 pad04[8];
+    /* 0x04 */ RECT rect;    /**< Message-box rect (func_800A1D68); 0 w/h means "size to the text". */
 } SfxConfig;
 
 /** @brief The Triple Triad board view + cursor state at D_801D49C8.
@@ -38,24 +49,30 @@ typedef struct {
     /* 0x24 */ u8 unk24;
 } CursorState;
 
-extern void *func_8002FF34(void *otBase, void *pkt, s32 ch, s32 yPos, s32 w, s32 col);
-extern void intToDecStringShort(u32 value, u8 *buf, s32 digitBase);
-extern void replaceLeadingZeros(u8 *buf, s32 count, s32 digitBase, s32 replacement);
+/* Imported functions kept as file-scope externs, each for a concrete reason (numstr, controller-
+   input, battle-display and colour-bar GPU helpers were migrated to numstr.h / thread.h /
+   btl_anim.h / drawbar.h):
+     - sendSpuCommand, func_800300F8 — owned by btl_color.c, whose btl_color.h pulls in battle.h
+       (for BattleCmdEntry); tripletriad is decoupled from battle.h.
+     - func_800281A4, func_800485C4, func_80030F10 — no .c in the tree defines them yet, so there
+       is no owner translation unit to give a header.
+     - getAnimFrameParam — returns u16 (thread.c) but this caller needs the s32 view with no
+       widening mask; adopting the true u16 measurably breaks the match (see thread.h). */
 extern void sendSpuCommand(s32 idx);
-extern void sndPlaySfx(s32 voiceMask, s32 addr, s32 volume, s32 pan);
-extern s32 sndGetEngineState(void);
-extern s32 sndCmd11(s32 arg0);
-extern s16 sndCmd10(s32 bank);
-extern s32 sndCmdC0(s32 channel, s32 value);
 extern void func_800485C4(void *dst, void *src, s32 size);
-extern DR_AREA *func_8002B898(P_TAG *ot, DR_AREA *prim, RECT *rect, s32 color);
-extern DR_AREA *func_8002B8BC(P_TAG *ot, DR_AREA *prim, RECT *rect, s32 color, s32 a4);
+extern void func_800281A4(s32 entity, s32 side, s32 value);
+extern void *func_800300F8(void *renderCtx, void *prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
+extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-frame param. Defined u16 in thread.c, but the original caller uses it as s32 (no widening mask) — match-load-bearing, so kept here rather than via thread.h. */
+extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask (owner TU not yet identified). */
+
+/* File-scope data: a few globals owned elsewhere (battle config / menu palette) plus
+   be_object4-private board / SFX / input state — the D_801D4xxx / D_801C2Exx / D_80182Exx
+   symbols are not referenced by any other translation unit. */
 extern u8  g_battleConfig[];   /**< Shared battle config; [9] bit 0 = sound-bank selector. */
 extern u8  D_80082C11;         /**< Sound-bank selector flag (same byte as g_battleConfig[9]). */
-extern u8  D_8005F388[];       /**< Sound-bank buffer A. */
-extern u8  D_80063388[];       /**< Sound-bank buffer B. */
-extern u8  D_801A1B88[];       /**< Start of the Triple Triad sound region uploaded to a bank. */
 extern s16 D_8005F11C;
+extern s32 g_menuColor[];
+extern u8  D_801A1B88[];       /**< Start of the Triple Triad sound region uploaded to a bank. */
 extern s16 D_801D49E2;
 extern s16 D_801D49F8[];
 extern s16 D_801D4B18;
@@ -68,7 +85,6 @@ extern s32 D_801D4B30[]; /**< Per-controller newly-pressed mask. */
 extern s32 D_801D4B24;   /**< = D_801D4B20[1] (player 2); split symbol for the readPads write. */
 extern s32 D_801D4B2C;   /**< = D_801D4B28[1] (player 2). */
 extern s32 D_801D4B34;   /**< = D_801D4B30[1] (player 2). */
-extern s32 g_menuColor[];
 extern SfxConfig D_80182E70[];
 extern u8 D_80182EC8[];
 extern u8 D_801D4568[];
@@ -80,25 +96,16 @@ extern u8 D_801D4A88[]; /**< Per-cell lookup value, indexed by cursor grid posit
 extern u8 D_801D4AF6;   /**< Total cell count of the cursor grid (rows of 11). */
 extern u16 D_801C2EBC;  /**< Idle-state input snapshot fed to the cursor state machine. */
 extern u16 D_801C2EC4;  /**< Slide-state input snapshot fed to the cursor state machine. */
-extern s32 g_cardDisplaySlot;   /**< Current card-display slot index (-1 when none). */
-extern void renderAndUpdateDisplay(s32 mode);
-extern s32  renderBattleDisplayList(u32 *ot);
-extern void func_800281A4(s32 entity, s32 side, s32 value);
-extern void *func_800300F8(void *renderCtx, void *prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
-extern void func_800275D4();                          /**< Refresh the raw controller buffers. */
-extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-frame parameter. */
-extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask. */
-extern s32  func_80027DB4(s32 a, s32 b, s32 c);       /**< Read an analog axis (b: 2 = X, 3 = Y). */
-extern s32  func_80027CF8(s32 a, s32 b, s32 c);       /**< Fold a recentred analog stick into d-pad bits. */
-extern void *func_800A3EE0(void *a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5); /**< Tail-called by func_800A4098; defined below. */
-extern void *func_800A3D2C(void *otBase, void *pkt, s32 x, s32 y, s32 cardImg, s32 col); /**< Card-image primitive; defined below. */
-extern void *func_800A3528(void *otBase, void *pkt, void *(*drawCell)(void *, void *, s32, s32, s32)); /**< Per-cell slide-render iterator; defined below. */
+
+/* Private prototypes — functions defined later in this file. */
+extern void *func_800A3EE0(void *a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5); /**< Tail-called by func_800A4098. */
+extern void *func_800A3D2C(void *otBase, void *pkt, s32 x, s32 y, s32 cardImg, s32 col); /**< Card-image primitive. */
+extern void *func_800A3528(void *otBase, void *pkt, void *(*drawCell)(void *, void *, s32, s32, s32)); /**< Per-cell slide-render iterator. */
 extern s32 func_800A238C();
-extern s32 func_800A279C();
 extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
-extern s32 func_800A390C(s32 flags0, s32 flags1); /**< Cursor/timer state machine; defined below. */
-extern s32 func_800A443C(s32 a0);                 /**< VSync-locked display-list apply; defined below. */
-extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init; defined below. */
+extern s32 func_800A390C(s32 flags0, s32 flags1); /**< Cursor/timer state machine. */
+extern s32 func_800A443C(s32 a0);                 /**< VSync-locked display-list apply. */
+extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init. */
 
 /**
  * @brief Reset and reconfigure the seven SFX channels.
@@ -144,7 +151,7 @@ void func_800A1C6C(void)
     }
 
     renderAndUpdateDisplay(1);
-    renderBattleDisplayList(g_otBase);
+    renderBattleDisplayList((s32 *)g_otBase);
     func_800A443C((s32)&g_otBase[1]);
 
     for (i = 0; i < 7; i++) {
@@ -161,7 +168,97 @@ void func_800A1C6C(void)
     }
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A1D68);
+/** @brief getGlyphWidthA's packed {width, height} result, held in an 8-byte stack slot. */
+typedef union {
+    s32 raw[2];   /**< raw[0] = the packed result word; the pair sizes the 8-byte slot. */
+    s16 wh[2];    /**< wh[0] = width, wh[1] = height (overlay of raw[0]). */
+} GlyphSize;
+
+/**
+ * @brief Lay out a Triple Triad message-banner box and trigger its SFX/animation.
+ *
+ * Measures @p str (and, for @p id 5, the appended "Play / Quit" suffix) to size the
+ * box, copies the box rect from @c D_80182E70[id], applies defaults ("size to text"
+ * when w/h are 0), then either centers it (flag bit 2) or pulls it in from the
+ * right/bottom edge for negative origins.  Registers the rect (func_8002E064),
+ * dispatches the banner's audio by @p id (5 = multi-line, 6 = fixed, otherwise the
+ * generic path), optionally offsets the SFX entry (flag bit 1), starts it
+ * normal/slow (flag bit 0), and records @p param as the entry's fade timer.
+ *
+ * @param id    Message/SFX slot index into @c D_80182E70.
+ * @param str   FF8-encoded message string.
+ * @param param Fade-timer / display-duration value stored into the entry.
+ */
+void func_800A1D68(s32 id, u8 *str, s32 param) {
+    GlyphSize dim;   /* text block size from getGlyphWidthA */
+    GlyphSize sfx;   /* "Play / Quit" suffix size (id 5 only) */
+    RECT rect;
+
+    dim.raw[0] = getGlyphWidthA((s32)str);
+
+    if (id == 5) {
+        s16 m;
+        sfx.raw[0] = getGlyphWidthA((s32)((u8 *)&D_801826E2 - 0x62 + D_801826E2));
+        m = (u16)sfx.wh[0] + 0x20;
+        sfx.wh[0] = m;
+        if (dim.wh[0] < m) {
+            dim.wh[0] = m;
+        }
+    }
+
+    rect = D_80182E70[id].rect;
+    if (rect.w == 0) {
+        rect.w = (u16)dim.wh[0] + 0x10;
+    }
+    if (rect.h == 0) {
+        rect.h = (u16)dim.wh[1] + 0x10;
+    }
+    if (D_80182E70[id].flags & 4) {
+        rect.x = (u16)rect.x - rect.w / 2;
+        rect.y = (u16)rect.y - rect.h / 2;
+    } else {
+        if (rect.x < 0) {
+            rect.x = (u16)rect.x + 0x180 - rect.w;
+        }
+        if (rect.y < 0) {
+            rect.y = (u16)rect.y + 0xE0 - rect.h;
+        }
+    }
+    func_8002E064(id, &rect);
+
+    if (id == 5) {
+        goto sfx5;
+    }
+    if (id != 6) {
+        goto sfxDefault;
+    }
+    func_8002D784(6, str, 1, 2, 1, 2);
+    setSfxGlobalFlag(6);
+    goto sfxDone;
+sfx5:
+    {
+        s32 lines = dim.wh[1] / 16;
+        func_8002D784(5, str, lines - 1, lines, lines - 1, lines);
+    }
+    setSfxGlobalFlag(5);
+    goto sfxDone;
+sfxDefault:
+    initSfxPlayback(id, str);
+sfxDone:;
+
+    if (D_80182E70[id].flags & 2) {
+        s32 px = rect.w - 0x10;
+        s32 py = rect.h - 0x10;
+        setSfxEntryParams(id, (px - dim.wh[0]) / 2, (py - dim.wh[1]) / 2);
+    }
+    if (D_80182E70[id].flags & 1) {
+        startSfxNormal(id);
+    } else {
+        startSfxSlow(id);
+    }
+
+    D_80182E70[id].fadeTimer = param;
+}
 
 /**
  * @brief Start or stop an SFX entry based on its type flag.
@@ -199,10 +296,12 @@ void func_800A20B0(void) {
 }
 
 /**
- * @brief Wrapper that calls func_8002CE84, passing through all arguments.
+ * @brief Poll a player-input gate; thin wrapper forwarding @p gate to func_8002CE84.
+ * @param gate Gate / channel id to poll.
+ * @return Gate result: <0 while still waiting, otherwise the player's selection.
  */
-void func_800A20F4(void) {
-    func_8002CE84();
+s32 func_800A20F4(s32 gate) {
+    return func_8002CE84(gate);
 }
 
 /**
@@ -375,13 +474,77 @@ s32 func_800A238C(SndTaskNode *node) {
  */
 void func_800A247C(void) {
     SndTaskNode *node;
-    sndProcessAudio(D_80182EC8, 0);
+    sndProcessAudio((s32)D_80182EC8, 0);
     node = (SndTaskNode *)spawnTaskNode((ObjNodeFn)func_800A238C);
     node->state = 0;
     node->field0E = 0;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A24B4);
+/**
+ * @brief Build the active Triple Triad rules description into @p dst.
+ *
+ * Reads @c g_tripleTriadRules and appends, in order, the label for each enabled
+ * rule — "Rules", ": Open", ": Sudden Death", ": Random", the "Same"/"Plus"/
+ * "Same Wall" clause, ": Elemental" — then ": Trade Rule" and the active
+ * trade-rule name (Null/One/Diff/Direct/All, selected by @c D_801A2C44).
+ *
+ * The labels live in the shared rule-string block at 0x80182680 (a u16 offset
+ * table followed by the FF8-encoded strings).  The base is recovered from the
+ * title slot (@c &D_8018269E - 0x1E); each label is reached as @c base + offset.
+ * The later labels re-derive the base from their own slots — the same access
+ * idiom be_object3 uses for the card-claim banners.
+ *
+ * @param dst Destination buffer for the assembled, FF8-encoded string.
+ */
+void func_800A24B4(u8 *dst) {
+    /* Reading the title offset up front forces the %hi(D_8018269E) load, so the base
+     * below is materialised from the title slot rather than folded into a slot-relative
+     * load (tbl->title) — which is what the original codegen does. */
+    u16 title = D_8018269E;
+    RuleStrTable *tbl = (RuleStrTable *)((u8 *)&D_8018269E - 0x1E);
+    s32 flag;
+
+    dst[0] = 0;
+    func_80047C74(dst, (u8 *)tbl + D_8018269E);                  /* "Rules" */
+
+    if (g_tripleTriadRules & TT_RULE_OPEN) {
+        func_80047C74(dst, (u8 *)tbl + tbl->openStr);            /* ": Open" */
+    }
+    if (g_tripleTriadRules & TT_RULE_SUDDEN_DEATH) {
+        func_80047C74(dst, (u8 *)tbl + tbl->suddenDeathStr);     /* ": Sudden Death" */
+    }
+    if (g_tripleTriadRules & TT_RULE_RANDOM) {
+        func_80047C74(dst, (u8 *)tbl + tbl->randomStr);          /* ": Random" */
+    }
+    if (g_tripleTriadRules & (TT_RULE_SAME | TT_RULE_PLUS)) {
+        flag = 0;
+        func_80047C74(dst, (u8 *)tbl + tbl->sameOrPlus0);        /* clause lead-in */
+        func_80047C74(dst, (u8 *)tbl + tbl->sameOrPlus1);        /* ": " */
+        if (g_tripleTriadRules & TT_RULE_SAME) {
+            func_80047C74(dst, (u8 *)tbl + tbl->sameStr);        /* "Same" */
+            flag = 1;
+        }
+        if (g_tripleTriadRules & TT_RULE_PLUS) {
+            if (flag) {
+                func_80047C74(dst, (u8 *)tbl + tbl->plusConj);   /* "," */
+            }
+            func_80047C74(dst, (u8 *)tbl + tbl->plusStr);        /* "Plus" */
+            flag = 1;
+        }
+        if ((g_tripleTriadRules & (TT_RULE_SAME | TT_RULE_SAME_WALL)) == (TT_RULE_SAME | TT_RULE_SAME_WALL)) {
+            if (flag) {
+                func_80047C74(dst, (u8 *)&D_801826A6 - 0x26 + D_801826A6);   /* "," */
+            }
+            func_80047C74(dst, (u8 *)&D_801826C2 - 0x42 + D_801826C2);       /* "Same Wall" */
+        }
+    }
+    if (g_tripleTriadRules & TT_RULE_ELEMENTAL) {
+        func_80047C74(dst, (u8 *)&D_801826C6 - 0x46 + D_801826C6);           /* ": Elemental" */
+    }
+    func_80047C74(dst, (u8 *)&D_801826CA - 0x4A + D_801826CA);               /* ": Trade Rule" */
+    /* active trade-rule name (Null/One/Diff/Direct/All), indexed by D_801A2C44 */
+    func_80047C74(dst, (u8 *)&D_801826CA - 0x4A + *(u16 *)((u8 *)&D_801826CA + D_801A2C44 * 4 + 4));
+}
 
 /**
  * @brief Open the Triple Triad in-game menu and freeze card input.
@@ -422,24 +585,113 @@ s32 func_800A274C(void) {
     return 0;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A279C);
+/** @brief Phase of the rules / "Play / Quit" prompt state machine (@c PromptScreenNode.state). */
+enum PlayQuitPhase {
+    PLAYQUIT_SHOW   = 0,  /**< Fade to black, then build + show the rules / "Play / Quit" prompt. */
+    PLAYQUIT_POLL   = 1,  /**< Poll the player's Play / Quit choice. */
+    PLAYQUIT_FINISH = 2   /**< Fade to white, then hand off to TT_STATE_EXIT. */
+};
+
+/** @brief Render-list state node (0x10 bytes) for the rules / "Play / Quit" prompt screen.
+ *
+ * One node out of the D_801D4968 render list (see initTripleTriadRenderList), driven by
+ * updatePlayQuitPrompt. The leading 0xC bytes are the ObjList linkage. */
+typedef struct {
+    /* 0x00 */ u8 pad00[0xC];
+    /* 0x0C */ u8 state;    /**< Current @ref PlayQuitPhase. */
+    /* 0x0D */ u8 counter;  /**< Per-phase frame counter (acts on reaching TT_HOLD_FRAMES_FADE). */
+    /* 0x0E */ u8 pad0E[2];
+} PromptScreenNode;  /* 0x10 */
+
+/**
+ * @brief Per-frame handler for the post-match rules / "Play / Quit" prompt screen.
+ *
+ * Three-phase state machine (@ref PlayQuitPhase) clocked once per frame off @c node->state:
+ *  - @ref PLAYQUIT_SHOW: on entry start a fade-to-black; after @c TT_HOLD_FRAMES_FADE frames
+ *    build the rules description plus its "Play / Quit" suffix into @c D_801D4568 (func_800A24B4
+ *    then func_80047C74), show it (func_800A1D68), and advance to @ref PLAYQUIT_POLL.
+ *  - @ref PLAYQUIT_POLL: bump the Triple Triad RNG-seed field, then poll the player-input gate
+ *    (func_800A20F4). A negative result keeps waiting; otherwise acknowledge it (func_800A2054)
+ *    and act on the choice: "play again" (0) re-enters @c TT_STATE_SCRIPT, "quit" (1) advances
+ *    to @ref PLAYQUIT_FINISH. Any other non-negative result is ignored.
+ *  - @ref PLAYQUIT_FINISH: on entry start a fade-to-white; after @c TT_HOLD_FRAMES_FADE frames
+ *    record the quit result (@c D_80082C9C = @c TT_RESULT_QUIT) and hand off to @c TT_STATE_EXIT.
+ *
+ * @param node Render-list node carrying the phase @c state and frame @c counter.
+ * @return Always 0.
+ */
+s32 updatePlayQuitPrompt(PromptScreenNode *node) {
+    TripleTriadData *data = getTripleTriadData();
+    s32 r;
+    s32 state;
+
+    while (1) {
+        state = node->state;
+        switch (state) {
+        case PLAYQUIT_SHOW:
+            if (node->counter == 0) {
+                startFadeToBlack(TT_HOLD_FRAMES_FADE);
+            }
+            node->counter += 1;
+            if ((u8)node->counter >= TT_HOLD_FRAMES_FADE) {
+                func_800A24B4(D_801D4568);
+                /* Suffix string pointer = rule-string block base + offset; the block base is
+                   recovered from the carved offset symbol (&D_801826E2 - 0x62 == 0x80182680). */
+                func_80047C74(D_801D4568, (u8 *)&D_801826E2 - 0x62 + D_801826E2);
+                func_800A1D68(5, D_801D4568, 0);
+                node->state = PLAYQUIT_POLL;
+                node->counter = 0;
+                continue;
+            }
+            return 0;
+        case PLAYQUIT_POLL:
+            data->rngState += 1;
+            r = func_800A20F4(5);
+            if (r >= 0) {
+                func_800A2054(5);
+                /* Ignore any choice that is neither "play again" (0) nor "quit"; the quit value
+                   equals this phase's id, so it is tested against @c state (== PLAYQUIT_POLL). */
+                if (r != 0 && r != state) {
+                    return 0;
+                }
+                if (r == 0) {
+                    g_tripleTriadState = TT_STATE_SCRIPT;
+                } else {
+                    node->state = PLAYQUIT_FINISH;
+                    node->counter = 0;
+                }
+            }
+            return 0;
+        case PLAYQUIT_FINISH:
+            if (node->counter == 0) {
+                startFadeToWhite(TT_HOLD_FRAMES_FADE);
+            }
+            node->counter += 1;
+            if ((u8)node->counter >= TT_HOLD_FRAMES_FADE) {
+                D_80082C9C = TT_RESULT_QUIT;
+                g_tripleTriadState = TT_STATE_EXIT;
+            }
+            return 0;
+        }
+    }
+}
 
 /**
  * @brief Initialize the D_801D4968 linked list with two render callbacks.
  *
  * Sets up D_801D4968 as a linked list (node size 0x10, capacity 4),
- * then appends func_800A279C and func_800A274C as callbacks.
- * Clears bytes 0xC and 0xD on the first node.
+ * then appends updatePlayQuitPrompt and func_800A274C as callbacks.
+ * Clears the prompt-screen node's state and counter on the first node.
  *
  * @return Pointer to D_801D4968 list header.
  */
 u8 *initTripleTriadRenderList(void) {
     ObjList *list = D_801D4968;
-    u8 *node;
-    initObjList(list, D_801D4978, 0x10, 4);
-    node = (u8 *)allocObjNode(list, (ObjNodeFn)func_800A279C);
-    node[0xC] = 0;
-    node[0xD] = 0;
+    PromptScreenNode *node;
+    initObjList(list, D_801D4978, sizeof(PromptScreenNode), 4);
+    node = (PromptScreenNode *)allocObjNode(list, (ObjNodeFn)updatePlayQuitPrompt);
+    node->state = PLAYQUIT_SHOW;
+    node->counter = 0;
     allocObjNode(list, (ObjNodeFn)func_800A274C);
     return list;
 }
@@ -873,7 +1125,124 @@ DR_AREA *func_800A343C(P_TAG *ot, DR_AREA *prim, s32 scale) {
     return prim;
 }
 
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3528);
+/**
+ * @brief Render one frame of the Triple Triad board cursor, including its
+ *        row-to-row slide animation.
+ *
+ * Copies the @ref CursorState::view rectangle into @ref CursorState::work, then —
+ * while sliding (@ref CursorState::slideOffset != 0) — eases the working rect across
+ * the screen via the @c D_801D49F8 falloff curve: it draws the outgoing row sliding
+ * away, an 8px highlight bar on the leading edge (@c func_8002B3A0), and finally
+ * draws the current row into the clipped working rect plus the cursor timer pass
+ * (@c func_800A343C). Individual cells are emitted by @p drawCell, called
+ * @ref CursorState::unk21 times per row; @c D_801D4B18 / @c D_801D4B1A are the GPU
+ * scissor X bounds set up around each pass.
+ *
+ * @param otBase   Ordering-table base the primitives link into.
+ * @param prim     Running primitive cursor, threaded through and returned advanced.
+ * @param drawCell Per-cell callback: (otBase, prim, rowIndex, column, slideFlag) -> prim.
+ * @return The advanced @p prim.
+ */
+void *func_800A3528(void *otBase, void *prim, void *(*drawCell)(void *, void *, s32, s32, s32)) {
+    void *(*draw)(void *, void *, s32, s32, s32);
+    u16 clipEdge;
+    CursorState *cs = &D_801D49C8;
+    s32 slide = cs->slideOffset;
+    long delta = 0;
+    s32 rem = 0;
+    u16 x = (u16) cs->view.x;
+    u16 y = (u16) cs->view.y;
+    u16 w = (u16) cs->view.w;
+    u16 h = (u16) cs->view.h;
+    s32 color = cs->packedColor;
+    s32 i;
+
+    cs->work.x = x;
+    cs->work.y = y;
+    cs->work.w = w;
+    cs->work.h = h;
+
+    /* Copying the callback into a local here — after the work-rect stores — shortens
+       its live range so it stays in a callee-saved register across the draw loops,
+       matching the original's allocation. */
+    draw = drawCell;
+    if (slide != 0) {
+        s32 ease = ((u16 *) D_801D49F8)[(slide < 0 ? -slide : slide) / 64];
+        s32 left;
+        s32 right;
+
+        /* From here on, reuse `slide` to hold the signed displacement factor. */
+        if (slide < 0) {
+            s32 sw = (s16) w;
+            s32 sx;
+            s32 mag;
+            slide = -ease;
+            delta = (sw * slide) / 4096;
+            sx = (s16) x;
+            mag = delta < 0 ? -delta : delta;
+            left = sx + mag;
+            right = sx + sw - mag;
+        } else {
+            slide = ease;
+            delta = ((s16) w * slide) / 4096;
+            left = (s16) x + delta;
+            right = (s16) x;
+        }
+        clipEdge = right - 12;
+        {
+            s32 leftClip = clipEdge;
+            D_801D4B18 = leftClip;
+            D_801D4B1A = left;
+        }
+        i = 0;
+
+        for (; i < cs->unk21; i++)
+            prim = draw(otBase, prim, cs->prevRow, i, 0);
+
+        if (slide < 0) {
+            rem = delta < 0 ? -delta : delta;
+            cs->work.w = rem;
+            rem = (s16) (u16) cs->view.w - rem;
+            cs->work.x = (u16) cs->view.x + rem;
+            prim = func_800A3248(otBase, prim, &cs->work);
+            if (rem >= 9) {
+                cs->work.w = 8;
+                cs->work.x = (u16) cs->view.x + rem - 8;
+                prim = func_8002B3A0(otBase, prim, &cs->work, color, 2);
+            }
+            cs->work.w = rem - 8;
+            cs->work.x = (u16) cs->view.x + 8;
+        } else {
+            cs->work.w = delta;
+            rem = (s16) (u16) cs->view.w - delta;
+            cs->work.x = (u16) cs->view.x;
+            prim = func_800A3248(otBase, prim, &cs->work);
+            if (rem >= 9) {
+                cs->work.w = 8;
+                cs->work.x = (u16) cs->view.x + delta;
+                prim = func_8002B3A0(otBase, prim, &cs->work, color, 1);
+            }
+            cs->work.x = (u16) cs->view.x + delta;
+            cs->work.w = (u16) cs->view.w - delta - 8;
+        }
+    }
+
+    if (cs->work.w > 0) {
+        D_801D4B18 = cs->work.x - 12;
+        D_801D4B1A = cs->work.x + cs->work.w;
+
+        for (i = 0; i < cs->unk21; i++)
+            prim = draw(otBase, prim, cs->row, i, delta);
+
+        if (rem != 0)
+            prim = func_800A3248(otBase, prim, &cs->work);
+    }
+
+    prim = func_800A343C(otBase, prim, cs->timer);
+    D_801D4B18 = 0;
+    D_801D4B1A = 0x180;
+    return prim;
+}
 
 /**
  * @brief Step a wrapping cursor by the D-pad input, playing a click per move.
@@ -1070,7 +1439,7 @@ u32 func_800A3C7C(u32 ot, SPRT *prim, s32 tileIdx, s32 palArg, u32 xy) {
     ((u8 *)&prim->tag)[3] = 4; /* SPRT length = 4 words */
     __asm__ __volatile__("" : : : "memory"); /* keep the head shift after the len store */
     head = (u32)prim << 8;     /* new OT head */
-    __asm__ __volatile__("swl %0, 2(%1)" : : "r"(ot), "r"(prim) : "memory"); /* link */
+    setAddrFast(prim, ot);     /* link: prim's OT-next = old head */
     ot = head;
 
     head = (u32)palArg >> 3;   /* head register reused: now the palette page */
@@ -1093,6 +1462,27 @@ u32 func_800A3C7C(u32 ot, SPRT *prim, s32 tileIdx, s32 palArg, u32 xy) {
     return ot;
 }
 
+/**
+ * @brief Render a multi-byte glyph string (arg4) at (x, y) in colour (arg5),
+ *        emitting one SPRT per glyph and splicing the chain into otBase's OT.
+ *
+ * Walks the string: byte 2 = new line (x reset, y += 0x10); a byte < 0x19 ends it;
+ * >= 0x20 is a direct glyph (ch - 0x20); 0x19..0x1F are two-byte glyphs decoded as
+ * ch*224 + next - 0x1520 (0x19..0x1B) or (ch*224 + next - 0x18A0) | 0x400 (0x1C..0x1F).
+ * Each visible glyph emits a SPRT via @ref func_800A3C7C and advances x by
+ * @ref getNibbleValue; D_801D4B18 / D_801D4B1A clip the x range. A trailing E100041F
+ * tpage primitive is appended and the whole chain is linked into otBase's OT slot via
+ * the lwl/swl tag-splice (read at the top, writes at the end — same idiom as
+ * @ref func_800A3C7C).
+ *
+ * @note Not yet cleanly matched. The plain-C form (logic 100% correct) reaches ~95%;
+ *       the remaining bytes are pure register-allocation/scheduling artifacts — head
+ *       materialised from an uninitialised register (`addu s5,t0`), a never-stored
+ *       0x18(sp) spill slot, and $t1 shared between the otBase reloads and the new-head
+ *       shift. Reproducing those by hand needs codegen-forcing asm (register pins,
+ *       materialise/coalesce asm) which is prohibited, so this is left as INCLUDE_ASM
+ *       pending a clean matching form (permuter). Clean seed: permuter/func_800A3D2C/base.c.
+ */
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3D2C);
 
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3EE0);

@@ -3,6 +3,7 @@
 #include "psxsdk/libgte.h"
 #include "psxsdk/libc.h"
 #include "battle.h"
+#include "btl_anim.h"
 
 
 u8 *emitDrawEnvPackets(u8 *ot, u8 *pkt);
