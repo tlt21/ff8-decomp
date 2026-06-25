@@ -2,6 +2,7 @@
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libc.h"
 #include "battle.h"
+#include "numstr.h"
 
 extern u8 D_8008386C;
 

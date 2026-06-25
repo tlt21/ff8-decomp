@@ -1,6 +1,7 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
 #include "battle.h"
+#include "thread.h"
 
 INCLUDE_ASM("asm/nonmatchings/thread", func_80026ADC);
 

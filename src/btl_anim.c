@@ -3,9 +3,10 @@
 #include "psxsdk/libgte.h"
 #include "psxsdk/libc.h"
 #include "battle.h"
+#include "btl_anim.h"
 
 
-u8 *emitDrawEnvPackets(u32 *ot, u8 *pkt);
+u8 *emitDrawEnvPackets(u8 *ot, u8 *pkt);
 void callCdTick(void);
 void shutdownCardSubsystem(void);
 void initBattleSubsystems(void);
@@ -2020,17 +2021,21 @@ void copyDisplayCoords(DVECTOR *dst) {
  * @param pkt GPU packet allocation pointer.
  * @return Updated packet pointer (pkt + 24 bytes: two 12-byte packets).
  */
-u8* emitDrawEnvPackets(u32* ot, u8* pkt) {
+u8 *emitDrawEnvPackets(u8 *ot, u8 *pkt) {
     RECT rect;
+    DR_AREA *area;
+    DR_OFFSET *offset;
 
     copyDisplayRect(&rect);
-    SetDrawArea(pkt, &rect);
-    addPrim(ot, pkt);
+
+    area = (DR_AREA *)pkt;
+    SetDrawArea(area, &rect);
+    addPrim(ot, area);
     pkt += 0xC;
 
-    SetDrawOffset(pkt, &rect);
-    addPrim(ot, pkt);
-
+    offset = (DR_OFFSET *)pkt;
+    SetDrawOffset(offset, &rect);
+    addPrim(ot, offset);
     pkt += 0xC;
 
     return pkt;

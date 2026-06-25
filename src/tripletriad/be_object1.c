@@ -28,7 +28,7 @@ void initTripleTriad(void) {
     func_800A1BE0();
     func_800A2208();
     initTextBuffer();
-    func_8009EB98();
+    initGradientFadeList();
     queueTimUpload(&g_tripleTriadCardArt);
     queueTimUpload(&g_tripleTriadCardFrames);
 
@@ -80,7 +80,7 @@ s32 tripleTriadMainLoop(void) {
         func_800A1C6C();
         flipBuffers();
         sampleInput();
-        func_800A2214();
+        flushTriadSfxQueue();
         g_tripleTriadFrameCount++;
     } while (g_tripleTriadState != TT_STATE_EXIT);
 
@@ -530,20 +530,20 @@ void drawTextChar(u8 ch) {
     }
 
     /* Any space or control byte: just advance the cursor, no glyph. */
-    if (ch <= 0x20) {
+    if (ch <= ' ') {
         g_textCursorX += 6;
         return;
     }
 
-    /* Lowercase 'a'..'z' (0x61..0x7A): fold to uppercase by subtracting 0x20. */
-    if ((u8)(ch - 0x61) < 0x1A) {
-        ch -= 0x20;
+    /* Lowercase 'a'..'z': fold to uppercase. */
+    if ((u8)(ch - 'a') < 26) {
+        ch -= 'a' - 'A';
     }
 
     SetSprt(prim);
 
-    /* Drop down to glyph index relative to space (0x20 = first printable). */
-    adjusted = ch - 0x20;
+    /* Drop down to glyph index relative to space (the first printable char). */
+    adjusted = ch - ' ';
 
     prim->r0 = g_textColor.r;
     prim->g0 = g_textColor.g;
@@ -621,7 +621,7 @@ u8 *intToDecStr(s32 value, u8 *out) {
     u8 *p;
 
     if (value < 0) {
-        *dst = 0x2D;
+        *dst = '-';
         dst++;
         value = -value;
     }
@@ -631,7 +631,7 @@ u8 *intToDecStr(s32 value, u8 *out) {
 
     do {
         p--;
-        *p = (value % 10) + 0x30;
+        *p = (value % 10) + '0';
         value = value / 10;
     } while (value != 0);
 
@@ -689,7 +689,7 @@ u8 *intToBinStr(s32 value, u8 *out) {
 
     do {
         p--;
-        *p = (value & 1) + 0x30;
+        *p = (value & 1) + '0';
         value >>= 1;
     } while (value != 0);
 
@@ -785,7 +785,7 @@ end:
  * @param fmt Format string, followed by its values.
  * @return Length of the result, excluding the null terminator.
  */
-s32 btlSprintf(s32 dst, s32 fmt, ...) {
+s32 ttSprintf(s32 dst, s32 fmt, ...) {
     return formatString((char *)dst, &fmt);
 }
 
@@ -795,7 +795,7 @@ s32 btlSprintf(s32 dst, s32 fmt, ...) {
  * @param fmt Format string, followed by its values.
  */
 void drawTextf(s32 fmt, ...) {
-    s8 buf[0x100];
+    s8 buf[256];
     formatString((char *)buf, &fmt);
     drawText(buf);
 }

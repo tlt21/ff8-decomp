@@ -141,6 +141,14 @@ typedef union {
         : "memory", #treg);                               \
 } while (0)
 
+/* Read / write just the 24-bit P_TAG.addr field (the OT-next pointer) at offset 2 —
+ * the same lwl/swl idiom as addPrimFast, but split so a spread-out splice (read at the
+ * top of a function, glyph chain in between, write at the end) can use it without raw
+ * asm in the function body. A bitfield write to P_TAG.addr would compile to
+ * lw/and/or/sw, not the single swl, so this must stay inline asm. */
+#define getAddrFast(ot, dst) __asm__ __volatile__("lwl %0, 2(%1)" : "+r"(dst) : "r"(ot) : "memory")
+#define setAddrFast(p, val)  __asm__ __volatile__("swl %0, 2(%1)" : : "r"(val), "r"(p) : "memory")
+
 /**
  * @brief Battle encounter setup parameters at @ref D_80082C90.
  *
@@ -164,5 +172,8 @@ typedef struct {
 } EncounterParams;
 
 extern EncounterParams D_80082C90;
+
+/** @brief Append string @p src onto @p dst (main-binary string concatenation). */
+extern void func_80047C74(u8 *dst, u8 *src);
 
 #endif /* COMMON_H */

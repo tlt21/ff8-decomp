@@ -46,6 +46,7 @@ extern void highlightCardSlot(s32 groupId, s32 priority);
 #define TT_RESULT_VICTORY 0
 #define TT_RESULT_DEFEAT  1
 #define TT_RESULT_DRAW    2
+#define TT_RESULT_QUIT    3   /**< Player quit at the post-match Play/Quit prompt (indexes past win/loss/draw — no record bumped). */
 
 /* Typedefs */
 
@@ -75,7 +76,7 @@ typedef enum {
 } MatchFlowState;
 
 /**
- * @brief Callback node in the tripletriad list at @c D_801D3C68.
+ * @brief Callback node in the tripletriad list at @c g_gradFadeList.
  *
  * Minimal view: a list-node header followed by a list-head pointer. Other fields
  * (byte flags at 0x0E, 0x22; s16 at 0x20; etc.) are not yet modeled.
@@ -87,6 +88,6 @@ typedef struct {
 
 /* Data */
 extern u8  D_80082C9C;  /**< Match-result category byte (a @c TT_RESULT_* value). */
-extern s32 D_801D3018;  /**< Result-screen SFX handle. */
+extern s32 g_resultSfxHandle;  /**< Result-screen SFX node handle (from @c spawnGradientFade); dismissed on input. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT1B_H */

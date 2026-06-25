@@ -319,9 +319,12 @@ typedef enum {
 #define TT_RULE_OPEN       0x01   /**< Open rule: both hands are shown face-up. */
 #define TT_RULE_SAME       0x02   /**< Same rule enabled. */
 #define TT_RULE_PLUS       0x04   /**< Plus rule enabled. */
+#define TT_RULE_RANDOM     0x08   /**< Random rule: the hand is auto-dealt rather than picked. */
+#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
 #define TT_RULE_SAME_WALL  0x40   /**< Same-Wall extension (A facing wall counts as a match). */
 #define TT_RULE_ELEMENTAL  0x80   /**< FF8 Elemental rule (tile elements give +1/-1 edge modifiers). */
-#define TT_RULE_SUDDEN_DEATH 0x10 /**< Sudden Death: a drawn match replays the hand with current ownership. */
+#define TT_RULE_NO_CLAIM   0x20000000 /**< Engine flag (high bit): no card is won/lost after the match
+                                           (the post-match claim sweep is skipped); the hand is auto-dealt. */
 
 /** @brief Bits in @c g_tripleTriadInputFlags. */
 #define TT_INPUT_DISABLED   0x04  /**< Card input suspended while a modal sub-screen is active. */
@@ -334,7 +337,7 @@ typedef enum {
     TT_STATE_IDLE       = 0,  /**< No pending handler. */
     TT_STATE_INIT       = 1,  /**< Startup render-list init (set only by initTripleTriad). */
     TT_STATE_SCRIPT     = 2,  /**< Script-handler phase; replay re-entry point. */
-    TT_STATE_PLAY       = 3,  /**< Match play (battle-update callbacks). */
+    TT_STATE_PLAY       = 3,  /**< Match play (per-frame update callbacks). */
     TT_STATE_CARD_CLAIM = 4,  /**< Post-match card claim (set after the win/loss tally). */
     TT_STATE_RESTART    = 5,  /**< Redirects to TT_STATE_SCRIPT; no decompiled setter found. */
     TT_STATE_EXIT       = 6   /**< Terminate the main loop. */
@@ -384,7 +387,7 @@ extern u8            g_tripleTriadState;        /**< Current phase / next handle
 extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
 extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
-extern ObjList            D_801D3028[];      /**< Battle-update callback list header. */
+extern ObjList            D_801D3028[];      /**< Per-frame update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */
 extern u8            D_801D30FC;        /**< Match winner (0/1, or 2 = draw); also the claim seat. */
 #define TT_WINNER_DRAW 2                 /**< @c D_801D30FC value when neither seat won. */
