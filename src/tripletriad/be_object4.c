@@ -17,96 +17,6 @@
 #include "tripletriad/be_object3b.h"
 #include "tripletriad/be_object4.h"
 
-/** @brief One 0x0C-byte entry of the D_80182E70 per-SFX configuration table. */
-typedef struct {
-    /* 0x00 */ u8 flags;     /**< bit0 stop/start fade (func_800A2054); bit1 offset-params, bit2 center (func_800A1D68). */
-    /* 0x01 */ u8 field2F;   /**< Value written to each SFX entry's field 0x2F. */
-    /* 0x02 */ u8 pitch;     /**< Pitch value. */
-    /* 0x03 */ u8 fadeTimer; /**< Frame countdown; on reaching 0 the entry is faded out (see func_800A1C6C). */
-    /* 0x04 */ RECT rect;    /**< Message-box rect (func_800A1D68); 0 w/h means "size to the text". */
-} SfxConfig;
-
-/** @brief The Triple Triad board view + cursor state at D_801D49C8.
- *
- * func_800A4504 initializes the whole block; func_800A4478 sets the color
- * fields; func_800A44CC resets the cursor; func_800A390C runs the per-frame
- * cursor/timer state machine. */
-typedef struct {
-    /* 0x00 */ RECT view;        /**< Board view rectangle (position + size). */
-    /* 0x08 */ RECT work;        /**< Scratch rectangle scaled from @ref view (see func_800A343C). */
-    /* 0x10 */ s32 packedColor;  /**< Packed RGB+0x64 brightness (see func_800A4478). */
-    /* 0x14 */ s16 slideOffset;  /**< Fixed-point row-slide animation offset. */
-    /* 0x16 */ u8 row;           /**< Current cursor row. */
-    /* 0x17 */ u8 prevRow;       /**< Previous cursor row (saved on a move). */
-    /* 0x18 */ s16 timer;        /**< Fixed-point step timer; fires at 0x1000. */
-    /* 0x1A */ s16 timerStep;    /**< Amount added to @ref timer each frame. */
-    /* 0x1C */ s16 brightness;   /**< Raw brightness (scaled by 32; see func_800A4478). */
-    /* 0x1E */ s16 cursorPos;    /**< Grid position, row*11 + column. */
-    /* 0x20 */ u8 unk20;
-    /* 0x21 */ u8 unk21;
-    /* 0x22 */ u8 state;         /**< State-machine state (0..5). */
-    /* 0x23 */ u8 frameCounter;  /**< Incremented every frame. */
-    /* 0x24 */ u8 unk24;
-} CursorState;
-
-/* Imported functions kept as file-scope externs, each for a concrete reason (numstr, controller-
-   input, battle-display and colour-bar GPU helpers were migrated to numstr.h / thread.h /
-   btl_anim.h / drawbar.h):
-     - sendSpuCommand, func_800300F8 — owned by btl_color.c, whose btl_color.h pulls in battle.h
-       (for BattleCmdEntry); tripletriad is decoupled from battle.h.
-     - func_800281A4, func_800485C4, func_80030F10 — no .c in the tree defines them yet, so there
-       is no owner translation unit to give a header.
-     - getAnimFrameParam — returns u16 (thread.c) but this caller needs the s32 view with no
-       widening mask; adopting the true u16 measurably breaks the match (see thread.h). */
-extern void sendSpuCommand(s32 idx);
-extern void func_800485C4(void *dst, void *src, s32 size);
-extern void func_800281A4(s32 entity, s32 side, s32 value);
-extern void *func_800300F8(void *renderCtx, void *prim, s32 glyph, s32 x, s32 y, s32 color, s32 blink);
-extern s32  getAnimFrameParam(s32 slot, s32 sub);     /**< Per-controller input-frame param. Defined u16 in thread.c, but the original caller uses it as s32 (no widening mask) — match-load-bearing, so kept here rather than via thread.h. */
-extern s32  func_80030F10(s32 arg);                   /**< Read a controller's button mask (owner TU not yet identified). */
-
-/* File-scope data: a few globals owned elsewhere (battle config / menu palette) plus
-   be_object4-private board / SFX / input state — the D_801D4xxx / D_801C2Exx / D_80182Exx
-   symbols are not referenced by any other translation unit. */
-extern u8  g_battleConfig[];   /**< Shared battle config; [9] bit 0 = sound-bank selector. */
-extern u8  D_80082C11;         /**< Sound-bank selector flag (same byte as g_battleConfig[9]). */
-extern s16 D_8005F11C;
-extern s32 g_menuColor[];
-extern u8  D_801A1B88[];       /**< Start of the Triple Triad sound region uploaded to a bank. */
-extern s16 D_801D49E2;
-extern s16 D_801D49F8[];
-extern s16 D_801D4B18;
-extern s16 D_801D4B1A;
-extern u16 D_801D4AF8[2][4]; /**< Per-(entity,side) previous edge flags (see func_800A29D4). */
-extern s16 D_801D4B08[2][4]; /**< Per-(entity,side) edge countdown timer (see func_800A29D4). */
-extern s32 D_801D4B20[]; /**< Per-controller current held-button mask. */
-extern s32 D_801D4B28[]; /**< Per-controller auto-repeat mask. */
-extern s32 D_801D4B30[]; /**< Per-controller newly-pressed mask. */
-extern s32 D_801D4B24;   /**< = D_801D4B20[1] (player 2); split symbol for the readPads write. */
-extern s32 D_801D4B2C;   /**< = D_801D4B28[1] (player 2). */
-extern s32 D_801D4B34;   /**< = D_801D4B30[1] (player 2). */
-extern SfxConfig D_80182E70[];
-extern u8 D_80182EC8[];
-extern u8 D_801D4568[];
-extern u8 D_801D4968[];
-extern u8 D_801D4978[];
-extern CursorState D_801D49C8;
-extern u8 D_801D49EC;
-extern u8 D_801D4A88[]; /**< Per-cell lookup value, indexed by cursor grid position. */
-extern u8 D_801D4AF6;   /**< Total cell count of the cursor grid (rows of 11). */
-extern u16 D_801C2EBC;  /**< Idle-state input snapshot fed to the cursor state machine. */
-extern u16 D_801C2EC4;  /**< Slide-state input snapshot fed to the cursor state machine. */
-
-/* Private prototypes — functions defined later in this file. */
-extern void *func_800A3EE0(void *a0, void *a1, s32 a2, s32 a3, s32 a4, s32 a5); /**< Tail-called by func_800A4098. */
-extern void *func_800A3D2C(void *otBase, void *pkt, s32 x, s32 y, s32 cardImg, s32 col); /**< Card-image primitive. */
-extern void *func_800A3528(void *otBase, void *pkt, void *(*drawCell)(void *, void *, s32, s32, s32)); /**< Per-cell slide-render iterator. */
-extern s32 func_800A238C();
-extern s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 arg1, s32 side, s32 entryIndex);
-extern s32 func_800A390C(s32 flags0, s32 flags1); /**< Cursor/timer state machine. */
-extern s32 func_800A443C(s32 a0);                 /**< VSync-locked display-list apply. */
-extern void func_800A4504(s32 a0, s32 a1); /**< SFX (60, 32) init. */
-
 /**
  * @brief Reset and reconfigure the seven SFX channels.
  *
@@ -167,12 +77,6 @@ void func_800A1C6C(void)
         }
     }
 }
-
-/** @brief getGlyphWidthA's packed {width, height} result, held in an 8-byte stack slot. */
-typedef union {
-    s32 raw[2];   /**< raw[0] = the packed result word; the pair sizes the 8-byte slot. */
-    s16 wh[2];    /**< wh[0] = width, wh[1] = height (overlay of raw[0]). */
-} GlyphSize;
 
 /**
  * @brief Lay out a Triple Triad message-banner box and trigger its SFX/animation.
@@ -416,13 +320,6 @@ void playTriadSfxParam(s32 sfxId, s32 param) {
     queueTriadSfx(sfxId, 0x80, 0x7F, param);
 }
 
-/** @brief Per-frame node for the sound-bank swap task (@ref func_800A238C). */
-typedef struct {
-    u8  pad00[0xC];
-    u16 state;      /**< 0xC — task state (0 = wait for engine, 1 = swap bank). */
-    u16 field0E;    /**< 0xE — cleared when entering state 1. */
-} SndTaskNode;
-
 /**
  * @brief Sound-bank swap task: wait for the engine, then upload and play a bank.
  *
@@ -592,17 +489,6 @@ enum PlayQuitPhase {
     PLAYQUIT_FINISH = 2   /**< Fade to white, then hand off to TT_STATE_EXIT. */
 };
 
-/** @brief Render-list state node (0x10 bytes) for the rules / "Play / Quit" prompt screen.
- *
- * One node out of the D_801D4968 render list (see initTripleTriadRenderList), driven by
- * updatePlayQuitPrompt. The leading 0xC bytes are the ObjList linkage. */
-typedef struct {
-    /* 0x00 */ u8 pad00[0xC];
-    /* 0x0C */ u8 state;    /**< Current @ref PlayQuitPhase. */
-    /* 0x0D */ u8 counter;  /**< Per-phase frame counter (acts on reaching TT_HOLD_FRAMES_FADE). */
-    /* 0x0E */ u8 pad0E[2];
-} PromptScreenNode;  /* 0x10 */
-
 /**
  * @brief Per-frame handler for the post-match rules / "Play / Quit" prompt screen.
  *
@@ -696,6 +582,36 @@ u8 *initTripleTriadRenderList(void) {
     return list;
 }
 
+/**
+ * @brief Per-(slot, side) input-edge debounce with keyboard-style auto-repeat,
+ *        for one of the four edges of a Triple Triad battle-anim entity.
+ *
+ * Maintains, per card slot @p entry and side @p side (0..3), a small auto-repeat
+ * state machine over a bitmask of edge events:
+ *  - Reads last frame's masked bits from @ref D_801D4AF8 [entry][side] and stores
+ *    @p newVal there.
+ *  - Masks both new and previous bitmasks by the side's relevance mask
+ *    (`elem->unk10[side]`): @c result = new active bits, @c prevMasked = old.
+ *  - @c base->defaultColor packs the timing: low byte = initial/restart delay,
+ *    high byte = repeat interval.
+ *  - If the masked new and old bits overlap (a sustained event), ticks the
+ *    countdown in @ref D_801D4B08 [entry][side] (reloading the restart delay when
+ *    the bits change); on underflow it fires and re-arms the repeat interval,
+ *    otherwise it suppresses (returns 0). If they do not overlap, it resets the
+ *    timer to the restart delay and fires.
+ *
+ * Drives keyboard-style auto-repeat for whatever per-side cue the bits represent.
+ * Called four times (once per side) by @ref func_800A2A8C, which ORs the results.
+ *
+ * @param base   Battle-anim state; base->defaultColor packs the two delays.
+ * @param elem   Battle-anim entity; elem->unk10[side] is the per-side mask.
+ * @param newVal Raw new edge bitmask for this frame.
+ * @param side   Card side index, 0..3.
+ * @param entry  Card slot index.
+ * @return The masked event bits that should fire this frame, or 0 while suppressed.
+ *
+ * @note Purpose inferred. Decomp scratch: https://decomp.me/scratch/7L33D
+ */
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A29D4);
 
 /**
@@ -1485,6 +1401,39 @@ u32 func_800A3C7C(u32 ot, SPRT *prim, s32 tileIdx, s32 palArg, u32 xy) {
  */
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3D2C);
 
+/**
+ * @brief Render a right-aligned decimal number (e.g. a Triple Triad score/count)
+ *        as a row of 12x12 textured SPRTs, linked into @p ot.
+ *
+ * Formats @p number into the digit-string buffer @ref D_801D49B8 via
+ * @ref intToDecString, then:
+ *  - Skips leading '1'-valued glyphs (the formatter's leading-zero placeholder),
+ *    advancing @c str, capped at ~9.
+ *  - Sums the per-glyph widths (low nibble of byte 0 of each char-table entry,
+ *    table = `&D_8008371C - 4`, 1-indexed) over the remaining digits.
+ *  - Subtracts that total from the x-coordinate to right-align the number.
+ *  - Emits one 12x12 SPRT per glyph: colour = @p color, len = 4, w/h = 0xC000C,
+ *    u/v from the char-table entry's `+2` halfword, x/y from @p xy (low s16 = x,
+ *    high s16 = y), clut = `(clutPage << 6) + 0x3812` (getClut(288, 224+pal)).
+ *    Glyphs at or left of the clip edge @ref D_801D4B18 are written but not
+ *    linked (skipped). Each linked SPRT splices into @p ot via @c addPrimFast
+ *    ($s4 temp); x advances by the glyph width after each.
+ *  - Appends a trailing 0xE100041F tpage primitive ($s7 temp) and returns the
+ *    next packet slot (prim + 8).
+ *
+ * @param ot       OT slot the SPRT chain links into (addPrimFast head).
+ * @param prim     Packet buffer cursor (SPRT-sized, 0x14 bytes/glyph).
+ * @param xy       Packed position: low s16 = x, high s16 = y.
+ * @param number   Value to format and render.
+ * @param color    Packed r/g/b/code stored into each SPRT (arg4, on stack).
+ * @param clutPage Palette page; clut = (clutPage << 6) + 0x3812 (arg5, on stack).
+ * @return Pointer to the next free packet slot (`(u8 *)prim + 8`).
+ *
+ * @note Decompiled to exact-instruction-count clean C (132/132); not yet
+ *       byte-matched — the residual is register allocation (the prim/x s-reg
+ *       priority and gcc's `prim + 0x10` IV-base choice). Permuter seed +
+ *       ot_inline.h are in permuter/func_800A3EE0/. Purpose inferred from the code.
+ */
 INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A3EE0);
 
 /**
@@ -1560,14 +1509,6 @@ void *func_800A40F0(void *otBase, void *pkt, s32 row, s32 col, s32 xOffset)
     x += 0x9A;
     return func_800A4098(otBase, pkt, (y << 16) | (x & 0xFFFF), valid, color);
 }
-
-/** @brief Render context for @c func_800A4250 (fields named by offset — role inferred). */
-typedef struct {
-    /* 0x00 */ s16 unk00;     /**< Forwarded (−0x13) as @c func_8002FF34's @c yPos. */
-    /* 0x02 */ s16 unk02;     /**< Base for the @c w arg (+0xB, then +column*13). */
-    /* 0x04 */ u8  pad04[0xC];
-    /* 0x10 */ s32 unk10;     /**< Forwarded as @c func_8002FF34's @c col. */
-} func_800A4250_arg2;
 
 /**
  * @brief Emit one glyph into the OT at a grid cell derived from a linear index.
