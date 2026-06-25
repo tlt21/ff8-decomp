@@ -23,3 +23,5 @@ assets/*.tim
 src/ovl/field_init/field_init_tim.c
 objdiff.json
 expected/
+
+CLAUDE.md
