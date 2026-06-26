@@ -1,70 +1,32 @@
 #include "common.h"
+#include "item.h"
 #include "tripletriad/be_object1.h"
 #include "tripletriad/be_object3.h"
-
-/* Card-claim flow globals (defined in the tripletriad data segments). */
-extern s32 D_801D4448;   /**< Claim selector: >=0 normal, -1 capture-only, <-1 skip. */
-extern u8  D_801D444C;   /**< Set when the phase-1 claim handler finishes. */
-extern u8  D_801D444D;   /**< Set when the phase-2 cleanup handler finishes. */
-extern u8  D_801A2C44;   /**< Rule/mode selector for the post-game card-claim flow. */
-extern s32 D_801D4450;   /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
-extern ObjList  D_801D42F8[]; /**< Card-claim handler object pool. */
-extern u8  D_801D42A8[]; /**< Backing element storage for the D_801D42F8 pool. */
-extern s32 D_801D4454;   /**< Cleared at the start of each card-claim setup. */
-
-/* Fade spawners and claim handlers (defined in be_object3.c). */
-extern void func_800A030C(s32 duration);
-extern void func_800A0370(s32 duration);
-extern void func_800A2054(s32 a0);
-extern s32  func_800A20F4(s32 a0);
-extern s32  func_800A0B24();
-extern s32  func_800A0F0C();
-extern s32  func_800A1080();
-extern s32  func_800A1260();
-extern s32  func_800A1374();
-extern s32  func_800A03DC();  /**< Per-frame board render/update loop (be_object3.c). */
-extern s32  func_800A0AD4();  /**< Post-claim handler (be_object3.c). */
-
-/* Pool/item helpers defined in other tripletriad TUs. */
-extern void markItemPresent(s32 cardId);
-
-/**
- * @brief Per-frame state node for the card-claim transition controller (@c func_800A15C8).
- *
- * Allocated from a @c allocObjNode pool. @c state at 0x0C selects the phase and
- * @c result at 0x10 carries the outcome code (2 or 6) staged into @c g_tripleTriadState
- * when the whole claim sequence finishes.
- */
-typedef struct {
-    /* 0x00 */ u8  pad00[0x0C];
-    /* 0x0C */ u8  state;     /**< Phase: 0 warmup, 1/2 spawn handlers, 3 poll gate, 4 fade-out. */
-    /* 0x0D */ u8  subState;  /**< Per-phase frame counter / sub-step. */
-    /* 0x0E */ u8  pad0E[2];
-    /* 0x10 */ s32 result;    /**< Outcome code (2 or 6) staged into g_tripleTriadState on completion. */
-} ClaimCtrlNode;
+#include "tripletriad/be_object3b.h"
+#include "tripletriad/be_object4.h"
 
 /**
  * @brief Per-frame card-claim transition controller.
  *
  * Drives the post-game card-claim sequence as a five-phase state machine on
  * @c node->state:
- *  - 0: fade to black (@c func_800A030C), wait 0xF frames, then branch on the
- *       claim selector @c D_801D4448 to phase 1 (>= 0), 2 (== -1), or 3 (< -1).
+ *  - 0: fade to black (@c startFadeToBlack), wait 0xF frames, then branch on the
+ *       claim selector @c g_sweepTarget to phase 1 (>= 0), 2 (== -1), or 3 (< -1).
  *  - 1: spawn the claim handler chosen by the rule/mode selector @c D_801A2C44
- *       (@c func_800A1080 / @c func_800A0B24 / @c func_800A0F0C / @c func_800A1260)
+ *       (@c replayHandMoves / @c runKeepCardSelect / @c runAiCaptureSelect / @c runOpponentSideSweep)
  *       onto the @c D_801D42F8 pool for seat @c D_801D30FC; wait for it to signal
  *       via @c D_801D444C, then advance to phase 2. Modes 0 and >4 spawn nothing.
- *  - 2: spawn the capture/cleanup handler @c func_800A1374 for acting seat
- *       @c D_801D4450; wait for @c D_801D444D, then advance to phase 3.
+ *  - 2: spawn the capture/cleanup handler @c runCaptureCleanupSweep for acting seat
+ *       @c g_claimSeat; wait for @c g_sweepDone, then advance to phase 3.
  *  - 3: poll the message gate @c func_800A20F4(6); stage result 6 (init / accept)
  *       or 2 (gate result 0), or keep waiting (gate < 0). Advance to phase 4.
- *  - 4: fade to white (@c func_800A0370), wait 0xF frames, stage @c result into
+ *  - 4: fade to white (@c startFadeToWhite), wait 0xF frames, stage @c result into
  *       @c g_tripleTriadState and return 2.
  *
  * @param node Controller state node.
  * @return 0 while the sequence is still running, 2 once it has finished.
  */
-s32 func_800A15C8(ClaimCtrlNode *node)
+s32 updateClaimController(ClaimCtrlNode *node)
 {
     ScriptStateNode *spawned;
     s32 mode;
@@ -77,27 +39,27 @@ s32 func_800A15C8(ClaimCtrlNode *node)
 
     while (1) {
         switch (node->state) {
-        case 0:
+        case CLAIM_PHASE_FADE_IN:
             if (node->subState == 0) {
-                func_800A030C(0xF);
+                startFadeToBlack(0xF);
             }
             node->subState++;
             if ((node->subState & 0xFF) < 0xF) {
                 return 0;
             }
-            if (D_801D4448 >= 0) {
-                nextState = 1;
-            } else if (D_801D4448 == -1) {
-                nextState = 2;
+            if (g_sweepTarget >= 0) {
+                nextState = CLAIM_PHASE_CLAIM;
+            } else if (g_sweepTarget == -1) {
+                nextState = CLAIM_PHASE_CLEANUP;
             } else {
-                node->state = 3;
+                node->state = CLAIM_PHASE_GATE;
                 node->subState = 0;
                 break;
             }
             node->state = nextState;
             node->subState = 0;
             break;
-        case 1:
+        case CLAIM_PHASE_CLAIM:
             if (node->subState == 0) {
                 mode = D_801A2C44;
                 modeMax = 4;
@@ -113,20 +75,20 @@ s32 func_800A15C8(ClaimCtrlNode *node)
                 if (mode == 0) {
                     goto fieldSetup;
                 }
-                if (D_801D4448 < 5) {
+                if (g_sweepTarget < 5) {
                     if (D_801A2C70[D_801D30FC] < 3) {
-                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0B24);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)runKeepCardSelect);
                     } else {
-                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0F0C);
+                        spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)runAiCaptureSelect);
                     }
                     goto fieldSetup;
                 }
                 goto spawn1260;
             spawn1080:
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1080);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)replayHandMoves);
                 goto fieldSetup;
             spawn1260:
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1260);
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)runOpponentSideSweep);
             fieldSetup:
                 seat = D_801D30FC;
                 spawned->state = 0;
@@ -138,26 +100,26 @@ s32 func_800A15C8(ClaimCtrlNode *node)
             if (D_801D444C == 0) {
                 return 0;
             }
-            node->state = 2;
+            node->state = CLAIM_PHASE_CLEANUP;
             node->subState = 0;
             break;
-        case 2:
+        case CLAIM_PHASE_CLEANUP:
             if (node->subState == 0) {
-                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A1374);
-                actingSeat = D_801D4450;
+                spawned = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)runCaptureCleanupSweep);
+                actingSeat = g_claimSeat;
                 spawned->state = 0;
                 spawned->field0D = 0;
                 spawned->field0E = actingSeat;
-                D_801D444D = 0;
+                g_sweepDone = 0;
                 node->subState++;
             }
-            if (D_801D444D == 0) {
+            if (g_sweepDone == 0) {
                 return 0;
             }
-            node->state = 3;
+            node->state = CLAIM_PHASE_GATE;
             node->subState = 0;
             break;
-        case 3:
+        case CLAIM_PHASE_GATE:
             if (node->subState == 0) {
                 node->result = 6;
             } else {
@@ -174,12 +136,12 @@ s32 func_800A15C8(ClaimCtrlNode *node)
                     return 0;
                 }
             }
-            node->state = 4;
+            node->state = CLAIM_PHASE_FADE_OUT;
             node->subState = 0;
             break;
-        case 4:
+        case CLAIM_PHASE_FADE_OUT:
             if (node->subState == 0) {
-                func_800A0370(0xF);
+                startFadeToWhite(0xF);
             }
             ss = node->subState;
             node->subState = ss + 1;
@@ -196,18 +158,18 @@ s32 func_800A15C8(ClaimCtrlNode *node)
  * @brief Card-claim setup: choose the claim amount and build the hand display.
  *
  * Run once when the post-game card-claim flow starts. It:
- *  1. Clears @c D_801D4454 and picks the acting seat @c D_801D4450 (the player
+ *  1. Clears @c D_801D4454 and picks the acting seat @c g_claimSeat (the player
  *     whose hand uses the non-offset layout, @c D_801A2C70[seat] < 3).
- *  2. Computes the claim selector @c D_801D4448 (default -1 = capture-only). Unless
- *     the "no claim" rule bit (0x20000000) is set, the rule/mode @c D_801A2C44 maps to:
+ *  2. Computes the claim selector @c g_sweepTarget (default -1 = capture-only). Unless
+ *     the @c TT_RULE_NO_CLAIM rule bit is set, the rule/mode @c D_801A2C44 maps to:
  *       1 → claim one card; 2 → claim 2 per owned card on the board (offset from -10);
  *       3 → claim none (0); 4 → claim five. Seat 2 (none) leaves it at -1.
- *  3. If @c D_801D4448 < 0, returns every card in the acting seat's hand to its owner
+ *  3. If @c g_sweepTarget < 0, returns every card in the acting seat's hand to its owner
  *     (@c markItemPresent), stages result 6 into @c g_tripleTriadState, and returns 0.
  *  4. Otherwise initializes the @c D_801D42F8 handler pool, spawns the claim controller
- *     @c func_800A15C8, fills the @c D_801D4308 display-object array with both five-card
+ *     @c updateClaimController, fills the @c g_activeCardObjs display-object array with both five-card
  *     hands (positions/sort keys mirrored per seat), spawns the board renderer
- *     @c func_800A03DC and @c func_800A0AD4, and returns the pool.
+ *     @c updateClaimBoard and @c reloadClaimBuffer, and returns the pool.
  *
  * @return 0 on the no-claim path, otherwise the @c D_801D42F8 pool pointer.
  */
@@ -222,50 +184,50 @@ s32 setupTripleTriadCardClaim(void)
 
     D_801D4454 = 0;
     if (D_801A2C70[0] < 3) {
-        D_801D4450 = 0;
+        g_claimSeat = 0;
     } else if (D_801A2C70[1] < 3) {
-        D_801D4450 = 1;
+        g_claimSeat = 1;
     }
-    D_801D4448 = -1;
-    if (!(g_tripleTriadRules & 0x20000000)) {
+    g_sweepTarget = -1;
+    if (!(g_tripleTriadRules & TT_RULE_NO_CLAIM)) {
         switch (D_801A2C44) {
         case 0:
             break;
         case 1:
             if (D_801D30FC != 2) {
-                D_801D4448 = 1;
+                g_sweepTarget = 1;
             }
             break;
         case 2:
             if (D_801D30FC != 2) {
-                D_801D4448 = -10;
+                g_sweepTarget = -10;
                 for (i = 0; i < 10; i++) {
                     if ((g_tripleTriadCardHands[i].initFlags & 1) == D_801D30FC) {
-                        D_801D4448 += 2;
+                        g_sweepTarget += 2;
                     }
                 }
             }
             break;
         case 3:
-            D_801D4448 = 0;
+            g_sweepTarget = 0;
             break;
         case 4:
             if (D_801D30FC != 2) {
-                D_801D4448 = 5;
+                g_sweepTarget = 5;
             }
             break;
         }
     }
-    if (D_801D4448 < 0) {
+    if (g_sweepTarget < 0) {
         for (i = 0; i < 5; i++) {
-            markItemPresent(D_801A2C48[D_801D4450][i]);
+            markItemPresent(D_801A2C48[g_claimSeat][i]);
         }
         g_tripleTriadState = TT_STATE_EXIT;
         return 0;
     }
-    initObjList(D_801D42F8, D_801D42A8, 0x14, 4);
-    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)func_800A15C8);
-    cell = D_801D4308;
+    initObjList(D_801D42F8, g_claimSetupPool, 0x14, 4);
+    node = (ScriptStateNode *)allocObjNode(D_801D42F8, (ObjNodeFn)updateClaimController);
+    cell = g_activeCardObjs;
     node->state = 0;
     node->field0D = 0;
     for (i = 0; i < 2; i++) {
@@ -294,15 +256,15 @@ s32 setupTripleTriadCardClaim(void)
             xpos += 0x40;
         }
     }
-    allocObjNode(D_801D42F8, (ObjNodeFn)func_800A03DC);
-    allocObjNode(D_801D42F8, (ObjNodeFn)func_800A0AD4);
+    allocObjNode(D_801D42F8, (ObjNodeFn)updateClaimBoard);
+    allocObjNode(D_801D42F8, (ObjNodeFn)reloadClaimBuffer);
     return (s32)D_801D42F8;
 }
 
 /**
  * @brief Unconditional hang.
  *
- * @note Not referenced by the @c g_tripleTriadStateHandlers battle-state table or any caller —
+ * @note Not referenced by the @c g_tripleTriadStateHandlers state-handler table or any caller —
  *       appears to be an unused/stub state that simply spins forever.
  */
 void hangForever(void) {
@@ -310,7 +272,7 @@ void hangForever(void) {
 }
 
 /**
- * @brief Battle state-5 handler (@c g_tripleTriadStateHandlers[5]).
+ * @brief Triple Triad state-5 handler (@c g_tripleTriadStateHandlers[5]).
  *
  * Sets the next state to @c TT_STATE_SCRIPT and returns 0 so the
  * state-dispatch loop keeps running.

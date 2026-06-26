@@ -640,9 +640,9 @@ INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E4AC);
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E680);
 
 
-/** @brief Get glyph width (variant A). */
-void getGlyphWidthA(s32 code) {
-    func_8002E4AC(code, 1);
+/** @brief Get a string's packed {width, height} (variant A). */
+s32 getGlyphWidthA(s32 code) {
+    return func_8002E4AC(code, 1);
 }
 
 

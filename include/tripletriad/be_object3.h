@@ -15,9 +15,9 @@
 /**
  * @brief State-machine driver node (state byte at 0x0C).
  *
- * Used by the claim handlers @ref func_800A0B24 / @ref func_800A0F0C /
- * @ref func_800A1080 / @ref func_800A1260 / @ref func_800A1374 and spawned by
- * the card-claim controller func_800A15C8 (in be_object3b.c).
+ * Used by the claim handlers @ref runKeepCardSelect / @ref runAiCaptureSelect /
+ * @ref replayHandMoves / @ref runOpponentSideSweep / @ref runCaptureCleanupSweep and spawned by
+ * the card-claim controller updateClaimController (in be_object3b.c).
  */
 typedef struct {
     /* 0x00 */ u8 pad00[0x0C];
@@ -26,10 +26,10 @@ typedef struct {
     /* 0x0E */ u8 field0E;   /**< Side; matched against an object's 0x0A field XOR 1. */
     /* 0x0F */ u8 index;     /**< Per-tick iteration index. */
     /* 0x10 */ u8 pad10[0x12];
-    /* 0x22 */ u8 field22;   /**< Pre-set "already finished" flag: func_8009E904 returns 2 immediately when this is 1. */
+    /* 0x22 */ u8 field22;   /**< Pre-set "already finished" flag: updateCardColorFade returns 2 immediately when this is 1. */
 } ScriptStateNode;
 
-/** @brief One 0x20-byte entry of the @ref D_801D4308 active-object array. */
+/** @brief One 0x20-byte entry of the @ref g_activeCardObjs active-object array. */
 typedef struct {
     /* 0x00 */ u8  cardId;   /**< Index into g_tripleTriadCardStats. */
     /* 0x01 */ u8  pad01[3];
@@ -49,68 +49,144 @@ typedef struct {
 } ActiveObj; /* 0x20 */
 
 /* Public data */
-extern ActiveObj D_801D4308[]; /**< Active card-display object array. */
+extern ActiveObj g_activeCardObjs[]; /**< Active card-display object array. */
 
 /* Shared by the be_object3b tail (the card-claim controller/setup). */
-extern s32 D_801D4448;   /**< Target object count; the sweep completes when D_801D4288 reaches it. */
-extern u8  D_801D444C;
-extern u8  D_801D444D;    /**< Set to 1 when func_800A1374's capture/cleanup sweep finishes. */
-extern s32 D_801D4450;    /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
-extern s32 D_801D4454;
-extern u8  D_801D42A8[];  /**< Backing element storage for the D_801D42F8 pool. */
+extern s32 g_sweepTarget;   /**< Claim selector set at setup (>=0 normal, -1 capture-only, <-1 skip);
+                                 also the sweep's target object count (it completes when g_sweepProcessed reaches it). */
+extern u8  D_801D444C;      /**< Set when the phase-1 claim handler finishes. */
+extern u8  g_sweepDone;     /**< Set when the phase-2 cleanup handler finishes. */
+extern s32 g_claimSeat;     /**< Acting seat index (0 or 1) for the capture/cleanup sweeps. */
+extern s32 D_801D4454;      /**< Cleared at the start of each card-claim setup. */
+extern u8  g_claimSetupPool[];  /**< Backing element storage for the D_801D42F8 pool. */
 
 /* Public prototypes */
 extern void updateFadeEffects(void);
 
-extern s32  func_8009E248(ObjNodeFn callback);
-extern void func_8009EB30(s32 a0);
-extern void func_8009EB90(u8 *a0, s32 a1);
-extern void func_8009EB98(void);
+extern s32  spawnTaskNode(ObjNodeFn callback);
+extern void spawnGradientFade(s32 a0);
+extern void setNodeDoneFlag(u8 *a0, s32 a1);
+extern void initGradientFadeList(void);
 
 /** @brief Spawn a full-screen fade to black over @p duration frames. */
-extern void func_800A030C(s32 duration);
+extern void startFadeToBlack(s32 duration);
 /** @brief Spawn a full-screen fade to white over @p duration frames. */
-extern void func_800A0370(s32 duration);
+extern void startFadeToWhite(s32 duration);
 /** @brief Per-frame board render/update loop. */
-extern s32  func_800A03DC(void);
-extern s32  func_800A0AD4(void);
+extern s32  updateClaimBoard(void);
+extern s32  reloadClaimBuffer(void);
 
 /* Card-claim script-state handlers (driven by the be_object3b controller). */
-extern s32  func_800A0B24(ScriptStateNode *node);
-extern s32  func_800A0F0C(ScriptStateNode *node);
-extern s32  func_800A1080(ScriptStateNode *node);
-extern s32  func_800A1260(ScriptStateNode *node);
-extern s32  func_800A1374(ScriptStateNode *node);
+extern s32  runKeepCardSelect(ScriptStateNode *node);
+extern s32  runAiCaptureSelect(ScriptStateNode *node);
+extern s32  replayHandMoves(ScriptStateNode *node);
+extern s32  runOpponentSideSweep(ScriptStateNode *node);
+extern s32  runCaptureCleanupSweep(ScriptStateNode *node);
 
 /* ───────── Private (only used in be_object3.c; may move into the .c) ─────── */
+
+/* Private enums / defines / consts */
+
+/** @brief Phase of the card scale-in/hold/out animation (@c ScriptStateNode.state in
+ *         @ref updateCardScaleSprite / @ref updateCardScaleSpriteShort). */
+enum CardScalePhase {
+    CARD_SCALE_IN   = 0,  /**< Scale the sprite width up. */
+    CARD_SCALE_HOLD = 1,  /**< Hold at full width. */
+    CARD_SCALE_OUT  = 2   /**< Scale back down, then finish. */
+};
+
+/** @brief Phase of the card colour fade (@c ScriptStateNode.state in @ref updateCardColorFade). */
+enum CardColorFadePhase {
+    CARD_FADE_IN  = 0,  /**< Fade the colour up. */
+    CARD_FADE_OUT = 1   /**< Fade down, then hold solid. */
+};
+
+/** @brief @c ScriptEntry.status — the per-card animation queued in @c g_scriptActions,
+ *         read by @ref updateScriptCardAnims and written by the hand/script builders. */
+enum ScriptCardAnim {
+    SCRIPT_ANIM_NONE     = 0,  /**< Idle / no animation. */
+    SCRIPT_ANIM_SLIDE_IN = 1,  /**< Slide the card onto the board. */
+    SCRIPT_ANIM_SLIDE_OUT= 2,  /**< Slide the card off. */
+    SCRIPT_ANIM_FLIP     = 3   /**< Flip the card (also the "complete" marker). */
+};
+
+/** @brief @c ActiveObj.field8 — the per-cell claim animation, read by @ref updateClaimBoard
+ *         and written by the claim/capture sweeps. */
+enum ClaimCellAnim {
+    CLAIM_ANIM_NONE      = 0,  /**< No animation pending. */
+    CLAIM_ANIM_SLIDE_IN  = 1,  /**< Slide the card in from off-screen. */
+    CLAIM_ANIM_FLIP      = 2,  /**< Flip (toggle owner at the halfway point). */
+    CLAIM_ANIM_CAPTURE_A = 3,  /**< Capture lift-and-fade, direction A. */
+    CLAIM_ANIM_CAPTURE_B = 4   /**< Capture lift-and-fade, direction B. */
+};
+
+/** @brief @c ScriptCtx.state of the interactive hand-build sequencer (@ref runHandBuildSequencer). */
+enum HandBuildState {
+    HAND_BUILD_INIT    = 0,  /**< Clear the hand slots and arm the UI. */
+    HAND_BUILD_PICK    = 1,  /**< Add/remove a card per frame until five are held. */
+    HAND_BUILD_CONFIRM = 2,  /**< Poll the confirm message gate. */
+    HAND_BUILD_FADE    = 3   /**< Run the fade-out, then finish. */
+};
+
+/** @brief @c ScriptCtx.state of the match setup sequence (@ref runTriadSetupSequence). */
+enum TriadSetupState {
+    TRIAD_SETUP_WARMUP = 0,  /**< Fade-in warmup. */
+    TRIAD_SETUP_HANDS  = 1,  /**< Per-player hand setup. */
+    TRIAD_SETUP_CLEAR  = 2,  /**< Clear-sweep the board columns. */
+    TRIAD_SETUP_WAIT   = 3,  /**< Idle wait. */
+    TRIAD_SETUP_DONE   = 4   /**< Hand off to TT_STATE_PLAY. */
+};
+
+/** @brief @c ScriptStateNode.state of the keep-a-captured-card selection (@ref runKeepCardSelect). */
+enum KeepSelectState {
+    KEEP_SEL_BANNER  = 0,  /**< Build and show the banner string. */
+    KEEP_SEL_PICK    = 1,  /**< Run the card picker. */
+    KEEP_SEL_CONFIRM = 2   /**< Poll the confirm gate; commit or return to the picker. */
+};
+
+/** @brief Two-phase init/run sweep state shared by @ref runAiCaptureSelect,
+ *         @ref replayHandMoves, and @ref runOpponentSideSweep (@c ScriptStateNode.state). */
+enum SweepState {
+    SWEEP_INIT = 0,  /**< Reset the counter/index. */
+    SWEEP_RUN  = 1   /**< Do one unit of work per tick until done. */
+};
+
+/** @brief @c ScriptStateNode.state of the post-round capture/cleanup sweep
+ *         (@ref runCaptureCleanupSweep). */
+enum CleanupState {
+    CLEANUP_WAIT      = 0,  /**< Wait for the action gate. */
+    CLEANUP_SWEEP_OPP = 1,  /**< Flag the opponent's row for capture. */
+    CLEANUP_SWEEP_OWN = 2,  /**< Flag the player's own row. */
+    CLEANUP_COLLECT   = 3   /**< Return all own cards to the collection, then finish. */
+};
 
 /* Private typedefs */
 
 /**
- * @brief Script-action entry in the @ref D_801D3EC0 2x5 table.
+ * @brief Script-action entry in the @ref g_scriptActions 2x5 table.
  *
- * Initialized in initTripleTriadScripts. Used by func_8009FC90's state-2 sweep
- * to mark queued actions complete and by func_8009EF68 to scan for pending actions.
+ * Initialized in initTripleTriadScripts. Used by runTriadSetupSequence's state-2 sweep
+ * to mark queued actions complete and by hasPendingScriptAction to scan for pending actions.
  */
 typedef struct {
     /* 0x00 */ u8 marker;       /**< Sentinel; set to 0xFF on init. */
     /* 0x01 */ u8 status;       /**< Action status (set to 3 to mark "complete"). */
-    /* 0x02 */ u8 field02;      /**< Cleared when action marked complete; animation frame counter in func_8009EBF4. */
+    /* 0x02 */ u8 field02;      /**< Cleared when action marked complete; animation frame counter in updateScriptCardAnims. */
     /* 0x03 */ u8 row;          /**< Row index (cached on init). */
     /* 0x04 */ u8 col;          /**< Column index (cached on init). */
     /* 0x05 */ u8 pad05;
     /* 0x06 */ u16 field06;     /**< Rotation-vector base fed to RotMatrixYXZ (rotX); rotY at 0x08, rotZ at 0x0A. */
-    /* 0x08 */ s16 actionId;    /**< Pending action ID; also the card-flip Y-rotation in func_8009EBF4. */
+    /* 0x08 */ s16 actionId;    /**< Pending action ID; also the card-flip Y-rotation in updateScriptCardAnims. */
     /* 0x0A */ u16 field0A;
     /* 0x0C */ u8 pad0C[2];
-    /* 0x0E */ s16 posX;        /**< Screen position fed to the GTE translation (func_8009EBF4). */
+    /* 0x0E */ s16 posX;        /**< Screen position fed to the GTE translation (updateScriptCardAnims). */
     /* 0x10 */ s16 posY;
     /* 0x12 */ s16 posZ;
     /* 0x14 */ s16 sort;        /**< OT sort key. */
 } ScriptEntry; /* 0x16 = 22 bytes */
 
 /**
- * @brief Scratch buffer for func_8009EBF4's per-card matrix build (0x2C bytes).
+ * @brief Scratch buffer for updateScriptCardAnims's per-card matrix build (0x2C bytes).
  *
  * Allocated each frame via scratchAlloc; @c f0/@c f2 carry the card's row/col,
  * layoutCardSlot fills @c pos (position + OT sort key), and @c mtx holds the
@@ -126,7 +202,7 @@ typedef struct {
 } TmpBuf; /* 0x2C */
 
 /**
- * @brief Callback context for state-machine handlers (e.g. func_8009FC90).
+ * @brief Callback context for state-machine handlers (e.g. runTriadSetupSequence).
  *
  * Allocated via allocObjNode / allocObjNodeFront with state byte at +0x10.
  */
@@ -136,30 +212,30 @@ typedef struct {
     /* 0x10 */ u8 state;
     /* 0x11 */ u8 subState;
     /* 0x12 */ u8 counter;
-    /* 0x13 */ u8 field13;   /**< Cleared to 0 when func_8009F17C (re)inits the sequence. */
+    /* 0x13 */ u8 field13;   /**< Cleared to 0 when runHandBuildSequencer (re)inits the sequence. */
 } ScriptCtx;
 
 /**
  * @brief Full-screen colour-fade effect object.
  *
- * Spawned by @c func_800A030C (fade to black) and @c func_800A0370 (fade to
- * white), then driven each frame by @c func_800A01DC: it interpolates a
+ * Spawned by @c startFadeToBlack (fade to black) and @c startFadeToWhite (fade to
+ * white), then driven each frame by @c updateScreenFade: it interpolates a
  * screen-sized sprite's colour from @c startColor toward @c endColor across
  * @c duration frames, advancing @c frame each call. When the fade completes it
- * stages @c endColor back into @c D_80182E68 so the next fade starts there.
+ * stages @c endColor back into @c g_stagedFadeColor so the next fade starts there.
  */
 typedef struct {
     /* 0x00 */ u8  pad00[0x0C];
     /* 0x0C */ s16 frame;          /**< Current frame counter (0..duration). */
     /* 0x0E */ s16 duration;       /**< Total fade length, in frames. */
-    /* 0x10 */ u8  startColor[4];  /**< Starting RGB, copied from the staged D_80182E68. */
+    /* 0x10 */ u8  startColor[4];  /**< Starting RGB, copied from the staged g_stagedFadeColor. */
     /* 0x14 */ u8  endColor[4];    /**< Target RGB (written as a word: 0 = black, 0xFFFFFF = white). */
 } FadeObject;
 
 /**
  * @brief Card scale/fade animation sprite primitive (0x18 bytes).
  *
- * Built each frame by @c func_8009E270 / @c func_8009E464 at the @c g_primCursor
+ * Built each frame by @c updateCardScaleSprite / @c updateCardScaleSpriteShort at the @c g_primCursor
  * cursor and linked into @c g_otBase[3]; the @c width field is animated to
  * scale the card sprite in/out.
  */
@@ -176,7 +252,7 @@ typedef struct {
     /* 0x16 */ s16 field16;
 } CardScaleSprite; /* 0x18 */
 
-/** @brief D_801D3C68-pool node (0x24 bytes) for the screen gradient-fade effect. */
+/** @brief g_gradFadeList-pool node (0x24 bytes) for the screen gradient-fade effect. */
 typedef struct {
     /* 0x00 */ u8  pad00[0x0C];
     /* 0x0C */ u8  state;
@@ -184,12 +260,12 @@ typedef struct {
     /* 0x0E */ u8  variant;   /**< Gradient style (2/3/4), set from the callback-table index. */
     /* 0x0F */ u8  pad0F[0x11];
     /* 0x20 */ s16 field20;
-    /* 0x22 */ u8  done;      /**< When 1 the effect is finished (func_8009E640 returns 2). */
+    /* 0x22 */ u8  done;      /**< When 1 the effect is finished (buildGradientFade returns 2). */
     /* 0x23 */ u8  pad23;
 } GradientFadeNode; /* 0x24 */
 
 /**
- * @brief Two-layer screen gradient-fade primitive (0x34 bytes), built by func_8009E640.
+ * @brief Two-layer screen gradient-fade primitive (0x34 bytes), built by buildGradientFade.
  *
  * A 4-vertex gradient quad spanning the play area (x 0x40..0x13F, y 0x58..0x88); the four
  * vertex colours are ramped from @c node->frame and @c pal* carry the palette level. Two of
@@ -229,7 +305,7 @@ typedef struct {
  */
 typedef struct {
     /* 0x00 */ s16 angle;        /**< Rotation/animation angle. */
-    /* 0x02 */ s16 phase;        /**< Phase counter (mirror of @c D_801D3EB8). */
+    /* 0x02 */ s16 phase;        /**< Phase counter (mirror of @c g_fadePhaseMirror). */
     /* 0x04 */ s16 unk04;        /**< Always zeroed at init. */
     /* 0x06 */ u8  pad06[2];
     /* 0x08 */ u8  subNode[0x14];/**< Sub-node passed to chain calls. */
@@ -239,63 +315,52 @@ typedef struct {
 } DispNode;                      /* 0x28 bytes */
 
 /* Private data — object pools / script tables */
-extern ObjList  D_801D3C68[];   /**< Screen gradient-fade effect list (CallbackNode nodes). */
-extern u8       D_801D3C78[];   /**< Backing element storage for the D_801D3C68 pool. */
-extern ScriptEntry D_801D3EC0[2][5]; /**< Per-player script-action table (initTripleTriadScripts). */
-extern ObjList  D_801D3FA0[];   /**< Script-handler object pool. */
-extern u8       D_801D3FB0[];   /**< Backing element storage for the D_801D3FA0 pool. */
-extern ObjList  D_801D3EA0[];   /**< Setup-handler object pool (func_8009FAF8). */
-extern u8       D_801D3E80[];   /**< Backing element storage for the D_801D3EA0 pool. */
-extern ObjNodeFn D_80182E4C[];  /**< Gradient-fade variant callback table. */
+extern ObjList  g_gradFadeList[];   /**< Screen gradient-fade effect list (CallbackNode nodes). */
+extern u8       g_gradFadePool[];   /**< Backing element storage for the g_gradFadeList pool. */
+extern ScriptEntry g_scriptActions[2][5]; /**< Per-player script-action table (initTripleTriadScripts). */
+extern ObjList  g_scriptHandlerList[];   /**< Script-handler object pool. */
+extern u8       g_scriptHandlerPool[];   /**< Backing element storage for the g_scriptHandlerList pool. */
+extern ObjList  g_setupHandlerList[];   /**< Setup-handler object pool (setupPlayerHand). */
+extern u8       g_setupHandlerPool[];   /**< Backing element storage for the g_setupHandlerList pool. */
+extern ObjNodeFn g_gradFadeCallbacks[];  /**< Gradient-fade variant callback table. */
 
 /* Private data — hand build / card config */
 extern u8  D_80082C95;     /**< Card-config byte; the owned-quantity delta for built hands. */
 extern u8  D_80078658[];   /**< Card rarity/type table (cards 0x4D+); used to draw rarity-filtered hands. */
-extern u8  D_801D4298[2][5];/**< Per-player working copy of the hands (card ids), seeded from D_801A2C48 (func_800A1080). */
-extern s32 D_801D4288;     /**< Count of objects processed this sweep (func_800A0F0C). */
-extern s32 D_801D3D08;
+extern u8  g_handBuildHands[2][5];/**< Per-player working copy of the hands (card ids), seeded from D_801A2C48 (replayHandMoves). */
+extern s32 g_sweepProcessed;     /**< Count of objects processed this sweep (runAiCaptureSelect). */
+extern s32 g_gradFadeCount;
 extern u8  D_80158680[];
 
 /* Private data — fade / banner */
-extern u8  D_80182E68[];   /**< Staged fade colour (RGB); the start colour for the next fade. */
-extern s32 D_801D4178;     /**< Running captured-card counter (func_800A0B24). */
-extern u8  D_801D4188[];   /**< 256-byte global scratch buffer for the built banner string. */
-extern u8  D_801D4078[];   /**< Scratch buffer for the captured-card name banner. */
+extern u8  g_stagedFadeColor[];   /**< Staged fade colour (RGB); the start colour for the next fade. */
+extern s32 g_capturedCount;     /**< Running captured-card counter (runKeepCardSelect). */
+extern u8  g_bannerBuf[];   /**< 256-byte global scratch buffer for the built banner string. */
+extern u8  g_nameBannerBuf[];   /**< Scratch buffer for the captured-card name banner. */
 extern u16 D_80182686;     /**< Relative-pointer string-table offsets (pool base 0x80182680). */
 extern u16 D_8018268A;
 extern u16 D_8018268E;
 extern u16 D_80182692;     /**< Card-claim banner string-table offsets (pool base 0x80182680). */
 extern u16 D_80182696;
 
-/* Private data — per-frame input edge flags (refreshed at the top of func_8009F17C
-   from D_801C2EBC / g_padPressed[2]). */
-extern u16 D_801D3E74;     /**< Edge flag A: 0x10 == remove-card request. */
-extern u16 D_801D3E76;     /**< Edge flag B: 0x40/0x80 == add-card request. */
-extern s32 D_801D3E78;     /**< Number of cards built into the active hand (0..5). */
-extern u16 D_801C2EBC;     /**< Source value copied into D_801D3E74 each frame. */
+/* Private data — per-frame input edge flags (refreshed at the top of runHandBuildSequencer
+   from g_padRepeat[2] / g_padPressed[2]). */
+extern u16 g_removeCardEdge;     /**< Edge flag A: 0x10 == remove-card request. */
+extern u16 g_addCardEdge;     /**< Edge flag B: 0x40/0x80 == add-card request. */
+extern s32 g_handBuildCount;     /**< Number of cards built into the active hand (0..5). */
 
-/* Private data — display-node spawner state (func_8009FED0 fade/render path). */
-extern s32 D_801D3EB0;     /**< Phase counter (incrementing each frame). */
-extern s32 D_801D3EB4;     /**< Last rotation/angle value (cached). */
-extern s32 D_801D3EB8;     /**< Phase mirror counter (running scale). */
-extern s32 D_801D44FC;     /**< Current card-display slot index (must be < 0x6E). */
-extern s32 D_80182E64;     /**< Last-active slot index (-1 = none). */
+/* Private data — display-node spawner state (updateCardDisplaySpawn fade/render path). */
+extern s32 g_fadePhase;     /**< Phase counter (incrementing each frame). */
+extern s32 g_fadeLastAngle;     /**< Last rotation/angle value (cached). */
+extern s32 g_fadePhaseMirror;     /**< Phase mirror counter (running scale). */
+extern s32 g_cardDisplaySlot;     /**< Current card-display slot index (must be < 0x6E). */
+extern s32 g_lastActiveSlot;     /**< Last-active slot index (-1 = none). */
 
 /* Private prototypes — be_object3.c internal forward declaration */
-extern s32 func_8009EBF4(void); /**< Per-frame card slide/scale animation sweep. */
+extern s32 updateScriptCardAnims(void); /**< Per-frame card slide/scale animation sweep. */
 
-/* Imported prototypes (sibling TUs / SDK / main-binary; relocate to their owning
-   headers as those TUs are cleaned up). */
-extern u8  *func_80023A54(s32 cardId);       /**< Look up a card's display-name string. */
-extern void func_80047C74(u8 *dst, u8 *src); /**< Append a string to the work buffer. */
-extern void func_800408A4(s32 r, s32 g, s32 b);              /**< Set the GTE far/interpolation target colour. */
-extern void func_80040918(u8 *startColor, s32 frac, u8 *dst);/**< Lerp startColor -> target by @p frac into @p dst. */
-extern void func_8004D724(void *prim, s32 a1, s32 a2, s32 a3);/**< Init the trailing blend-control primitive. */
-extern void func_800A1D68(s32 a0, u8 *a1, s32 a2);           /**< Show a banner/message string. */
-extern void func_800A2054(s32 a0);                          /**< Acknowledge/advance a message gate. */
-extern s32  func_800A20F4(s32 a0);                          /**< Poll a message gate (>0 = result, <0 = pending). */
-extern void func_800A44CC(void);   /**< Reset the hand-build UI state for a new claim sequence. */
-extern void func_800A44B0(s32 a0); /**< Enable (1) / disable (0) the hand-build input prompt. */
-extern void func_800A44BC(void);   /**< Tear down the claim UI at the end of the sequence. */
+/* Prototype imported by be_object3.c / be_object3b.c. */
+extern s32  func_800A20F4(s32 a0);           /**< Poll the player-input gate: <0 = still
+                                                  waiting, 0 or 1 = the player's decision. */
 
 #endif /* TRIPLETRIAD_BE_OBJECT3_H */
