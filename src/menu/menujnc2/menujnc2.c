@@ -38,7 +38,7 @@ extern u8 D_801EEB1C[];
 extern void func_801EFBB4(s32 renderCtx, s32 param, void *callback);
 extern s32 renderMagicItemCallback();
 extern JunctionGfEntry D_801EEDD0;
-extern void func_800300F8(s32 renderCtx, s32 x, s32 w, s32 y, s32 color, s32 menuColor, s32 selColor);
+extern s32 func_800300F8(s32 renderCtx, s32 x, s32 w, s32 y, s32 color, s32 menuColor, s32 selColor);
 extern s32 func_801F3FB4(u16 statusFlags);
 extern s32 getCharNamePtr(u8 characterId);
 extern u32 func_801F0FEC(s32 renderCtx, s32 cursorY, s32 x, s32 height, s32 namePtr, s32 gfInfo);
@@ -54,6 +54,33 @@ extern u8 D_801EEDE0[];
 extern MagicJunctionData g_magicJunctionData[];
 extern s32 popcount(s32 flags);
 extern s32 getGfAvailabilityMask(void);
+
+/** @brief Stat-table layout entry: grid cell + label string ID (stride 8). */
+typedef struct {
+    /* 0x00 */ u8 col;        /**< Grid column index. */
+    /* 0x01 */ u8 row;        /**< Grid row index. */
+    /* 0x02 */ u16 statOffset;/**< Byte offset of the stat within char data (panel B). */
+    /* 0x04 */ u16 labelId;   /**< Stat label string ID. */
+    /* 0x06 */ u8 pad_06[2];
+} StatTableEntry; /* 0x8 bytes */
+
+extern StatTableEntry D_801EEBA8[];          /**< Panel-A stat-table layout (13 entries). */
+extern StatTableEntry D_801EEB40[];          /**< Panel-B stat-table layout (13 entries). */
+extern StatTableEntry D_801EEC10[];          /**< Panel-C stat-table layout (8 entries). */
+extern u8 D_801EF1A4;                        /**< Panel-C preview ability flags. */
+extern u8 D_801EF1A5;                        /**< Panel-C preview stat value. */
+extern u8 D_800788E4;                        /**< Panel-C current ability flags. */
+extern u8 D_800788E5;                        /**< Panel-C current stat value. */
+extern s32 func_801F6AFC(s32 param);
+extern u32 func_801F5104(u8 statByte);
+extern s32 func_801F510C(s32 statValue);     /**< Panel-D: format a raw stat value for display. */
+extern s32 func_801F5144(s32 statValue);     /**< Panel-D: nonzero if the elemental '%' glyph applies. */
+extern u8 *func_80020F84(s32 fontId);
+extern void func_8002F294(s32 value, u8 *dst, u8 digits);
+extern void func_8002F2EC(u8 *dst, s32 base, u8 digits, u8 width);
+extern void func_8002A2C4(u8 *str, s32 fmtResult);
+extern s32 func_8002C56C(s32 renderCtx, s32 cursorY, s32 x, s32 y, u8 *str, s32 color);
+extern s32 func_80037ADC(void);
 
 /** @brief Junction menu layout constants (pixel positions). */
 #define JNC_ROW_HEIGHT      13   /**< Row height in pixels. */
@@ -1634,18 +1661,24 @@ void buildMagicLookupTable(s32 charIdx) {
  * 11,412 bytes — the largest function in menujnc2.
  *
  * @note Clean C scratch at @c permuter/junctionMenuUpdate/base.c matches at
- * 85.02% using proper struct types (BattleSlot, GameSave, JunctionGfEntry,
- * JunctionCharCfg) instead of raw pointer offsets. Patterns: do-while +
- * @c volatile @c u8 dispatch flag with sentinel @c 0x4A (not @c 1, to
- * prevent gcc hoisting); case 0x1C uses direct @c ctx->statByte[unk56]
- * struct access (not a cached @c s8* pointer). Remaining gap: 3 extra
- * saved s-regs vs target (s6/s7 for inputs allocated higher than target's
- * s4/s5; s8 holds the @c /11 magic constant @c 0x2E8BA2E9). Target uses
- * @c j .L801E7C10 goto so gcc doesn't see the dispatch as a loop,
- * avoiding LICM hoisting.
+ * ~90.6% and is logically correct. The s3/s4 register-allocation swap (the
+ * dominant blocker) is FIXED: it was caused by a real bug in case 0x37 (a
+ * bogus 2nd arg @c sendSpuCommand(1,unk58%5) holding @c grp across the call
+ * into a callee-saved reg) — found via the @c cc1 @c -dg allocator dump.
+ * Also fixed: case 0x8 @c *statePtr=0x15 logic, @c unk48 u8, @c D_801FA3C8
+ * u16, case 0x1C/discCount @c 0xa000 fold + re-dispatch bug, and the six
+ * statSlot/unk50 grid-navigation cases (reverse-engineered: @c slot temp +
+ * eager @c gd=grp>>2 + @c tmp=(s8)(slot-col2*4), matching the target's exact
+ * order), @c getAbilityScrollOffset return s32, and dataPtr2 @c sllv form via
+ * mask temps. The remaining ~9.4% is the hardest gcc instruction scheduling —
+ * concentrated in the ÷11 division-magic region (case 0x1C/0x1D, where the
+ * magic-multiply CSE/register-reuse resists every source rewrite tried:
+ * caching, eager eval, @c (s8) casts, field reuse all neutral or negative)
+ * plus scattered block-position shifts. Dispatch uses a @c j .L801E7C10 goto
+ * so gcc doesn't treat the switch as a loop. See memory junctionMenuUpdate_state.
  *
  * @param ctx Junction menu context (JunctionMenuCtx *).
- * @see https://decomp.me/scratch/1glKK
+ * @see https://decomp.me/scratch/xU3fT
  */
 INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", junctionMenuUpdate);
 
@@ -1672,57 +1705,387 @@ s32 encodeBattleAbilityFlags(BattleCharData *charData) {
 }
 
 /**
- * @brief Render stat table panel A (primary stats with change indicators).
- *
- * Iterates over D_801EEBA8 entries, comparing preview vs current ability
- * flags to determine stat change direction. Renders icon, color bar,
- * formatted value, and label for each stat row.
+ * @brief Renders the status attack window showing all the % for statuses
+ * 
+ * Shown when user is navigating junction to ST-A/D > Status attack
  *
  * @param renderCtx Render context.
  * @param cursorY Current cursor Y position.
- * @param x Base X position (offset +0x88 applied).
- * @param y Base Y position (offset +0x7F applied).
+ * @param xBase Base X position (offset +0x88 applied).
+ * @param yBase Base Y position (offset +0x7F applied).
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderStatTableA);
+void renderStatTableA(s32 renderCtx, s32 cursorY, s32 xBase, s32 yBase) {
+    StatTableEntry *entry;
+    MenuDisplayConfig *cfg;
+    s32 i;
+    s32 cy2;
+    s32 x, y;
+    s32 baseFlags, currentFlags;
+    u32 baseVal, currentVal;
+    s32 indicator, color;
+    s32 fmtResult;
+    s32 bit;
+    s32 tmp;
+    u8 fmtParam;
+    u8 buf[12];
+
+    xBase += 0x88;
+    yBase += 0x7F;
+    entry = D_801EEBA8;
+    cfg = &g_menuDisplayCfg;
+    fmtResult = func_801F6AFC(0x14);
+
+    for (i = 0; i < 13; i++, entry++) {
+        if (i == 10) {
+            continue;
+        }
+        x = entry->col;
+        y = entry->row;
+        x *= 105;
+        y *= 13;
+        tmp = x + 8;
+        x = tmp + xBase;
+        tmp = y + 9;
+        y = tmp + yBase;
+
+        baseFlags = encodeBattleAbilityFlags(&g_junctionPreview);
+        currentFlags = encodeBattleAbilityFlags((BattleCharData *)&g_battleChars);
+
+        /* Preview stat value when ability slot i is junctioned (else 0). */
+        bit = 1 << i;
+        if (baseFlags & bit) {
+            baseVal = g_junctionPreview.atkStatusHit - 100;
+            currentVal = baseVal;
+        } else {
+            baseVal = 0;
+        }
+        /* Current stat value for the same slot (overrides the seed above). */
+        bit = 1 << i;
+        tmp = bit;
+        if (currentFlags & tmp) {
+            currentVal = ((BattleCharData *)&g_battleChars)->atkStatusHit - 100;
+        } else {
+            currentVal = 0;
+        }
+
+        /* Change indicator arrow + bar color from preview-vs-current delta. */
+        color = 7;
+        indicator = 7;
+        if (baseVal < currentVal) {
+            indicator = 0x6E;
+            color = 2;
+        }
+        if (currentVal < baseVal) {
+            indicator = 0x6D;
+            color = 3;
+        }
+
+        cy2 = func_8002FF34(renderCtx, cursorY, entry->labelId, x, y, g_menuColor);
+        x += 0x39;
+        y += 4;
+        if (indicator != 7) {
+            cy2 = func_800300F8(renderCtx, cy2, indicator, x, y, g_menuColor, (color * 64) + 2);
+        }
+        x += 0xA;
+        func_8002F294(currentVal, buf, func_80020F84(0xB)[1]);
+        fmtParam = func_80020F84(0xB)[1];
+        func_8002F2EC(&buf[2], 2, fmtParam, func_80020F84(0xB)[0]);
+        func_8002A2C4(buf, fmtResult);
+        cursorY = func_8002C56C(renderCtx, cy2, x, y, &buf[2], color);
+    }
+
+    if (func_80037ADC() == 4) {
+        cfg->iconType = 0xFC;
+    } else {
+        cfg->iconType = 0xD0;
+    }
+    cfg->iconSubType = 0;
+    cfg->x = xBase;
+    cfg->y = yBase;
+    cfg->w = 0xDA;
+    cfg->h = 0x59;
+    func_801EF9AC(renderCtx, cursorY, 0x1000, g_menuColor);
+}
 
 /**
- * @brief Render stat table panel B (secondary stats with change indicators).
- *
- * Same structure as renderStatTableA but uses D_801EEB40 table entries
- * and different Y offset (+0x78).
+ * @brief Renders the status defence window showing all the % for statuses
+ * 
+ * Shown when user is navigating junction to ST-A/D > Status defence
  *
  * @param renderCtx Render context.
  * @param cursorY Current cursor Y position.
- * @param x Base X position.
- * @param y Base Y position.
+ * @param xBase Base X position (offset +0x88 applied).
+ * @param yBase Base Y position (offset +0x78 applied).
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderStatTableB);
+void renderStatTableB(s32 renderCtx, s32 cursorY, s32 xBase, s32 yBase) {
+    StatTableEntry *entry;
+    MenuDisplayConfig *cfg;
+    s32 fmtResult;
+    s32 i;
+    s32 cy2;
+    s32 x, y;
+    u32 baseVal, currentVal;
+    s32 indicator, color;
+    s32 statOffset;
+    s32 tmp;
+    u8 fmtParam;
+    u8 buf[12];
+
+    xBase += 0x88;
+    yBase += 0x78;
+    entry = D_801EEB40;
+    cfg = &g_menuDisplayCfg;
+    fmtResult = func_801F6AFC(0x14);
+
+    for (i = 0; i < 13; i++, entry++) {
+        color = 7;
+        x = entry->col;
+        y = entry->row;
+        x *= 105;
+        y *= 13;
+        tmp = x + 8;
+        x = tmp + xBase;
+        tmp = y + 3;
+        y = tmp + yBase;
+        statOffset = entry->statOffset;
+        /* Preview byte read first (held), then current byte; both decoded. */
+        tmp = ((u8 *)&g_junctionPreview)[statOffset];
+        currentVal = ((u8 *)&g_battleChars)[statOffset];
+        indicator = 7;
+        baseVal = func_801F5104(tmp);
+        currentVal = func_801F5104(currentVal);
+        if (baseVal < currentVal) {
+            indicator = 0x6E;
+            color = 2;
+        }
+        if (currentVal < baseVal) {
+            indicator = 0x6D;
+            color = 3;
+        }
+        cy2 = func_8002FF34(renderCtx, cursorY, entry->labelId, x, y, g_menuColor);
+        x += 0x39;
+        y += 4;
+        if (indicator != 7) {
+            cy2 = func_800300F8(renderCtx, cy2, indicator, x, y, g_menuColor, (color * 64) + 2);
+        }
+        x += 0xA;
+        func_8002F294(currentVal, buf, func_80020F84(0xB)[1]);
+        fmtParam = func_80020F84(0xB)[1];
+        func_8002F2EC(&buf[2], 2, fmtParam, func_80020F84(0xB)[0]);
+        func_8002A2C4(buf, fmtResult);
+        cursorY = func_8002C56C(renderCtx, cy2, x, y, &buf[2], color);
+    }
+
+    if (func_80037ADC() == 4) {
+        cfg->iconType = 0xFD;
+    } else {
+        cfg->iconType = 0xD1;
+    }
+    cfg->iconSubType = 0;
+    cfg->x = xBase;
+    cfg->y = yBase;
+    cfg->w = 0xDA;
+    cfg->h = 0x60;
+    func_801EF9AC(renderCtx, cursorY, 0x1000, g_menuColor);
+}
 
 /**
- * @brief Render stat table panel C (extended stats with flag comparison).
+ * @brief Renders the elemental attack window showing all the % for elements.
  *
- * Uses D_801EEC10 table with additional D_801EF1A4 and D_800788E4
- * flag bytes for comparison. Y offset +0x93.
+ * Shown when the user is navigating junction to EL-A/D > Elemental attack.
+ * Iterates the D_801EEC10 table (8 rows). Each row compares the preview
+ * element flags/value (D_801EF1A4/D_801EF1A5) against the current ones
+ * (D_800788E4/D_800788E5) via a per-row bit test to pick the up/down change
+ * indicator, then renders the label, indicator, and the numeric value.
  *
  * @param renderCtx Render context.
  * @param cursorY Current cursor Y position.
- * @param x Base X position.
- * @param y Base Y position.
+ * @param xBase Base X position (offset +0x88 applied).
+ * @param yBase Base Y position (offset +0x93 applied).
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderStatTableC);
+void renderStatTableC(s32 renderCtx, s32 cursorY, s32 xBase, s32 yBase) {
+    StatTableEntry *entry;
+    MenuDisplayConfig *cfg;
+    s32 fmtResult;
+    s32 i;
+    s32 cy2;
+    s32 x, y;
+    u8 *bufPtr;
+    s32 baseFlags, currentFlags;
+    u32 baseVal, currentVal;
+    s32 indicator, color;
+    s32 bit;
+    s32 tmp;
+    u8 fmtParam;
+    u8 buf[12];
+
+    baseFlags = D_801EF1A4;
+    currentFlags = D_800788E4;
+
+    xBase += 0x88;
+    yBase += 0x93;
+    entry = D_801EEC10;
+
+    cfg = &g_menuDisplayCfg;
+    fmtResult = func_801F6AFC(0x14);
+    i = 0;
+    bufPtr = &buf[2];
+
+    for (; i < 8; i++, entry++) {
+        x = entry->col;
+        y = entry->row;
+        x *= 105;
+        y *= 13;
+        tmp = x + 0xA;
+        x = tmp + xBase;
+        tmp = y + 8;
+        y = tmp + yBase;
+        bit = 1 << i;
+        if (baseFlags & bit) {
+            baseVal = D_801EF1A5;
+            currentVal = baseVal;
+        } else {
+            baseVal = 0;
+        }
+        bit = 1 << i;
+        tmp = bit;
+        if (currentFlags & tmp) {
+            currentVal = D_800788E5;
+        } else {
+            currentVal = 0;
+        }
+        indicator = 7;
+        color = 7;
+        if (baseVal < currentVal) {
+            indicator = 0x6E;
+            color = 2;
+        }
+        if (currentVal < baseVal) {
+            indicator = 0x6D;
+            color = 3;
+        }
+        cy2 = func_8002FF34(renderCtx, cursorY, entry->labelId, x, y, g_menuColor);
+        x += 0x39;
+        y += 4;
+        if (indicator != 7) {
+            cy2 = func_800300F8(renderCtx, cy2, indicator, x, y, g_menuColor, (color * 64) + 2);
+        }
+        x += 0xA;
+        func_8002F294(currentVal, buf, func_80020F84(0xB)[1]);
+        fmtParam = func_80020F84(0xB)[1];
+        func_8002F2EC(bufPtr, 2, fmtParam, func_80020F84(0xB)[0]);
+        func_8002A2C4(buf, fmtResult);
+        cursorY = func_8002C56C(renderCtx, cy2, x, y, bufPtr, color);
+    }
+
+    if (func_80037ADC() == 4) {
+        cfg->iconType = 0xFE;
+    } else {
+        cfg->iconType = 0xD2;
+    }
+    cfg->iconSubType = 0;
+    cfg->x = xBase;
+    cfg->y = yBase;
+    cfg->w = 0xDA;
+    cfg->h = 0x43;
+    func_801EF9AC(renderCtx, cursorY, 0x1000, g_menuColor);
+}
 
 /**
- * @brief Render stat table panel D (combined stats with numeric values).
+ * @brief Renders the elemental defence window showing the % for each element.
  *
- * Uses D_801EEC10 table. Renders formatted numeric stat values alongside
- * change indicators. Y offset +0x93.
+ * Shown when the user is navigating junction to EL-A/D > Elemental defence.
+ * Sibling of renderStatTableC (shares the D_801EEC10 table). Iterates 8 rows;
+ * each reads a u16 stat value at the row's statOffset from the preview char
+ * data (g_junctionPreview) and the current char (g_battleChars), compares them
+ * for the up/down change indicator, optionally draws the '%' glyph (0xAF) when
+ * func_801F5144 applies, then renders the label, indicator, and formatted value.
  *
  * @param renderCtx Render context.
  * @param cursorY Current cursor Y position.
- * @param x Base X position.
- * @param y Base Y position.
+ * @param xBase Base X position (offset +0x88 applied).
+ * @param yBase Base Y position (offset +0x93 applied).
  */
-INCLUDE_ASM("asm/ovl/menujnc2/nonmatchings/menujnc2", renderStatTableD);
+void renderStatTableD(s32 renderCtx, s32 cursorY, s32 xBase, s32 yBase) {
+    StatTableEntry *entry;
+    MenuDisplayConfig *cfg;
+    s32 fmtResult;
+    s32 tmp2;          /* second offset temp; declared here for register allocation */
+    s32 i;
+    s32 cy2;
+    s32 x;
+    u8 *previewBase;   /* cached preview-data base; placement fixes the base-load order */
+    s32 y;
+    u8 *bufPtr;
+    s32 statOffset;
+    u16 baseVal;
+    u32 currentVal;
+    s32 indicator, color;
+    s32 tmp;
+    u8 fmtParam;
+    u8 buf[12];
+
+    xBase += 0x88;
+    yBase += 0x93;
+    entry = D_801EEC10;
+    cfg = &g_menuDisplayCfg;
+    fmtResult = func_801F6AFC(0x14);
+    i = 0;
+    bufPtr = &buf[2];
+
+    for (; i < 8; i++, entry++) {
+        x = entry->col;
+        y = entry->row;
+        x *= 105;
+        y *= 13;
+        tmp = x + 0xA;
+        tmp2 = y + 8;
+        x = tmp + xBase;
+        y = tmp2 + yBase;
+        previewBase = (u8 *)&g_junctionPreview;
+        statOffset = entry->statOffset;
+        baseVal = *(u16 *)(previewBase + statOffset);
+        currentVal = *(u16 *)((u8 *)&g_battleChars + statOffset);
+        indicator = 7;
+        color = 7;
+        if (baseVal < currentVal) {
+            indicator = 0x6E;
+            color = 2;
+        }
+        if (currentVal < baseVal) {
+            indicator = 0x6D;
+            color = 3;
+        }
+        if (func_801F5144(currentVal) != 0) {
+            cursorY = func_8002FF34(renderCtx, cursorY, 0xAF, x + 0x12, y, g_menuColor);
+        }
+        currentVal = func_801F510C(currentVal);
+        cy2 = func_8002FF34(renderCtx, cursorY, entry->labelId, x, y, g_menuColor);
+        x += 0x39;
+        y += 4;
+        if (indicator != 7) {
+            cy2 = func_800300F8(renderCtx, cy2, indicator, x, y, g_menuColor, (color * 64) + 2);
+        }
+        x += 0xA;
+        func_8002F294(currentVal, buf, func_80020F84(0xB)[1]);
+        fmtParam = func_80020F84(0xB)[1];
+        func_8002F2EC(bufPtr, 2, fmtParam, func_80020F84(0xB)[0]);
+        func_8002A2C4(buf, fmtResult);
+        cursorY = func_8002C56C(renderCtx, cy2, x, y, bufPtr, color);
+    }
+
+    if (func_80037ADC() == 4) {
+        cfg->iconType = 0xFF;
+    } else {
+        cfg->iconType = 0xD3;
+    }
+    cfg->iconSubType = 0;
+    cfg->x = xBase;
+    cfg->y = yBase;
+    cfg->w = 0xDA;
+    cfg->h = 0x43;
+    func_801EF9AC(renderCtx, cursorY, 0x1000, g_menuColor);
+}
 
 /**
  * @brief Render stat value grid in two-column layout.

@@ -2,6 +2,8 @@
 #include "psxsdk/libgpu.h"
 #include "drawbar.h"
 
+// This is likely something like drawTextBox.
+
 /*
  * Clipped colour-bar GPU primitive builders.
  *
