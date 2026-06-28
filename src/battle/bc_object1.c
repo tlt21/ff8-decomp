@@ -1377,7 +1377,7 @@ s32 func_8009B7BC(s32 a0) {
 s32 func_8009B7F4(s32 a0, s32 a1) {
     s32 max;
 
-    if (D_800EE4C1[0] == 0xED) {
+    if (D_800EE4C1 == 0xED) {
         if (D_800ED148.entities[a1].field28 == 0) {
             return 0;
         }
