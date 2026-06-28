@@ -368,7 +368,7 @@ s32 func_800B0668(s32 a0, s32 a1) {
  * Masks @p arg0 to 16 bits and calls @c func_800A4C84. If @c sys->unkE
  * is zero, transitions to state 5, calls @c func_800AE524 with the
  * preceding entry index (@c sys->unk5C0 - 1), clears that entry's
- * @c unk_00 byte, then transitions to state 6.
+ * @c unk10 byte, then transitions to state 6.
  *
  * @param arg0 Entity bitmask (16-bit).
  */
@@ -381,7 +381,7 @@ void func_800B06DC(s32 arg0) {
         func_8009AE08(5);
         func_800AE524(sys->unk5C0 - 1);
         idx = sys->unk5C0 - 1;
-        sys->entries[idx].unk_00 = 0;
+        sys->entries[idx].unk10 = 0;
         func_8009AE08(6);
     }
 }

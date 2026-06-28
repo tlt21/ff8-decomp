@@ -313,7 +313,9 @@ typedef struct {
     /* 0x1E8 */ s32          fieldCDC;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field14. */
     /* 0x1EC */ u16          fieldCE0;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field18. */
     /* 0x1EE */ u16          fieldCE2;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field1A. */
-    /* 0x1F0 */ u8           pad1F0[0x3C];                 /**< Battle vars / misc (continued). */
+    /* 0x1F0 */ u8           pad1F0[0x28];                 /**< Battle vars / misc (continued). */
+    /* 0x218 */ u32          array[1];                      /* used in func_8009F52C */
+    /* 0x21C */ u8           pad21C[0x10];                 /**< Battle vars / misc (continued). */  
     /* 0x22C */ u16          fieldD20;                    /**< Unknown (zeroed on save init). */
     /* 0x22E */ u8           partyLockFlag;               /**< Bit 0: party is locked. */
     /* 0x22F */ u8           pad2F[0x10];                 /**< Battle vars / misc (continued). */

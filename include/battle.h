@@ -178,7 +178,17 @@ typedef enum {
 typedef struct {
     u8 unk00[0xF7];
     u8 immunityFlags;   /* 0xF7: bit 0 forces status bit 0x40 clear, bit 1 forces flags bit 0x2000 clear (read by @c func_8009AFF0). */
-    u8 padF8[0x57];
+    u8 unkF8;
+    u8 unkF9;
+    u8 unkFA;
+    u8 unkFB;
+    u8 unkFC;
+    u8 unkFD;
+    u8 unkFE;
+    u8 unkFF;
+    u8 pad100[0x4];
+    u8 unk104[1];       /* size unknown, probably struct, used in func_8009F65C */
+    u8 pad105[0x4A];
     u8 unk14F;          /* 0x14F: byte read by func_800AF988. */
 } BattleEntityData;
 
@@ -255,7 +265,9 @@ typedef struct {
     u16 status;
     u16 statusBackup;
     u16 hpDisplay;     /* 0x94: HP value mirrored from BattleCharData.currentHp. */
-    u8 pad96[0x21];
+    u8 pad96[0x03];
+    u8 unk99;
+    u8 pad9A[0x1D];
     u8 unkB7;
     u8 padB8[0x03];
     u8 linkedIdx2;
@@ -288,9 +300,13 @@ typedef struct {
 
 /** @brief 20-byte action-queue entry in @c BattleSystem.entries. */
 typedef struct {
-    u8 unk_00;
-    u8 pad01[0x13];
-} BattleEntry; /* 0x14 */
+    u8 unk0;       
+    u8 pad01[13];
+    u8 unkE;           
+    u8 pad0F[1];
+    u8 unk10;
+    u8 pad11[3];
+} BattleEntry; /*  0x14 (20 byte) */
 
 /** @brief Linked-list node for the @c BattleSystem.taskLinks queue.
  *
@@ -328,9 +344,9 @@ typedef struct {
     /* 0x05C1 */ u8 pad5C1[0x1];
     /* 0x05C2 */ u8 unk5C2;                     /**< Misc state byte (init to 1 by func_8009A1E0/ACEC). */
     /* 0x05C3 */ u8 unk5C3;                     /**< Misc state byte (init to 1 by func_80099FE8). */
-    /* 0x05C4 */ u8 pad5C4[0x11];
-    /* 0x05D5 */ BattleEntry entries[90];       /**< Action queue (stride 0x14). */
-    /* 0x0CDD */ u8 padCDD[0x7];                /**< Pad to unkCE4. */
+    /* 0x05C4 */ u8 unk5C4;
+    /* 0x05C5 */ BattleEntry entries[90];       /**< Action queue (stride 0x14)*/
+    /* 0x0CDD */ u8 padCDD[0x17];                /**< Pad to unkCE4. */
     /* 0x0CE4 */ BattleVec3u unkCE4[8];         /**< 8-entry x/y/z position table (read by @c func_8009A528). */
     /* 0x0D14 */ u8 unkD14[0x8];                /**< Hit-type byte table (8 entries). */
     /* 0x0D1C */ u8 padD1C[0x40];               /**< Misc state. */
@@ -358,7 +374,9 @@ typedef struct {
     /* 0x12EC */ u8 unk12EC;                    /**< Misc state byte (init to 0xFF). */
     /* 0x12ED */ u8 unk12ED;                    /**< Misc state byte. */
     /* 0x12EE */ u8 unk12EE;                    /**< Misc state byte. */
-    /* 0x12EF */ u8 pad12EF[0x7];               /**< Misc state. */
+    /* 0x12EF */ u8 pad12EF[0x4];               /**< Misc state. */
+    /* 0x12F3 */ u8 unk12F3;                    /* used as index in func_8009F824 */
+    /* 0x12F4 */ u8 pad12F4[0x2];               /**< Misc state. */
     /* 0x12F6 */ u8 taskHead;                   /**< Head index of the task queue linked list. */
     /* 0x12F7 */ u8 pad12F7[0x1];               /**< Pad. */
     /* 0x12F8 */ u8 unk12F8;                    /**< Misc state counter. */
@@ -383,18 +401,23 @@ typedef struct {
     /* 0x130D */ u8 unk130D;
     /* 0x130E */ u8 unk130E;
     /* 0x130F */ s8 unk130F;                    /**< Upper 3 bits of a packed s16 field (sign-extended). */
-    /* 0x1310 */ u8 unk1310;                 /**< Pad to actionType. */
+    /* 0x1310 */ u8 unk1310;
     /* 0x1311 */ u8 actionType;                 /**< Queued action type (0=none, 1=stat-up message). */
     /* 0x1312 */ u8 actionByte0;                /**< Queued action arg 0 (stat ID for type 1). */
     /* 0x1313 */ u8 actionByte1;                /**< Queued action arg 1 (count for type 1). */
-    /* 0x1314 */ u8 pad1314[0x5];               /**< More misc state. */
+    /* 0x1314 */ u8 unk1314;  
+    /* 0x1315 */ u8 unk1315;  
+    /* 0x1316 */ u8 unk1316;
+    /* 0x1317 */ u8 unk1317;
+    /* 0x1318 */ u8 unk1318;
     /* 0x1319 */ u8 unk1319;                    /**< Misc state byte (init to 0xFF). */
-    /* 0x131A */ u8 pad131A[0x9];               /**< More misc state. */
+    /* 0x131A */ u8 pad131A[0x8];               /**< More misc state. */
+    /* 0x1322 */ u8 unk1322;
     /* 0x1323 */ u8 effectMult;                 /**< Damage/effect multiplier (percent). */
     /* 0x1324 */ u8 unk1324; 
     /* 0x1325 */ u8 unk1325; 
     /* 0x1326 */ u8 unk1326; 
-    /* 0x1327 */ u8 unk1327; 
+    /* 0x1327 */ u8 unk1327;
     /* 0x1328 */ u8 unk1328; 
     /* 0x1329 */ u8 unk1329;
 } BattleSystem; /* 0x132A */
@@ -409,7 +432,9 @@ typedef struct {
 /** @brief 0x47-byte sub-entry in @c BattleAnimTable.subEntries. */
 typedef struct {
     u8 charId;          /* 0x00: char/scene byte, mirrored from g_gameState[+0xAF4..]. */
-    u8 unk01[0x46];     /* 0x01..0x46: unknown. */
+    u8 pad01[0x42];     /* 0x01..0x42: padding. */
+    u8 unk43;
+    u8 pad02[0x3];     /* 0x44..0x46: padding. */
 } BattleAnimSubEntry;   /* 0x47 */
 
 /** @brief Battle anim/scene lookup table at @c D_800EE9E8. */
@@ -596,8 +621,13 @@ extern BattleSceneCtx *D_800D244C;
  * Only byte 0 (magicId) is read by the known callers.
  */
 typedef struct {
-    u8 magicId;          /**< [0x00] Magic/spell ID byte (input to ability flag funcs) */
-    u8 unk01[0x3B];      /**< [0x01..0x3F] Remaining record bytes */
+    u8 unk00;
+    u8 unk01;
+    u8 unk02;
+    u8 unk03;
+    u8 magicId; /**< [0x4 (0x226)] Magic/spell ID byte (input to ability flag funcs) */
+    u8 unk05;
+    u8 pad02[0x36];      /**< Remaining record bytes */
 } BattleSpellRow; /* 60 bytes */
 
 /**
@@ -636,6 +666,22 @@ typedef struct {
     u8 unk02[6];        /**< 0x02..0x07: unknown. */
 } BattleSceneRow8;      /* 8 bytes */
 
+
+/**
+ * this struct must be 0xC size, flags and maxHP must be accessed 
+ * at address 0x4C16 and 0x4C17 (func_8009F168) 
+ */
+
+typedef struct {
+    u16 lookupId;   /* 0x4C0C */
+    u8 unk3;        /* 0x4C0E */
+    u8 unk4;        /* 0x4C0F */
+    u8 pad5[0x6];
+    u8 flags;       /* 0x4C16 */
+    u8 maxHP;       /* 0x4C17 */
+} Struct_4C0A; /* 12 bytes */
+
+
 /**
  * @brief Battle scene data buffer at D_80078E00 (loaded from disc, ~0x9E08 bytes).
  *
@@ -650,9 +696,11 @@ typedef struct {
     /* 0x00A4 */ s32 entriesA0Arg;              /**< resolveKernelPtr arg paired with entriesA0[]. */
     /* 0x00A8 */ u8 pad00A8[0x2C];
     /* 0x00D4 */ s32 rows8Arg;                  /**< resolveKernelPtr arg paired with rows8[]. */
-    /* 0x00D8 */ u8 pad00D8[0x14E];
-    /* 0x0226 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
-    /* 0x0262 */ u8 pad0262[0xD16];
+    /* 0x00D8 */ u8 pad00D8[4];                
+    /* 0x00DC */ s32 unk4C0AArg;                /**< resolveKernelPtr arg paired with unk4C0A[]. */
+    /* 0x00E0 */ u8 pad00E0[0x142]; 
+    /* 0x0222 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
+    /* 0x025E */ u8 pad025E[0xD1A];
     /* 0x0F78 */ BattleSceneRow rows132[1];     /**< 132-byte stride (size unknown, index past). */
     /* 0x0FFC */ u8 padFFC[0x7BC];
     /* 0x17B8 */ BattleSceneEntry entries17[1]; /**< stride 20 (size unknown, index past). */
@@ -664,7 +712,9 @@ typedef struct {
     /* 0x3EE0 */ BattleSceneEntry entriesA0[1]; /**< stride 20 (size unknown, index past). */
     /* 0x3EF4 */ u8 pad3EF4[0xB6A];
     /* 0x4A5E */ BattleSceneRow8 rows8[1];      /**< stride 8 (size unknown, index past). */
-    /* 0x4A66 */ u8 pad4A66[614];
+    /* 0x4A66 */ u8 pad4A66[422];
+    /* 0x4C0A */ Struct_4C0A unk4C0A[1];
+    /* 0x4C18 */ u8 pad4C18[180];
     /* 0x4CCC */ u8 unk_4CCC[14];
 } BattleSceneData;
 
@@ -721,6 +771,8 @@ extern u8 D_800EE24B[];     /**< 0x800EE24B: misc state byte. */
 extern u8 D_800EE28C[];     /**< 0x800EE28C: misc state. */
 extern u8 D_800EE449[];     /**< 0x800EE449: misc state byte. */
 extern u8 D_800EE456;     /**< 0x800EE456: status flags byte. */
+extern u8 D_800EE45D;
+extern u8 D_800EE46E;
 extern u8 D_800EE476;     /**< 0x800EE476: entity index latch. */
 
 /**
@@ -755,7 +807,7 @@ typedef struct {
 } BattleCmdBuf;
 
 extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
-extern u8 D_800EE4C1[];     /**< 0x800EE4C1: misc state byte. */
+extern u8 D_800EE4C1;     /**< 0x800EE4C1: misc state byte. */
 extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
 extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */
 extern u8 D_800EEBB8;     /**< 0x800EEBB8: misc state byte. */
@@ -766,8 +818,10 @@ extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
 extern u8 D_800EEBBF;
 extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
+extern u8  D_800EE470;      /*   0x800EE470: used in func_8009F040*/
 extern u8  D_800EE471;
 extern u8  D_800EE4C4;
+extern u16 D_80077E5C;
 /* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle internals).
  * ---------------------------------------------------------------- */

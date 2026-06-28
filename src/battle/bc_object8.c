@@ -109,7 +109,7 @@ void func_800B18A0(s32 a0) {
     if (*(u16 *)(base + a0 * 0xD0 + 0x90) & 1) {
         return;
     }
-    if (*(u8 *)D_800EE4C1 != 0x1F) {
+    if (D_800EE4C1 != 0x1F) {
         return;
     }
     {
