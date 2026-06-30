@@ -9,6 +9,7 @@ extern s32 D_80074EB0;
 extern VoicePoolEntry D_80074F20[12];
 extern u16 D_80074FE4;
 extern s32 D_80075078;
+extern s32 D_80075028[];
 
 /**
  * @brief Adjusts instrument index upward if flag 0x400 is set and instrument is in range.
@@ -201,9 +202,49 @@ INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017AAC);
  */
 INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017C9C);
 
-INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017D14);
+void func_80017D14(SoundSeqTrack *seq, s32 *tracks) {
+    s32 value = seq->instParams;
+    s32 mask;
+    s32 bit;
+    s32 *flags;
 
-INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017D5C);
+    if (value != 0) {
+        mask = value;
+        bit = 1;
+        flags = (s32 *)((s32)tracks + 0xF8);
+        do {
+            if (mask & bit) {
+                mask ^= bit;
+                *flags |= 3;
+            }
+            flags = (s32 *)((s32)flags + 0x110);
+            bit <<= 1;
+        } while (mask != 0);
+    }
+}
+
+void func_80017D5C(void) {
+    s32 value = D_80075028[0];
+    s32 mask;
+    s32 bit;
+    SoundSeqTrack *tracks;
+    s32 *flags;
+
+    if (value != 0) {
+        mask = value;
+        bit = 0x1000;
+        tracks = D_80072F70;
+        flags = (s32 *)((s32)tracks + 0xF8);
+        do {
+            if (mask & bit) {
+                mask ^= bit;
+                *flags |= 3;
+            }
+            flags = (s32 *)((s32)flags + 0x110);
+            bit <<= 1;
+        } while (mask != 0);
+    }
+}
 
 INCLUDE_ASM("asm/nonmatchings/snd_bank", func_80017DB0);
 
