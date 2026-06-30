@@ -1,6 +1,7 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
 #include "battle.h"
+#include "cd.h"
 #include "gamestate.h"
 #include "overlay.h"
 #include "render.h"
@@ -17,14 +18,15 @@ void ovlStubB(void) {
 
 
 /** @brief Wrapper that initiates a CD-ROM read via cdRead. */
-void startCdRead(void) { cdRead(); }
+void startCdRead(s32 lba, u32 size, u8 *dest, void (*callback)(void)) {
+    cdRead(lba, size, dest, callback);
+}
 
 
 /** @brief Wrapper that initiates an async CD-ROM read via func_80038868. */
-void startCdReadAsync(void) { func_80038868(); }
-
-
-INCLUDE_ASM("asm/nonmatchings/overlay", func_80035D30);
+void startCdReadAsync(s32 lba, u32 size, u8 *dest, void (*callback)(void)) {
+    func_80038868(lba, size, dest, callback);
+}
 
 
 extern volatile u16 D_80085208;
@@ -33,6 +35,12 @@ extern s32 D_80085144;
 extern OvlCmdEntry g_ovlCmdQueue[];
 extern u32 load_table[];
 extern u8 D_80053CF0[];
+extern u8 D_80053CF8[];
+extern u8 D_80053D00[];
+extern DISPENV D_80085150;
+extern s32 D_8005F138;
+
+INCLUDE_ASM("asm/nonmatchings/overlay", func_80035D30);
 
 /** @brief Wrapper that polls CD-ROM read completion via func_800393C8. */
 s32 pollCdReadStatus(void) {
@@ -255,7 +263,38 @@ void saveAndClearFramebuffer(s32 a0) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/overlay", func_8003631C);
+extern s32 func_800432D8(void);
+
+void func_8003631C(s32 a0) {
+    RECT rect;
+
+    ClearImage(D_80053CF8, 0, 0, 0);
+    ClearImage(D_80053D00, 0, 0, 0);
+    DrawSync(0);
+    VSync(0);
+    LoadImage((RECT *)D_80053CF0, (u32 *)0x801BF000);
+    DrawSync(0);
+    VSync(0);
+
+    if (a0 < 0) {
+        rect.x = 0x180;
+        rect.y = 0;
+        rect.w = 0x80;
+        rect.h = 0xE0;
+        MoveImage(&rect, 0x300, 0);
+    }
+
+    DrawSync(0);
+    VSync(0);
+
+    if (D_8008520C != 0) {
+        SetDefDispEnv(&D_80085150, 0, 0, 0x140, 0xE0);
+        if (func_800432D8() == 1) {
+            D_80085150.screen.y += 0x18;
+        }
+        D_8005F138 = (s32)&D_80085150;
+    }
+}
 
 
 /** @brief Load overlay 0 (default/main module) with no callbacks. */
@@ -385,5 +424,3 @@ void resetCardSlots(s32 a0) {
         } while (a0 >= 0);
     }
 }
-
-
