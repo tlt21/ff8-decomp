@@ -49,5 +49,6 @@ segments:
     vram: 0x801E5800
     subsegments:
       - [0x0, c, menujnc2]
-      - [0x9110, rodata]
+      - [0x9110, .rodata, menujnc2]
+      - [0x923c, rodata]
   - [0x9450]
