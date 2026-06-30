@@ -34,13 +34,56 @@ extern s32 D_80085140;
 extern s32 D_80085144;
 extern OvlCmdEntry g_ovlCmdQueue[];
 extern u32 load_table[];
+extern u32 D_80097420[];
+extern u32 D_80053D08[][2];
 extern u8 D_80053CF0[];
 extern u8 D_80053CF8[];
 extern u8 D_80053D00[];
 extern DISPENV D_80085150;
 extern s32 D_8005F138;
+extern void func_80035E8C(void);
 
-INCLUDE_ASM("asm/nonmatchings/overlay", func_80035D30);
+void func_80035D30(s32 cmd, s32 overlay_id, s32 lba_offset, s32 load_addr) {
+    s32 lba;
+    u32 size;
+    s32 offset;
+    void (*callback)(void);
+
+    callback = func_80035E8C;
+
+    if (lba_offset < 0) {
+        lba = D_80097420[overlay_id * 2];
+        size = D_80097420[overlay_id * 2 + 1];
+        offset = 0;
+    } else {
+        u32 (*entry)[2];
+        s32 bit;
+        s32 adjusted;
+
+        entry = D_80053D08;
+        entry += lba_offset;
+        offset = (*entry)[0];
+        lba = D_80097420[overlay_id * 2];
+        bit = offset & 1;
+        cmd = (u32)bit < 1;
+        offset = offset & ~1;
+        if (offset < 0) {
+            adjusted = offset + 0x7FF;
+        } else {
+            adjusted = offset;
+        }
+        offset = adjusted >> 11;
+        size = (*entry)[1];
+    }
+
+    if (size != 0) {
+        if (cmd != 0) {
+            startCdReadAsync(lba + offset, size, (u8 *)load_addr, callback);
+        } else {
+            startCdRead(lba + offset, size, (u8 *)load_addr, callback);
+        }
+    }
+}
 
 /** @brief Wrapper that polls CD-ROM read completion via func_800393C8. */
 s32 pollCdReadStatus(void) {
@@ -82,7 +125,28 @@ void resetOverlayQueue(void) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/overlay", func_80035E8C);
+void func_80035E8C(void) {
+    OvlCmdEntry *slot;
+    s32 next_read_idx;
+    u32 ovl_id;
+
+    slot = &g_ovlCmdQueue[D_80085144];
+    ovl_id = (u16)slot->ovlId;
+    if (ovl_id - 1 < 0x10) {
+        D_8008514C = ovl_id;
+    }
+    D_80085208 = slot->param;
+    if (slot->callback1 != 0) {
+        ((void (*)(s32))slot->callback1)(slot->callback2);
+    }
+
+    next_read_idx = (D_80085144 + 1) & 7;
+    D_80085144 = next_read_idx;
+    if (D_80085140 != next_read_idx && getRenderFlag() == 0) {
+        slot = &g_ovlCmdQueue[D_80085144];
+        func_80035D30((u16)slot->cmd, (u16)slot->ovlId, slot->param, slot->loadAddr);
+    }
+}
 
 
 /**
