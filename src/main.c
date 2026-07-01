@@ -44,21 +44,9 @@ void flushGpuOt(void) {
 
 /** @brief VSync callback handler, registered via VSyncCallback in InitHardware.
  *
- *  Dispatches per-frame rendering based on the game mode (g_renderMode):
- *  - 0: no action (rendering idle)
- *  - 1: calls ProcessFade (normal frame draw/swap with fade)
- *  - 2: calls func_80026D8C (battle VSync handler)
- *  - 3: calls func_800D0608 (overlay-loaded VSync handler)
- *  - 4: calls vsyncGameHandler (game code VSync handler)
- *
- *  Also maintains two fixed-point frame timing accumulators (D_8005F154 and
- *  D_8005F15C) that increment by 0x88F per VSync. On bit-17 rollover (~every
- *  12 frames), one increments a game frame counter at g_gameState+0xCD0
- *  and the other decrements a countdown timer at g_gameState+0xCD4.
+ *  Dispatches per-frame rendering by the current render mode and advances the
+ *  game's frame-timing counters.
  */
-
-/* --- VSync ISR helpers and timing globals (main-private) --- */
-
 void VsyncHandler(void) {
     switch (g_renderMode) {
     case 0:
@@ -94,11 +82,11 @@ void VsyncHandler(void) {
 
     D_8005F15C += 0x88F;
     if (D_8005F15C >> 17) {
-        if (g_gameState.mainData.state.countdownTimer == 0) {
+        if (g_gameState.mainData.countdownTimer == 0) {
             D_8005F11E = 1;
             return;
         }
-        g_gameState.mainData.state.countdownTimer--;
+        g_gameState.mainData.countdownTimer--;
         D_8005F15C &= 0xFFFF;
     }
 
@@ -129,32 +117,30 @@ void InitHardware(void) {
 
 /** @brief Saves the current battle/field camera state to a snapshot buffer.
  *
- *  Records party member positions (fixed-point 20.12 -> integer), rotations,
- *  animation states, and display parameters from the battle entity array
- *  (stride 612 at D_80085224) into g_gameState+0xD40..0xD5C. The snapshot
- *  is later restored by RestoreSnapshot when returning from battle.
+ *  Records the party's positions, rotations, animation states, and display
+ *  parameters so RestoreSnapshot can restore them when returning from battle.
  */
 void func_80011870(void) {
     s16 i;
 
     if (D_8005F14C == 2) {
-        ((SnapshotBuf *)&g_gameState)->vsync_rate = 2;
+        g_gameState.cameraSnapshot.vsyncRate = 2;
     } else {
-        ((SnapshotBuf *)&g_gameState)->vsync_rate = 1;
+        g_gameState.cameraSnapshot.vsyncRate = 1;
     }
 
-    ((SnapshotBuf *)&g_gameState)->music_track = g_currentMusicTrack;
-    ((SnapshotBuf *)&g_gameState)->field_120 = g_fieldEntity.field_0x120;
+    g_gameState.cameraSnapshot.musicTrack = g_currentMusicTrack;
+    g_gameState.cameraSnapshot.field120 = g_fieldEntity.field_0x120;
 
     for (i = 0; i < 3; i++) {
-        ((SnapshotBuf *)&g_gameState)->positions_x[i] = D_80085224[g_fieldEntity.entityIndex[i]].posX >> 12;
-        ((SnapshotBuf *)&g_gameState)->positions_y[i] = D_80085224[g_fieldEntity.entityIndex[i]].posY >> 12;
-        ((SnapshotBuf *)&g_gameState)->rotations[i]   = D_80085224[g_fieldEntity.entityIndex[i]].field_0x1FA;
-        ((SnapshotBuf *)&g_gameState)->anim_states[i] = D_80085224[g_fieldEntity.entityIndex[i]].field_0x241;
+        g_gameState.cameraSnapshot.positionsX[i] = D_80085224[g_fieldEntity.entityIndex[i]].posX >> 12;
+        g_gameState.cameraSnapshot.positionsY[i] = D_80085224[g_fieldEntity.entityIndex[i]].posY >> 12;
+        g_gameState.cameraSnapshot.rotations[i]   = D_80085224[g_fieldEntity.entityIndex[i]].field_0x1FA;
+        g_gameState.cameraSnapshot.animStates[i] = D_80085224[g_fieldEntity.entityIndex[i]].field_0x241;
     }
 
-    ((SnapshotBuf *)&g_gameState)->fade1 = D_8005F151;
-    ((SnapshotBuf *)&g_gameState)->fade0 = D_8005F150;
+    g_gameState.cameraSnapshot.fade1 = D_8005F151;
+    g_gameState.cameraSnapshot.fade0 = D_8005F150;
 }
 
 /** @brief Restores a previously saved camera/field state snapshot.
@@ -164,28 +150,25 @@ void func_80011870(void) {
  *  state structure), g_vsyncRate (VSync rate), and fade state variables.
  */
 void RestoreSnapshot(void) {
-    SnapshotBuf *buf;
     SystemState *entity;
 
-    buf = (SnapshotBuf *)(s32)&g_gameState;
-
-    g_vsyncRate = buf->vsync_rate;
+    g_vsyncRate = g_gameState.cameraSnapshot.vsyncRate;
     if (g_vsyncRate == 0) {
         g_vsyncRate = 1;
     }
 
-    g_currentMusicTrack = buf->music_track;
+    g_currentMusicTrack = g_gameState.cameraSnapshot.musicTrack;
 
     entity = &g_fieldEntity;
 
-    entity->field_0x120 = buf->field_120;
-    entity->position_x = buf->positions_x[0];
-    entity->position_y = buf->positions_y[0];
-    entity->rotation = buf->rotations[0];
-    entity->anim_state = buf->anim_states[0];
+    entity->field_0x120 = g_gameState.cameraSnapshot.field120;
+    entity->position_x = g_gameState.cameraSnapshot.positionsX[0];
+    entity->position_y = g_gameState.cameraSnapshot.positionsY[0];
+    entity->rotation = g_gameState.cameraSnapshot.rotations[0];
+    entity->anim_state = g_gameState.cameraSnapshot.animStates[0];
 
-    D_8005F151 = buf->fade1;
-    D_8005F150 = buf->fade0;
+    D_8005F151 = g_gameState.cameraSnapshot.fade1;
+    D_8005F150 = g_gameState.cameraSnapshot.fade0;
 }
 
 

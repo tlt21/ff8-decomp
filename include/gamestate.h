@@ -323,10 +323,7 @@ typedef struct {
     /* 0x30 */ u8            battleOrder[32];              /**< Battle item menu ordering. */
     /* 0x50 */ ItemSlot      itemSlots[ITEM_SLOT_COUNT];  /**< Item inventory (198 slots). */
     /* 0x1DC */ volatile s32  frameCounter;                /**< @c 0xCD0: game frame counter; incremented ~every 12 frames by @ref VsyncHandler (VSync ISR). */
-    /* 0x1E0 */ union {                                    /**< @c 0xCD4: VSync-maintained word (decremented by @ref VsyncHandler; always accessed @c volatile). */
-        s32          battleStateFlag;                      /**< Battle-active / camera-shake state view (battle & field code). */
-        volatile s32 countdownTimer;                       /**< VSync countdown-timer view; SET/GET by event opcodes, decremented by @ref VsyncHandler while nonzero. */
-    } state;
+    /* 0x1E0 */ volatile s32  countdownTimer;                  /**< @c 0xCD4: battle countdown timer. Set/get by field event opcodes, decremented by @ref VsyncHandler while nonzero; battle & color code read it as active / camera-shake state. */
     /* 0x1E4 */ u8           pad1E4[0x04];
     /* 0x1E8 */ s32          fieldCDC;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field14. */
     /* 0x1EC */ u16          fieldCE0;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field18. */
@@ -343,6 +340,24 @@ typedef struct {
                                                                divided by 10 gives the page count. */
     /* 0x240 */ u8           pad40[4];                    /**< Battle vars / misc (continued). */
 } SaveMainData; /* 0x244 = 580 bytes */
+
+/**
+ * @brief Camera/field state snapshot saved across a battle transition.
+ *
+ * Lives at GameState + 0xD40; written by func_80011870 and read back by
+ * RestoreSnapshot.
+ */
+typedef struct {
+    /* 0x00 */ u16 vsyncRate;
+    /* 0x02 */ u16 musicTrack;
+    /* 0x04 */ u16 field120;         /**< Saved copy of g_fieldEntity.field_0x120. */
+    /* 0x06 */ u16 positionsX[3];    /**< Party member X positions (>>12 integer). */
+    /* 0x0C */ u16 positionsY[3];    /**< Party member Y positions (>>12 integer). */
+    /* 0x12 */ u16 rotations[3];     /**< Party member rotations. */
+    /* 0x18 */ u8  animStates[3];    /**< Party member animation states. */
+    /* 0x1B */ u8  fade1;
+    /* 0x1C */ u8  fade0;
+} CameraSnapshot; /* 0x1E = 30 bytes (29 data + 1 trailing pad, u16-aligned) */
 
 /**
  * @brief Full game state (g_gameState at 0x80077378, 0x13A0 bytes).
@@ -364,7 +379,9 @@ typedef struct {
     /* 0xAE0 */ GameConfig    config;                      /**< Game config (20 bytes). */
     /* 0xAF4 */ SaveMainData  mainData;                     /**< Party/items/battle state (580 bytes). */
     /* 0xD38 */ u8            battleParty[4];              /**< Battle party member IDs (mirrors party.party). */
-    /* 0xD3C */ u8            padD3C[0x24];                /**< Battle vars / misc (continued). */
+    /* 0xD3C */ u8             padD3C[4];        /**< Battle vars / misc. */
+    /* 0xD40 */ CameraSnapshot cameraSnapshot;   /**< Camera/field snapshot (saved across battle). */
+    /* 0xD5E */ u8             padD5D[2];        /**< Battle vars / misc (continued). */
     /* 0xD60 */ FieldVars     fieldVars;                   /**< Steps, SeeD rank, counters (@c &g_gameState.fieldVars == @c g_fieldVars). */
     /* 0xE60 */ u8            padE60[0x400];               /**< Field script vars, TT rules. */
     /* 0x1260 */ u8           pad1260[0x80];               /**< World map position/vehicles. */

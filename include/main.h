@@ -35,22 +35,6 @@ typedef enum {
     RENDER_GAME    = 4
 } RenderMode;
 
-/** @brief Layout of the snapshot region within g_gameState (offsets 0xD40-0xD5C).
- *  Used by func_80011870 (save) and RestoreSnapshot (restore).
- */
-typedef struct {
-    u8  pad0[0xD40];      /* 0x000..0xD3F */
-    u16 vsync_rate;       /* 0xD40 */
-    u16 music_track;      /* 0xD42 */
-    u16 field_120;        /* 0xD44 */
-    u16 positions_x[3];   /* 0xD46..0xD4B */
-    u16 positions_y[3];   /* 0xD4C..0xD51 */
-    u16 rotations[3];     /* 0xD52..0xD57 */
-    u8  anim_states[3];   /* 0xD58..0xD5A */
-    u8  fade1;            /* 0xD5B */
-    u8  fade0;            /* 0xD5C */
-} SnapshotBuf;
-
 /* Display / render state owned by main.c. */
 extern u16            g_currentMusicTrack;
 extern TILE           g_clearTiles[];

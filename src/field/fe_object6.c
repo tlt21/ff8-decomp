@@ -1257,7 +1257,7 @@ s32 opHandler_BGCLEAR(Eline *eline) {
 }
 
 /**
- * Pop a value and store it into @c g_gameState.mainData.state.battleStateFlag
+ * Pop a value and store it into @c g_gameState.mainData.countdownTimer
  * (the battle state word at @c g_gameState+0xCD4 used by camera shake).
  *
  * @param eline Pointer to the Eline event-script context.
@@ -1265,7 +1265,7 @@ s32 opHandler_BGCLEAR(Eline *eline) {
  */
 s32 opHandler_SETTIMER(Eline *eline) {
     volatile GameState *gs = &g_gameState;
-    gs->mainData.state.battleStateFlag = POP(eline);
+    gs->mainData.countdownTimer = POP(eline);
     return 2;
 }
 
@@ -1277,7 +1277,7 @@ s32 opHandler_SETTIMER(Eline *eline) {
  */
 s32 opHandler_GETTIMER(Eline *eline) {
     volatile GameState *gs = &g_gameState;
-    eline->resultSlots[0] = gs->mainData.state.battleStateFlag;
+    eline->resultSlots[0] = gs->mainData.countdownTimer;
     return 2;
 }
 

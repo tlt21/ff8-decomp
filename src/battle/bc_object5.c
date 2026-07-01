@@ -528,10 +528,10 @@ s32 func_800AA9C8(s32 a0, s32 a1) {
 }
 
 /**
- * @brief Test battleStateFlag, optionally inverted.
+ * @brief Test countdownTimer, optionally inverted.
  *
- * If a0 == 0, returns 1 when battleStateFlag is zero (no battle active).
- * If a0 == 3, returns 1 when battleStateFlag is nonzero (battle active).
+ * If a0 == 0, returns 1 when countdownTimer is zero (no battle active).
+ * If a0 == 3, returns 1 when countdownTimer is nonzero (battle active).
  * Other values fall through with no explicit return.
  *
  * @param a0 Query mode (0 = test no-battle, 3 = test in-battle).
@@ -540,11 +540,11 @@ s32 func_800AA9C8(s32 a0, s32 a1) {
 s32 func_800AAA10(s32 a0) {
     if (a0 == 0) {
         volatile GameState *gs = &g_gameState;
-        return gs->mainData.state.battleStateFlag == 0;
+        return gs->mainData.countdownTimer == 0;
     }
     if (a0 == 3) {
         volatile GameState *gs = &g_gameState;
-        return gs->mainData.state.battleStateFlag != 0;
+        return gs->mainData.countdownTimer != 0;
     }
 }
 
