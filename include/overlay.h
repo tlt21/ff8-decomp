@@ -48,4 +48,17 @@ extern void loadOverlayWithTimCallback(s32 a0, s32 a1);
 extern void resetCardSlots(s32 mode);
 
 extern s32 func_8003646C(); /* K&R: called with 1 or 2 args */
+
+/* --- Loaded-overlay entry points -----------------------------------------
+ * These live inside the swapped overlay at 0x80098xxx (each overlay provides
+ * its own implementation at the shared entry address); main invokes them
+ * after loading an overlay. */
+
+/** @brief Run the loaded overlay's entry point (init / execute). */
+extern void func_80098000(void);
+
+/** @brief Query the loaded overlay; returns a status code (main checks @c == 1).
+ *  @note Purpose uncertain - undecompiled; appears to report the overlay's
+ *        load/ready result. */
+extern s32  func_800987D8(void);
 #endif /* OVERLAY_H */

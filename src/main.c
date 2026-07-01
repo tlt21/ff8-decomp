@@ -354,15 +354,6 @@ void loadFileTable(void) {
         ;
 }
 
-/* --- main state-machine helpers (main-binary internal, declared where used) --- */
-/* Remaining external deps that resist a clean owner header:
- *  - func_80098000 / func_800987D8: field_init overlay entry points, invoked
- *    after the overlay is loaded (cross-overlay boundary; no shared header).
- *  - sndStopAll / sndCmd21: owned by snd_init.h, but including it conflicts
- *    (that header redeclares sndCmd10/toggleSoundBank vs other snd headers). */
-extern void func_80098000(void);
-extern s32  func_800987D8(void);
-
 /**
  * @brief Battle-map transition entry (stride 0x18) in the table loaded at
  *        0x80097940 by loadSecondaryData. Indexed by @c D_80082C8C.unk02 when
