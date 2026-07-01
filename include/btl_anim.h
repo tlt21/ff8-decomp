@@ -9,4 +9,6 @@
 extern void renderAndUpdateDisplay(s32 frameCount); /**< Advance and render the battle display list. */
 extern s32  renderBattleDisplayList(s32 *colorTag); /**< Walk the ordering table and emit its primitives. */
 
+extern s32 getAnimGlobalState(void);
+extern s32 setAnimGlobalState(s32 value);
 #endif /* BTL_ANIM_H */

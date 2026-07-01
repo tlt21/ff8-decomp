@@ -540,11 +540,11 @@ s32 func_800AA9C8(s32 a0, s32 a1) {
 s32 func_800AAA10(s32 a0) {
     if (a0 == 0) {
         volatile GameState *gs = &g_gameState;
-        return gs->mainData.battleStateFlag == 0;
+        return gs->mainData.state.battleStateFlag == 0;
     }
     if (a0 == 3) {
         volatile GameState *gs = &g_gameState;
-        return gs->mainData.battleStateFlag != 0;
+        return gs->mainData.state.battleStateFlag != 0;
     }
 }
 

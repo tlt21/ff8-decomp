@@ -22,6 +22,7 @@
 #include "common.h"
 #include "character.h"
 #include "field.h"
+#include "psxsdk/libgpu.h"
 
 /* ======================================================================== */
 /* GF Save Data                                                             */
@@ -307,8 +308,11 @@ typedef struct {
     /* 0x20 */ LimitBreakData limitBreaks;                /**< Limit break progress (16 bytes). */
     /* 0x30 */ u8            battleOrder[32];              /**< Battle item menu ordering. */
     /* 0x50 */ ItemSlot      itemSlots[ITEM_SLOT_COUNT];  /**< Item inventory (198 slots). */
-    /* 0x1DC */ u8           padDC[4];                    /**< Battle vars / misc. */
-    /* 0x1E0 */ s32          battleStateFlag;             /**< Battle state word, low byte compared against camera shake. */
+    /* 0x1DC */ volatile s32  frameCounter;                /**< @c 0xCD0: game frame counter; incremented ~every 12 frames by @ref VsyncHandler (VSync ISR). */
+    /* 0x1E0 */ union {                                    /**< @c 0xCD4: VSync-maintained word (decremented by @ref VsyncHandler; always accessed @c volatile). */
+        s32          battleStateFlag;                      /**< Battle-active / camera-shake state view (battle & field code). */
+        volatile s32 countdownTimer;                       /**< VSync countdown-timer view; SET/GET by event opcodes, decremented by @ref VsyncHandler while nonzero. */
+    } state;
     /* 0x1E4 */ u8           pad1E4[0x04];
     /* 0x1E8 */ s32          fieldCDC;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field14. */
     /* 0x1EC */ u16          fieldCE0;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field18. */
@@ -371,6 +375,17 @@ extern u8 D_80085388;                  /**< @c Eline entity count at @c D_800852
  *         @c func_800BF718's common tail. */
 extern u16 D_800562C8[];
 
+/* Render dispatch mode + fade bytes (main-binary state shared across units). */
+extern volatile s16 g_renderMode;
+extern u8 D_8005F150;
+extern u8 D_8005F151;
+
+/* Display double-buffer state (main-binary; shared with tripletriad). */
+extern volatile s16 g_vsyncRate;
+extern DISPENV      g_dispEnvs[2];
+extern DRAWENV      g_drawEnvs[2];
+extern s8           g_fadeCounter; /* signed: counts toward 0 (be_object1 uses -1 / <0) */
+
 /** @brief Bit @c 0x10 mirrors into @c FieldVars.field58 on full field reset. */
 extern u8  D_80078DF8;
 
@@ -379,6 +394,9 @@ extern u16 *D_800852F0;
 
 /* --- Save / GF / chocobo-world state setters --- */
 extern void setGfExists(s32 gfId);
+extern void clearEntityFlags(void);
+extern void func_80038030(s32 mapAddr);
+extern void func_80038490(s32 descIndex, s32 dest);
 extern void enableChocoboWorld(void);
 
 /** @brief Resolve a character ID (e.g. party slot) to its global character code. */

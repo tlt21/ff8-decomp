@@ -47,4 +47,5 @@ extern void loadOverlayWithTimCallback(s32 a0, s32 a1);
 /** @brief Reset card-slot dispatch state for the Triple-Triad mini-game. */
 extern void resetCardSlots(s32 mode);
 
+extern s32 func_8003646C(); /* K&R: called with 1 or 2 args */
 #endif /* OVERLAY_H */

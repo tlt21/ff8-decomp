@@ -8,7 +8,6 @@
 u8 *resolveKernelPtr(u16 a0, s32 a1);
 
 extern volatile s16 g_renderMode;
-extern volatile u16 g_vsyncRate;
 extern s32 D_800974C0[2];
 extern s32 D_800974C8[2];
 extern s32 D_800974B8[2];

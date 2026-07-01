@@ -1,58 +1,25 @@
 #include "common.h"
 #include "cd.h"
+#include "intro.h"
+#include "field/fe_object1.h"
+#include "field/fe_object6.h"
+#include "field/fe_object12.h"
 #include "field.h"
+#include "gamestate.h"
+#include "battle.h"
+#include "thread.h"
+#include "btl_anim.h"
+#include "overlay.h"
+#include "game.h"
+#include "cdrom.h"
+#include "psxsdk/libapi.h"
+#include "psxsdk/libspu.h"
+#include "psxsdk/crt0.h"
 #include "psxsdk/libgpu.h"
+#include "psxsdk/libgte.h"
+#include "psxsdk/libetc.h"
+#include "main.h"
 
-/** @brief Fade effect mode for the rendering system. */
-typedef enum {
-    FADE_NONE = 0,
-    FADE_IN   = 1,
-    FADE_OUT  = 2
-} FadeMode;
-
-/** @brief VSync rendering dispatch mode. */
-typedef enum {
-    RENDER_IDLE    = 0,
-    RENDER_FADE    = 1,
-    RENDER_BATTLE  = 2,
-    RENDER_OVERLAY = 3,
-    RENDER_GAME    = 4
-} RenderMode;
-
-/** @brief Layout of the snapshot region within g_gameState (offsets 0xD40-0xD5C).
- *  Used by func_80011870 (save) and RestoreSnapshot (restore).
- */
-typedef struct {
-    u8  pad0[0xD40];      /* 0x000..0xD3F */
-    u16 vsync_rate;       /* 0xD40 */
-    u16 music_track;      /* 0xD42 */
-    u16 field_120;        /* 0xD44 */
-    u16 positions_x[3];   /* 0xD46..0xD4B */
-    u16 positions_y[3];   /* 0xD4C..0xD51 */
-    u16 rotations[3];     /* 0xD52..0xD57 */
-    u8  anim_states[3];   /* 0xD58..0xD5A */
-    u8  fade1;            /* 0xD5B */
-    u8  fade0;            /* 0xD5C */
-} SnapshotBuf;
-
-extern u8 g_gameState[];
-extern volatile u16 g_vsyncRate;
-extern u16 g_currentMusicTrack;
-extern u8 D_8005F150;
-extern u8 D_8005F151;
-extern SystemState g_fieldEntity;
-extern u8 D_80067468[];
-extern CdFileDesc D_800974D8[];
-extern u8 D_8006A468[];
-extern u8 D_8005F188[];
-extern u8 D_80070468[];
-extern TILE g_clearTiles[];
-extern volatile u16 g_bufferIndex; /* volatile for codegen match (forces sign extension, prevents CSE) */
-extern volatile u8 g_fadeMode; /* volatile for codegen match (forces reload each access) */
-extern u8 g_fadeCounter;
-extern DISPENV g_dispEnvs[];
-extern DRAWENV g_drawEnvs[];
-extern u32 g_orderingTablePtrs[];
 
 /** @brief Clears the GPU ordering tables and flushes the GPU pipeline.
  *
@@ -87,77 +54,56 @@ void flushGpuOt(void) {
  *  D_8005F15C) that increment by 0x88F per VSync. On bit-17 rollover (~every
  *  12 frames), one increments a game frame counter at g_gameState+0xCD0
  *  and the other decrements a countdown timer at g_gameState+0xCD4.
- *
- *  @code
- *  void VsyncHandler(void) {
- *      extern volatile s32 D_8005F154;
- *      extern volatile s32 D_8005F15C;
- *      extern u16 D_8005F11E;
- *      extern u8 g_gameState[];
- *
- *      switch ((s16)g_renderMode) {
- *      case 0:
- *          break;
- *      case 1:
- *          ProcessFade();
- *          break;
- *      case 2:
- *          func_80026D8C();
- *          break;
- *      case 3:
- *          func_800D0608();
- *          break;
- *      case 4:
- *          vsyncGameHandler();
- *          break;
- *      }
- *
- *      if (getAnimGlobalState() != 0) {
- *          D_8005F11E = 1;
- *          return;
- *      }
- *
- *      if (g_vsyncSkip != 0) {
- *          D_8005F11E = 1;
- *          return;
- *      }
- *
- *      D_8005F154 += 0x88F;
- *      if (D_8005F154 >> 17) {
- *          s32 base = g_gameState;
- *          *(s32 *)(base + 0xCD0) += 1;
- *          asm("");
- *          D_8005F154 &= 0xFFFF;
- *      }
- *
- *      D_8005F15C += 0x88F;
- *      if (D_8005F15C >> 17) {
- *          s32 base = (s32)g_gameState;
- *          if (*(s32 *)(base + 0xCD4) == 0) {
- *              D_8005F11E = 1;
- *              return;
- *          }
- *          *(s32 *)(base + 0xCD4) -= 1;
- *          asm("");
- *          D_8005F15C &= 0xFFFF;
- *      }
- *
- *      D_8005F11E = 1;
- *  }
- *  @endcode
  */
-INCLUDE_ASM("asm/nonmatchings/main", VsyncHandler);
 
-void InitGeom(void);
-void ResetCallback(void);
-void SetMem(u8 a);
-void StopCallback(void);
-void VSyncCallback(void (*cb)(void));
-void InitSpu(void);
+/* --- VSync ISR helpers and timing globals (main-private) --- */
 
-extern void VsyncHandler(void);
-extern u8 g_vsyncSkip;
-extern volatile u16 g_renderMode;
+void VsyncHandler(void) {
+    switch (g_renderMode) {
+    case 0:
+        break;
+    case 1:
+        ProcessFade();
+        break;
+    case 2:
+        func_80026D8C();
+        break;
+    case 3:
+        func_800D0608();
+        break;
+    case 4:
+        vsyncGameHandler();
+        break;
+    }
+
+    if (getAnimGlobalState() != 0) {
+        D_8005F11E = 1;
+        return;
+    }
+    if (g_vsyncSkip != 0) {
+        D_8005F11E = 1;
+        return;
+    }
+
+    D_8005F154 += 0x88F;
+    if (D_8005F154 >> 17) {
+        g_gameState.mainData.frameCounter++;
+        D_8005F154 &= 0xFFFF;
+    }
+
+    D_8005F15C += 0x88F;
+    if (D_8005F15C >> 17) {
+        if (g_gameState.mainData.state.countdownTimer == 0) {
+            D_8005F11E = 1;
+            return;
+        }
+        g_gameState.mainData.state.countdownTimer--;
+        D_8005F15C &= 0xFFFF;
+    }
+
+    D_8005F11E = 1;
+}
+
 
 /** @brief Initializes PS1 hardware subsystems.
  *
@@ -186,54 +132,29 @@ void InitHardware(void) {
  *  animation states, and display parameters from the battle entity array
  *  (stride 612 at D_80085224) into g_gameState+0xD40..0xD5C. The snapshot
  *  is later restored by RestoreSnapshot when returning from battle.
- *
- *  @code
- *  void func_80011870(void) {
- *      extern volatile u16 D_8005F14C;
- *      extern u16 g_currentMusicTrack;
- *      extern u8 D_8005F150;
- *      extern u8 D_8005F151;
- *      extern u16 D_800780B8;
- *      extern u8 g_gameState[];
- *      extern u8 g_fieldEntity[];
- *      extern BattleEntity *D_80085224;
- *      s32 i;
- *      s32 buf;
- *      s32 src;
- *
- *      if ((s16)D_8005F14C == 2) {
- *          D_800780B8 = 2;
- *      } else {
- *          D_800780B8 = 1;
- *      }
- *
- *      i = 0;
- *      buf = g_gameState;
- *      src = g_fieldEntity;
- *      *(u16 *)(buf + 0xD42) = g_currentMusicTrack;
- *      *(u16 *)(buf + 0xD44) = *(u16 *)(src + 0x120);
- *
- *  top:
- *      {
- *          s16 idx = (s16)i;
- *          s32 eoff = idx + src;
- *          s32 stp = idx * 2 + buf;
- *
- *          *(u16 *)(stp + 0xD46) = D_80085224[*(u8 *)(eoff + 0x12)].pos_x >> 12;
- *          *(u16 *)(stp + 0xD4C) = D_80085224[*(u8 *)(eoff + 0x12)].pos_y >> 12;
- *          *(u16 *)(stp + 0xD52) = D_80085224[*(u8 *)(eoff + 0x12)].rotation;
- *          i++;
- *          *(u8 *)(idx + buf + 0xD58) = D_80085224[*(u8 *)(eoff + 0x12)].anim_state;
- *      }
- *      if ((s16)i < 3) goto top;
- *
- *      buf = g_gameState;
- *      *(u8 *)(buf + 0xD5B) = D_8005F151;
- *      *(u8 *)(buf + 0xD5C) = D_8005F150;
- *  }
- *  @endcode
  */
-INCLUDE_ASM("asm/nonmatchings/main", func_80011870);
+void func_80011870(void) {
+    s16 i;
+
+    if (D_8005F14C == 2) {
+        ((SnapshotBuf *)&g_gameState)->vsync_rate = 2;
+    } else {
+        ((SnapshotBuf *)&g_gameState)->vsync_rate = 1;
+    }
+
+    ((SnapshotBuf *)&g_gameState)->music_track = g_currentMusicTrack;
+    ((SnapshotBuf *)&g_gameState)->field_120 = g_fieldEntity.field_0x120;
+
+    for (i = 0; i < 3; i++) {
+        ((SnapshotBuf *)&g_gameState)->positions_x[i] = D_80085224[g_fieldEntity.entityIndex[i]].posX >> 12;
+        ((SnapshotBuf *)&g_gameState)->positions_y[i] = D_80085224[g_fieldEntity.entityIndex[i]].posY >> 12;
+        ((SnapshotBuf *)&g_gameState)->rotations[i]   = D_80085224[g_fieldEntity.entityIndex[i]].field_0x1FA;
+        ((SnapshotBuf *)&g_gameState)->anim_states[i] = D_80085224[g_fieldEntity.entityIndex[i]].field_0x241;
+    }
+
+    ((SnapshotBuf *)&g_gameState)->fade1 = D_8005F151;
+    ((SnapshotBuf *)&g_gameState)->fade0 = D_8005F150;
+}
 
 /** @brief Restores a previously saved camera/field state snapshot.
  *
@@ -245,7 +166,7 @@ void RestoreSnapshot(void) {
     SnapshotBuf *buf;
     SystemState *entity;
 
-    buf = (SnapshotBuf *)(s32)g_gameState;
+    buf = (SnapshotBuf *)(s32)&g_gameState;
 
     g_vsyncRate = buf->vsync_rate;
     if (g_vsyncRate == 0) {
@@ -266,9 +187,6 @@ void RestoreSnapshot(void) {
     D_8005F150 = buf->fade0;
 }
 
-extern volatile u16 D_8005F14C;
-extern CdFileDesc D_80097410[];
-extern CdFileDesc D_800974D0[];
 
 /** @brief Loads field data set A from CD into 0x80098000.
  *
@@ -348,7 +266,6 @@ void initSoundEngine(void) {
     sndUploadSamples(0x801B0000, 1);
 }
 
-extern CdFileDesc D_80097400[];
 
 /** @brief Loads an overlay from CD into 0x80098000.
  *
@@ -362,7 +279,6 @@ void loadCdOverlay(void) {
         ;
 }
 
-extern CdFileDesc D_80097808[];
 
 /** @brief Loads texture data from CD and uploads it to VRAM.
  *
@@ -423,7 +339,6 @@ void initBattleAssets(void) {
     setBattleEntityBase(0x80090000);
 }
 
-extern CdFileDesc g_fileTableDesc[];
 
 /** @brief Loads the master file descriptor table from CD into 0x80097400.
  *
@@ -438,23 +353,336 @@ void loadFileTable(void) {
         ;
 }
 
+/* --- main state-machine helpers (main-binary internal, declared where used) --- */
+/* Remaining external deps that resist a clean owner header:
+ *  - func_80098000 / func_800987D8: field_init overlay entry points, invoked
+ *    after the overlay is loaded (cross-overlay boundary; no shared header).
+ *  - sndStopAll / sndCmd21: owned by snd_init.h, but including it conflicts
+ *    (that header redeclares sndCmd10/toggleSoundBank vs other snd headers). */
+extern void func_80098000(void);
+extern s32  func_800987D8(void);
+extern void sndStopAll(void);          /* snd_init.h owns these but its include conflicts */
+extern void sndCmd21(s32 a, s32 b);
+
+/**
+ * @brief Battle-map transition entry (stride 0x18) in the table loaded at
+ *        0x80097940 by loadSecondaryData. Indexed by @c D_80082C8E when the
+ *        field engine requests a scripted map jump (@c D_80082C8C == 1).
+ */
+typedef struct {
+    /* 0x00 */ u16 position_x;
+    /* 0x02 */ u16 position_y;
+    /* 0x04 */ u16 rotation;
+    /* 0x06 */ s16 musicTrack;
+    /* 0x08 */ u8  anim_state;
+    /* 0x09 */ u8  pad09[0xF];
+} BattleMapEntry; /* 0x18 */
+
+/* The post-battle result handling reads several fields of the field-vars
+ * block through @ref g_fieldVars (0x800562C4): @c stateFlags (bit 0x40 cleared
+ * on a "continue" result), @c fieldB6 (bits 0x100 / 0x200 gate the game-over
+ * music/state paths), @c expectedDiscId (compared against @c getDiscId to
+ * detect a disc change), and @c fieldD1 (OR'ed with 1 into the disc-change
+ * transition argument). */
+
+/* Scene-transition selector bytes. The world overlay views this 0x80082C8C
+ * region as a 4-byte SceneState (see world.h); the main state machine reads
+ * the individual bytes, so it keeps its own byte-typed view here. */
+/* D_80082C8C/E/F are the bytes of world.h's 4-byte SceneState D_80082C8C;
+ * main.c uses the individual-byte view. Unifying needs SceneState moved to a
+ * shared header + main.c switched to struct-field access. */
+extern s8 D_80082C8C;
+extern s8 D_80082C8E;
+extern u8 D_80082C8F;
+
 /** @brief Game main function and primary state machine loop.
  *
  *  Initialization sequence: hardware init, CD-ROM init, loads file table,
  *  sound engine, overlays, and field/battle data.
  *
- *  Main loop runs until g_fieldEntity[0] == 4 (game exit). Uses g_vsyncRate
- *  as the state variable (decremented per iteration, dispatched via switch):
- *  - State 1: Load field audio, run overlay update.
- *  - State 2: Field-to-battle transition setup.
- *  - State 3: Battle execution and result handling.
- *  - State 4: Post-battle fade-out/transition.
- *  - State 5+: Disc change handling.
+ *  Main loop runs until g_fieldEntity.mode == 4 (game exit). The inner
+ *  dispatcher uses (g_vsyncRate - 1) as the state selector:
+ *  - State 1: Load field audio / run overlay update; stage a map jump.
+ *  - State 2/3: Field-to-battle transition, battle execution, result handling.
+ *  - State 5/9: Post-battle fade-out and disc-change handling.
+ *  - State 7/8: Overlay reload / disc swap.
  *
- *  On exit (g_fieldEntity[0] == 4), shuts down sound, resets GPU, and
+ *  On exit (g_fieldEntity.mode == 4), shuts down sound, resets the GPU, and
  *  reinitializes everything from the top.
  */
-INCLUDE_ASM("asm/nonmatchings/main", main);
+/* gcc 2.7.2 injects a __main() C-runtime-init call into any function literally
+ * named `main`, which the shipped executable does not have. Writing it as
+ * ff8main and aliasing the symbol to `main` emits the correct `main` symbol
+ * without that call. */
+void ff8main(void) __asm__("main");
+void ff8main(void) {
+    BattleMapEntry *entry;
+    s16 i;
+    s16 mode;
+    s16 musicTrack;
+    s32 result;
+    s32 mapAddr;
+    preInitStub();
+    InitHardware();
+    initCdSubsystem(1);
+    loadFileTable();
+    initSoundEngine();
+    loadCdOverlay();
+    func_80098000();
+    initFieldModule();
+    loadSecondaryData();
+    while (1) {
+        func_80038868(D_80097400[1].sector, D_80097400[1].size, 0x80098000, 0);
+        while (func_800393C8() != 0) {}
+
+        func_80098FD4(0);
+        initBattleAssets();
+        g_vsyncRate = 1;
+        D_8005F14C = 0;
+        g_fieldEntity.unk1A3 = 0;
+        D_8005F14A = 0;
+        D_8005F100 = 0x49;
+        g_fieldEntity.mode = 0;
+        g_fieldEntity.unk1A2 = 0;
+        result = func_8003646C(25);
+        if (!(result & 2)) {
+            RestoreSnapshot();
+            loadFieldDataA();
+            func_800C00C8(0);
+        } else {
+            g_currentMusicTrack = 0x4A;
+            g_gameState.battleParty[0] = 0;
+            g_gameState.battleParty[1] = 0xFF;
+            g_gameState.battleParty[2] = 0xFF;
+            g_gameState.battleParty[3] = 0xFF;
+            loadFieldDataA();
+            func_800C00C8(1);
+        }
+        if (g_fieldVars->expectedDiscId != getDiscId()) {
+            func_80038868(D_80097400[1].sector, D_80097400[1].size, 0x80098000, 0);
+            while (func_800393C8() != 0) {}
+
+            func_80098FD4(1);
+            loadFileTable();
+            loadSecondaryData();
+        }
+        do {
+            mode = g_vsyncRate - 1;
+            do {
+            switch (mode) {
+            case 0:
+                loadFieldDataA();
+                func_8009895C();
+                break;
+            case 1:
+                switch (D_8005F14C) {
+                case 1:
+                    func_800B4F40();
+                    D_80082C8C = 0;
+                    break;
+                case 3:
+                    D_80082C8C = 2;
+                    break;
+                case 6:
+                    D_80082C8C = 4;
+                    break;
+                case 0:
+                    D_80082C8C = 6;
+                    break;
+                }
+                if (((D_8005F14C == 1) && (D_8005F14A != 0)) && (D_8005F100 < 0x4A)) {
+                    while (func_800393C8() != 0) { do {} while (0); }
+                    func_80038490(D_8005F104, 0x80098000);
+                } else {
+                    loadFieldDataB();
+                }
+                D_8005F14A = 0;
+                if (func_800987D8() == 1) {
+                    g_fieldEntity.counter = 0;
+                    g_fieldEntity.mode = 4;
+                    g_fieldEntity.rotation = 0x7FFF;
+                    sndStopAll();
+                    break;
+                }
+                D_8005F14C = 2;
+                switch (D_80082C8C) {
+                case 1:
+                    entry = & ((BattleMapEntry * ) 0x80097940)[D_80082C8E];
+                    musicTrack = entry->musicTrack;
+                    g_fieldEntity.position_x = entry->position_x;
+                    g_fieldEntity.position_y = entry->position_y;
+                    g_fieldEntity.rotation = entry->rotation;
+                    g_currentMusicTrack = musicTrack;
+                    g_fieldEntity.anim_state = entry->anim_state;
+                    g_vsyncRate = 1;
+                    sndCmd21(-1, 0);
+                    break;
+                case 3:
+                    g_vsyncRate = 3;
+                    break;
+                case 5:
+                    g_vsyncRate = 6;
+                    break;
+                }
+                break;
+            case 7:
+                gameStateLoop();
+                D_8005F14C = 3;
+                g_vsyncRate = 1;
+                break;
+            case 2:
+            case 3:
+                if (D_8005F14C == 1) {
+                    g_battleConfig.battleSceneId = g_fieldEntity.counter;
+                    mapAddr = D_8005F13C;
+                } else {
+                    g_battleConfig.battleSceneId = ((u8) D_80082C8E) | (((u8) D_80082C8F) << 8);
+                    mapAddr = 0x801D0000;
+                }
+                func_80038030(mapAddr);
+                gameStateLoop();
+                if (g_renderMode != 4) {
+                    flushGpuOt();
+                }
+                if (g_battleConfig.result == 5) {
+                    g_fieldEntity.counter = 0;
+                    g_fieldEntity.mode = 4;
+                    g_fieldEntity.rotation = 0x7FFF;
+                    break;
+                }
+                if ((g_battleConfig.result == 1) && (!(g_fieldVars->fieldB6 & 0x200))) {
+                    g_currentMusicTrack = 0x4B;
+                    D_8005F14C = 0;
+                    g_vsyncRate = 1;
+                    break;
+                }
+                if (g_battleConfig.result == 3) {
+                    if (g_fieldVars->fieldB6 & 0x100) {
+                        g_fieldVars->stateFlags &= ~0x40;
+                    } else {
+                        g_currentMusicTrack = 0x4B;
+                        D_8005F14C = 0;
+                        g_vsyncRate = 1;
+                        break;
+                    }
+                }
+                if (D_8005F14C == 1) {
+                    D_8005F14C = 3;
+                    g_vsyncRate = 1;
+                } else {
+                    D_8005F14C = 3;
+                    g_vsyncRate = 2;
+                }
+                for (i = 0; i < 3; i++) {
+                    if (g_battleConfig.unk4[i] != 0xFF) {
+                        do {} while (g_renderMode == 4);
+                        while (DrawSync(1) != 0) {}
+                        func_8003646C(g_battleConfig.unk4[i] + 5);
+                    }
+                }
+                break;
+            case 5:
+            case 9:
+                while (g_renderMode != 0) {}
+                SetDispMask(0);
+                func_80011870();
+                if (D_8005F14C == 1) {
+                    result = func_8003646C(g_fieldEntity.counter, g_fieldEntity.unk1AB);
+                    if (result & 1) {
+                        clearEntityFlags();
+                        if (g_vsyncRate == 6) {
+                            D_8005F14C = 0xA;
+                        } else {
+                            D_8005F14C = 6;
+                        }
+                    } else {
+                        D_8005F14C = 6;
+                    }
+                    g_vsyncRate = 1;
+                } else {
+                    result = func_8003646C(0x80000000, g_fieldVars->fieldD1 | 1);
+                    D_8005F14C = 6;
+                    g_vsyncRate = 2;
+                }
+                if (!(result & 4)) {
+                    break;
+                }
+                D_8005F14C = g_vsyncRate;
+                g_vsyncRate = 3;
+                g_battleConfig.battleSceneId = (u16)(result >> 16);
+                if (g_vsyncRate == 1) {
+                    mapAddr = D_8005F13C;
+                } else {
+                    result = 0x801D0000;
+                    mapAddr = result;
+                }
+                func_80038030(mapAddr);
+                gameStateLoop();
+                if (g_renderMode != 4) {
+                    flushGpuOt();
+                }
+                if (g_battleConfig.result == 5) {
+                    do { } while (0);
+                    g_fieldEntity.counter = 0;
+                    g_fieldEntity.mode = 4;
+                    g_fieldEntity.rotation = 0x7FFF;
+                    break;
+                }
+                if ((g_battleConfig.result == 1) && (!(g_fieldVars->fieldB6 & 0x200))) {
+                    g_currentMusicTrack = 0x4B;
+                    D_8005F14C = 0;
+                    g_vsyncRate = 1;
+                    break;
+                }
+                if (g_battleConfig.result == 3) {
+                    if (g_fieldVars->fieldB6 & 0x100) {
+                        g_fieldVars->stateFlags &= ~0x40;
+                    } else {
+                        g_currentMusicTrack = 0x4B;
+                        D_8005F14C = 0;
+                        g_vsyncRate = 1;
+                        break;
+                    }
+                }
+                if (D_8005F14C == 1) {
+                    D_8005F14C = 3;
+                    g_vsyncRate = 1;
+                } else {
+                    D_8005F14C = 3;
+                    g_vsyncRate = 2;
+                }
+                for (i = 0; i < 3; i++) {
+                    if (g_battleConfig.unk4[i] != 0xFF) {
+                        do {} while (g_renderMode == 4);
+                        while (DrawSync(1) != 0) {}
+                        func_8003646C(g_battleConfig.unk4[i] + 5);
+                    }
+                }
+                break;
+            case 8:
+                func_80038868(D_80097400[1].sector, D_80097400[1].size, 0x80098000, 0);
+                while (func_800393C8() != 0) {}
+                func_80098FD4(g_fieldEntity.unk1A0);
+                mode = g_fieldEntity.unk1A0;
+                if (mode == 1) {
+                    loadFileTable();
+                    loadSecondaryData();
+                    D_8005F14C = 0;
+                    g_vsyncRate = mode;
+                    g_currentMusicTrack = g_fieldEntity.counter;
+                }
+                break;
+            }
+            } while (0);
+        }
+        while (g_fieldEntity.mode != 4);
+        sndStopAll();
+        setAnimGlobalState(0);
+        func_80027448();
+        ResetGraph(3);
+    }
+
+}
 
 /** @brief Sets up the GPU draw mode for both display buffers.
  *
@@ -533,10 +761,17 @@ void copyFramebuffer(void) {
  *  color to the given brightness, and chains the TILE and DR_MODE primitives
  *  into the OT for submission via DrawOTag.
  *
- *  @param a0 Fill brightness (uniform RGB). 16 (dark grey) is used during
- *            fade effects.
+ *  @param brightness Fill brightness (uniform RGB). 16 (dark grey) is used
+ *                    during fade effects.
  */
-INCLUDE_ASM("asm/nonmatchings/main", BuildPrimList);
+void BuildPrimList(s32 brightness) {
+    ClearOTag(&g_orderingTablePtrs[(s16)g_bufferIndex], 1);
+    g_clearTiles[(s16)g_bufferIndex * 2].r0 = brightness;
+    g_clearTiles[(s16)g_bufferIndex * 2].g0 = brightness;
+    g_clearTiles[(s16)g_bufferIndex * 2].b0 = brightness;
+    addPrim(&g_orderingTablePtrs[(s16)g_bufferIndex], &g_clearTiles[(s16)g_bufferIndex * 2]);
+    addPrim(&g_orderingTablePtrs[(s16)g_bufferIndex], (DR_MODE *)&g_clearTiles[(s16)g_bufferIndex * 2] - 1);
+}
 
 /** @brief Main frame rendering function with double-buffer swap and fade effects.
  *
@@ -562,7 +797,7 @@ void ProcessFade(void) {
 
     if (g_fadeMode == FADE_IN) {
         s32 fc;
-        fc = g_fadeCounter + 1;
+        fc = (u8)g_fadeCounter + 1;
         g_fadeCounter = fc;
         if ((fc & 0xFF) == 0x80) {
             g_renderMode = RENDER_IDLE;
@@ -572,8 +807,8 @@ void ProcessFade(void) {
             return;
         }
     } else {
-        g_fadeCounter = g_fadeCounter + 1;
-        if (g_fadeCounter == 0x22) {
+        g_fadeCounter = (u8)g_fadeCounter + 1;
+        if ((u8)g_fadeCounter == 0x22) {
             g_renderMode = RENDER_IDLE;
             g_fadeMode = FADE_NONE;
         }

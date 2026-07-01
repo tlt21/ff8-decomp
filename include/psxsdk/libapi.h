@@ -11,4 +11,5 @@ s32 CloseEvent(s32 event);
 s32 DisableEvent(s32 event);
 void SystemError(u8 type, s32 errorCode);
 
+extern void SetMem(u8 a);
 #endif /* LIBAPI_H */
