@@ -96,7 +96,13 @@ void sndVoiceCmdSetVolume(SndVoice *voice, s32 volume) {
  *
  * @param voice Pointer to the voice control structure.
  */
-INCLUDE_ASM("asm/nonmatchings/snd_cmd", func_8003BC0C);
+void func_8003BC0C(SndVoice *voice) {
+    voice->cmdType = 0x4B;
+    voice->cmdDataPtr = 0;
+    voice->cmdSize = 0;
+}
+/* Preserve padding before func_8003BC24. */
+asm("nop");
 
 INCLUDE_ASM("asm/nonmatchings/snd_cmd", func_8003BC24);
 INCLUDE_ASM("asm/nonmatchings/snd_cmd", func_8003BD84);
