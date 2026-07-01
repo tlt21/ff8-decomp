@@ -22,11 +22,8 @@
 #include "main.h"
 
 
-/** @brief Clears the GPU ordering tables and flushes the GPU pipeline.
- *
- *  Builds a minimal OT, submits it via DrawOTag, and spins on DrawSync
- *  until rendering completes. Used to ensure the display is blank during
- *  transitions (e.g. waiting for a fade to finish).
+/** @brief Clears the GPU ordering tables and flushes the GPU pipeline, used
+ *         to blank the display during transitions (e.g. while a fade finishes).
  */
 
 void flushGpuOt(void) {
@@ -94,12 +91,8 @@ void VsyncHandler(void) {
 }
 
 
-/** @brief Initializes PS1 hardware subsystems.
- *
- *  Called once at the start of main. Sets up memory mode, resets the callback
- *  system, initializes GPU and GTE, starts SPU via InitSpu (SpuInit
- *  wrapper), registers the VSync callback, and disables display output until
- *  the game is ready to show content.
+/** @brief Initializes the PS1 hardware (memory, callbacks, GPU, GTE, SPU) and
+ *         registers the VSync handler. Called once at startup.
  */
 void InitHardware(void) {
     SetMem(2);
@@ -145,9 +138,8 @@ void func_80011870(void) {
 
 /** @brief Restores a previously saved camera/field state snapshot.
  *
- *  Inverse of func_80011870. Reads the snapshot from g_gameState+0xD40..0xD5C
- *  and writes values back into g_currentMusicTrack (music track), g_fieldEntity (field
- *  state structure), g_vsyncRate (VSync rate), and fade state variables.
+ *  Inverse of func_80011870: writes the saved party positions, rotations,
+ *  animation states, and display parameters back into the live field state.
  */
 void RestoreSnapshot(void) {
     SystemState *entity;
@@ -172,15 +164,11 @@ void RestoreSnapshot(void) {
 }
 
 
-/** @brief Loads field data set A from CD into 0x80098000.
- *
- *  Uses D_80097410[0] as the CD file descriptor (.sector, .size). Skips
- *  loading if D_8005F14C is 6 (menu) or 0xA (special mode), since field data
- *  is not needed in those states. Calls func_8001F5C8 (sound state reset)
- *  afterward.
+/** @brief Loads field data set A from CD, unless the current field mode
+ *         doesn't require it, then resets the sound state.
  */
 void loadFieldDataA(void) {
-    if ((s16)D_8005F14C != 6 && (s16)D_8005F14C != 0xA) {
+    if (D_8005F14C != 6 && D_8005F14C != 0xA) {
         func_80038868(D_80097410[0].sector, D_80097410[0].size, 0x80098000, 0);
         while (func_800393C8() != 0)
             ;
@@ -188,16 +176,14 @@ void loadFieldDataA(void) {
     func_8001F5C8();
 }
 
-/** @brief Loads field data set B from CD into 0x80098000.
+/** @brief Loads field data set B from CD - same as loadFieldDataA with a
+ *         different source.
  *
- *  Identical to loadFieldDataA but uses D_800974D0[0] as the source
- *  descriptor. Same state-skip logic and post-load sound reset.
- *
- *  @note Purpose uncertain — the difference between data sets A and B may
- *        correspond to different field maps or disc configurations.
+ *  @note Purpose uncertain - the A/B distinction may correspond to different
+ *        field maps or disc configurations.
  */
 void loadFieldDataB(void) {
-    if ((s16)D_8005F14C != 6 && (s16)D_8005F14C != 0xA) {
+    if (D_8005F14C != 6 && D_8005F14C != 0xA) {
         func_80038868(D_800974D0[0].sector, D_800974D0[0].size, 0x80098000, 0);
         while (func_800393C8() != 0)
             ;
@@ -205,13 +191,10 @@ void loadFieldDataB(void) {
     func_8001F5C8();
 }
 
-/** @brief Loads a secondary data block from CD into 0x80097940.
+/** @brief Loads a secondary data block from CD.
  *
- *  Uses D_80097410[1] as the CD file descriptor (.sector, .size) with
- *  synchronous CD read (cdRead). No state-skip check — always loads.
- *
- *  @note Purpose uncertain — destination is near the file table area,
- *        possibly a secondary asset table used during initialization.
+ *  @note Purpose uncertain - possibly a secondary asset table used during
+ *        initialization.
  */
 void loadSecondaryData(void) {
     cdRead(D_80097410[1].sector, D_80097410[1].size, 0x80097940, 0);
@@ -219,14 +202,8 @@ void loadSecondaryData(void) {
         ;
 }
 
-/** @brief Initializes the sound/music engine by loading audio assets from CD.
- *
- *  1. Calls sndInit to initialize the SPU hardware.
- *  2. Loads the sound bank header from CD (D_800974D8[0]) into D_80067468
- *     and parses it via sndLoadBank.
- *  3. Loads two sample banks from CD (D_800974D8[1], D_800974D8[2]) into a
- *     scratch buffer at 0x801B0000 and uploads each to SPU RAM via
- *     sndUploadSamples.
+/** @brief Initializes the sound engine and loads its audio assets (sound bank
+ *         header and sample banks) from CD into SPU RAM.
  */
 void initSoundEngine(void) {
     sndInit();
@@ -251,11 +228,8 @@ void initSoundEngine(void) {
 }
 
 
-/** @brief Loads an overlay from CD into 0x80098000.
- *
- *  Uses D_80097400[0] as the CD file descriptor (.sector, .size). The
- *  specific overlay loaded depends on what D_80097400 was populated with
- *  (set by loadFileTable which loads the master file table).
+/** @brief Loads an overlay from CD into the overlay region; which overlay is
+ *         loaded depends on the file table set up by loadFileTable.
  */
 void loadCdOverlay(void) {
     cdRead(D_80097400[0].sector, D_80097400[0].size, 0x80098000, 0);
@@ -264,12 +238,7 @@ void loadCdOverlay(void) {
 }
 
 
-/** @brief Loads texture data from CD and uploads it to VRAM.
- *
- *  Reads data from CD using D_80097808[0] (.sector, .size) into scratch
- *  buffer 0x801B0000, then calls func_8002C3AC to process and upload the
- *  textures to GPU VRAM. Spins on DrawSync until the GPU transfer completes.
- */
+/** @brief Loads texture data from CD and uploads it to VRAM. */
 void loadAndUploadTextures(void) {
     cdRead(D_80097808[0].sector, D_80097808[0].size, 0x801B0000, 0);
     while (func_800393C8() != 0)
@@ -279,25 +248,15 @@ void loadAndUploadTextures(void) {
         ;
 }
 
-/** @brief Loads an overlay and initializes the field/battle module.
- *
- *  Calls loadCdOverlay to load the overlay at 0x80098000, then runs its
- *  init function (func_80098390) and calls initBattleDisplay for additional setup.
- */
+/** @brief Loads the field/battle overlay and runs its initialization. */
 void initFieldModule(void) {
     loadCdOverlay();
     func_80098390();
     initBattleDisplay();
 }
 
-/** @brief Extended battle/visual initialization — loads multiple CD assets.
- *
- *  1. Loads overlay via loadCdOverlay.
- *  2. Initializes a 0x6000-byte buffer at D_8006A468 via initBattleAnimSystem.
- *  3. Loads and uploads textures to VRAM via loadAndUploadTextures.
- *  4. Loads battle entity/model data and processes it via loadBattleTimImage.
- *  5. Loads a lookup table and copies 0x200 bytes via func_80039678.
- *  6. Loads additional data and stores its pointer via setBattleEntityBase.
+/** @brief Extended battle/visual initialization: loads the overlay, animation
+ *         buffers, textures, and battle model/lookup data from CD.
  */
 void initBattleAssets(void) {
     loadCdOverlay();
@@ -324,12 +283,8 @@ void initBattleAssets(void) {
 }
 
 
-/** @brief Loads the master file descriptor table from CD into 0x80097400.
- *
- *  Uses the hard-coded bootstrap descriptor g_fileTableDesc[0] (.sector,
- *  .size). This must be called before any other CD loading functions, since
- *  all other load descriptors (D_80097410, D_800974D0, D_800974D8,
- *  D_80097808) reside within the table loaded here.
+/** @brief Loads the master file descriptor table from CD. Must run before any
+ *         other CD load, since every other load descriptor lives in this table.
  */
 void loadFileTable(void) {
     cdRead(g_fileTableDesc[0].sector, g_fileTableDesc[0].size, 0x80097400, 0);
@@ -338,9 +293,8 @@ void loadFileTable(void) {
 }
 
 /**
- * @brief Battle-map transition entry (stride 0x18) in the table loaded at
- *        0x80097940 by loadSecondaryData. Indexed by @c D_80082C8C.unk02 when
- *        the field engine requests a scripted map jump (@c D_80082C8C.mode == 1).
+ * @brief Battle-map transition entry: destination position, rotation, music,
+ *        and animation for a scripted map jump.
  */
 typedef struct {
     /* 0x00 */ u16 position_x;
@@ -351,28 +305,14 @@ typedef struct {
     /* 0x09 */ u8  pad09[0xF];
 } BattleMapEntry; /* 0x18 */
 
-/* The post-battle result handling reads several fields of the field-vars
- * block through @ref g_fieldVars (0x800562C4): @c stateFlags (bit 0x40 cleared
- * on a "continue" result), @c fieldB6 (bits 0x100 / 0x200 gate the game-over
- * music/state paths), @c expectedDiscId (compared against @c getDiscId to
- * detect a disc change), and @c fieldD1 (OR'ed with 1 into the disc-change
- * transition argument). */
+/* ff8main's post-battle handling reads several g_fieldVars fields (continue /
+ * game-over flags and the expected disc id) to choose the next transition. */
 
 
-/** @brief Game main function and primary state machine loop.
+/** @brief Game main function and primary state-machine loop.
  *
- *  Initialization sequence: hardware init, CD-ROM init, loads file table,
- *  sound engine, overlays, and field/battle data.
- *
- *  Main loop runs until g_fieldEntity.mode == 4 (game exit). The inner
- *  dispatcher uses (g_vsyncRate - 1) as the state selector:
- *  - State 1: Load field audio / run overlay update; stage a map jump.
- *  - State 2/3: Field-to-battle transition, battle execution, result handling.
- *  - State 5/9: Post-battle fade-out and disc-change handling.
- *  - State 7/8: Overlay reload / disc swap.
- *
- *  On exit (g_fieldEntity.mode == 4), shuts down sound, resets the GPU, and
- *  reinitializes everything from the top.
+ *  Runs one-time hardware, CD, and asset initialization, then loops the field
+ *  and battle state machine until the game exits, reinitializing on exit.
  */
 /* gcc 2.7.2 injects a __main() C-runtime-init call into any function literally
  * named `main`, which the shipped executable does not have. Writing it as
@@ -648,14 +588,9 @@ void ff8main(void) {
 
 }
 
-/** @brief Sets up the GPU draw mode for both display buffers.
+/** @brief Sets the GPU draw mode (texture page) for both display buffers.
  *
- *  Computes a TPage value via GetTPage and applies it to both DR_MODE
- *  primitives (D_80070468 and D_80070468+0x20) for the double-buffered
- *  rendering system.
- *
- *  @param a0 Texture page semi-transparency mode (passed to GetTPage).
- *            Value 2 (8-bit) is used from ProcessFade.
+ *  @param a0 Texture-page semi-transparency mode.
  */
 void SetupDrawMode(s32 a0) {
     u16 tpage;
@@ -665,11 +600,8 @@ void SetupDrawMode(s32 a0) {
     SetDrawMode(D_80070468 + 0x20, 0, 0, tpage, 0);
 }
 
-/** @brief Initializes two full-screen black TILE primitives for screen clearing.
- *
- *  Sets up a 320x224 black fill rectangle in each of the two double-buffered
- *  primitive slots at g_clearTiles (32 bytes apart). These are used for screen
- *  clearing during frame rendering.
+/** @brief Initializes the two full-screen black TILE primitives used to clear
+ *         the screen each frame (one per double-buffered slot).
  */
 void InitClearTiles(void) {
     s32 i = 0;
@@ -689,18 +621,10 @@ top:
     if (++i < 2) goto top;
 }
 
-/** @brief Copies the framebuffer from the current display buffer to the other.
+/** @brief Copies the current display buffer to the other so both framebuffers
+ *         hold the same content.
  *
- *  Uses MoveImage to synchronize both framebuffers so they contain the same
- *  content. Reads source/destination coordinates from the DISPENV array at
- *  g_dispEnvs. Spins on DrawSync until the GPU transfer completes.
- *
- *  Logically equivalent to:
- *    DISPENV *src = &g_dispEnvs[g_bufferIndex];
- *    DISPENV *dst = &g_dispEnvs[(g_bufferIndex + 1) & 1];
- *    MoveImage(&src->disp, dst->disp.x, dst->disp.y);
- *  Raw pointer arithmetic is used for codegen matching (volatile triple-load,
- *  implicit ptr-to-int, explicit stride).
+ *  @note The raw pointer arithmetic is required for codegen matching.
  */
 void copyFramebuffer(void) {
     s32 base;
@@ -719,14 +643,10 @@ void copyFramebuffer(void) {
     } while (DrawSync(1) != 0);
 }
 
-/** @brief Builds and chains the per-frame GPU primitive list for rendering.
+/** @brief Builds the per-frame GPU primitive list (clear tile + draw mode) for
+ *         the current buffer.
  *
- *  Clears the ordering table for the current buffer, sets the TILE fill
- *  color to the given brightness, and chains the TILE and DR_MODE primitives
- *  into the OT for submission via DrawOTag.
- *
- *  @param brightness Fill brightness (uniform RGB). 16 (dark grey) is used
- *                    during fade effects.
+ *  @param brightness Fill brightness (uniform RGB); 16 (dark grey) during fades.
  */
 void BuildPrimList(s32 brightness) {
     ClearOTag(&g_orderingTablePtrs[(s16)g_bufferIndex], 1);
@@ -737,19 +657,10 @@ void BuildPrimList(s32 brightness) {
     addPrim(&g_orderingTablePtrs[(s16)g_bufferIndex], (DR_MODE *)&g_clearTiles[(s16)g_bufferIndex * 2] - 1);
 }
 
-/** @brief Main frame rendering function with double-buffer swap and fade effects.
+/** @brief Per-frame render: swaps the double buffer, advances the active fade
+ *         effect, and submits the frame's primitive list.
  *
- *  Called from the VSync callback (VsyncHandler, case 0). Toggles the
- *  double buffer index, manages fade-in/fade-out frame counters, and submits
- *  the GPU primitive list for the current frame.
- *
- *  Fade behavior depends on g_fadeMode:
- *  - FADE_NONE: rendering disabled, returns immediately.
- *  - FADE_IN: fade-in mode — updates every 4th frame for 128 frames total.
- *  - FADE_OUT: fade-out mode — updates every frame for 34 frames total.
- *
- *  When the fade counter expires, sets g_renderMode=RENDER_IDLE and g_fadeMode=FADE_NONE to
- *  signal completion to the main loop.
+ *  Signals completion to the main loop when the fade finishes.
  */
 void ProcessFade(void) {
     if (g_fadeMode == FADE_NONE) {
