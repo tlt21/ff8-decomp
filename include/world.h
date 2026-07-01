@@ -106,19 +106,6 @@ typedef struct {
 } LookupTarget;
 
 /**
- * @brief 4-byte scene state block at D_80082C8C.
- *
- * Accessed by several world and field_engine routines; stores
- * the current scene mode, dispatch code, and two marker bytes.
- */
-typedef struct {
-    /* 0x00 */ s8 mode;         /**< Scene mode / kind. */
-    /* 0x01 */ s8 cmd;          /**< Current dispatch code (copy of D_800C4D38). */
-    /* 0x02 */ s8 unk02;        /**< Marker — set to -1 on reset. */
-    /* 0x03 */ s8 unk03;        /**< Marker — set to -1 on reset. */
-} SceneState;
-
-/**
  * @brief 12-byte keyed record used by D_800C9880's packed lookup buffer.
  *
  * @c val0 / @c val1 are the descriptor pair emitted by collectActiveKeyEntries for an
@@ -218,7 +205,6 @@ typedef struct {
  * (Cross-overlay main-binary symbols D_800780D8 and g_fieldVars are owned
  * by field.h / gamestate.h respectively and are not redeclared here.) */
 extern s32            D_8005F138;        /**< Active display-env window (holds a DISPENV*). */
-extern SceneState     D_80082C8C;       /**< Scene-state block (mode/cmd/markers). */
 extern s32            D_800C4D20;
 extern s32            D_800C4D30;        /**< World-map zoom/scale constant (set by setupWorldMapView). */
 extern s32            D_800C4D38;        /**< World dispatch code / map id. */

@@ -12,6 +12,7 @@
 #include "overlay.h"
 #include "game.h"
 #include "cdrom.h"
+#include "snd_init.h"
 #include "psxsdk/libapi.h"
 #include "psxsdk/libspu.h"
 #include "psxsdk/crt0.h"
@@ -361,13 +362,11 @@ void loadFileTable(void) {
  *    (that header redeclares sndCmd10/toggleSoundBank vs other snd headers). */
 extern void func_80098000(void);
 extern s32  func_800987D8(void);
-extern void sndStopAll(void);          /* snd_init.h owns these but its include conflicts */
-extern void sndCmd21(s32 a, s32 b);
 
 /**
  * @brief Battle-map transition entry (stride 0x18) in the table loaded at
- *        0x80097940 by loadSecondaryData. Indexed by @c D_80082C8E when the
- *        field engine requests a scripted map jump (@c D_80082C8C == 1).
+ *        0x80097940 by loadSecondaryData. Indexed by @c D_80082C8C.unk02 when
+ *        the field engine requests a scripted map jump (@c D_80082C8C.mode == 1).
  */
 typedef struct {
     /* 0x00 */ u16 position_x;
@@ -385,15 +384,6 @@ typedef struct {
  * detect a disc change), and @c fieldD1 (OR'ed with 1 into the disc-change
  * transition argument). */
 
-/* Scene-transition selector bytes. The world overlay views this 0x80082C8C
- * region as a 4-byte SceneState (see world.h); the main state machine reads
- * the individual bytes, so it keeps its own byte-typed view here. */
-/* D_80082C8C/E/F are the bytes of world.h's 4-byte SceneState D_80082C8C;
- * main.c uses the individual-byte view. Unifying needs SceneState moved to a
- * shared header + main.c switched to struct-field access. */
-extern s8 D_80082C8C;
-extern s8 D_80082C8E;
-extern u8 D_80082C8F;
 
 /** @brief Game main function and primary state machine loop.
  *
@@ -478,16 +468,16 @@ void ff8main(void) {
                 switch (D_8005F14C) {
                 case 1:
                     func_800B4F40();
-                    D_80082C8C = 0;
+                    D_80082C8C.mode = 0;
                     break;
                 case 3:
-                    D_80082C8C = 2;
+                    D_80082C8C.mode = 2;
                     break;
                 case 6:
-                    D_80082C8C = 4;
+                    D_80082C8C.mode = 4;
                     break;
                 case 0:
-                    D_80082C8C = 6;
+                    D_80082C8C.mode = 6;
                     break;
                 }
                 if (((D_8005F14C == 1) && (D_8005F14A != 0)) && (D_8005F100 < 0x4A)) {
@@ -505,9 +495,9 @@ void ff8main(void) {
                     break;
                 }
                 D_8005F14C = 2;
-                switch (D_80082C8C) {
+                switch (D_80082C8C.mode) {
                 case 1:
-                    entry = & ((BattleMapEntry * ) 0x80097940)[D_80082C8E];
+                    entry = & ((BattleMapEntry * ) 0x80097940)[D_80082C8C.unk02];
                     musicTrack = entry->musicTrack;
                     g_fieldEntity.position_x = entry->position_x;
                     g_fieldEntity.position_y = entry->position_y;
@@ -536,7 +526,7 @@ void ff8main(void) {
                     g_battleConfig.battleSceneId = g_fieldEntity.counter;
                     mapAddr = D_8005F13C;
                 } else {
-                    g_battleConfig.battleSceneId = ((u8) D_80082C8E) | (((u8) D_80082C8F) << 8);
+                    g_battleConfig.battleSceneId = ((u8) D_80082C8C.unk02) | (((u8) D_80082C8C.unk03) << 8);
                     mapAddr = 0x801D0000;
                 }
                 func_80038030(mapAddr);

@@ -3,6 +3,7 @@
 #include "sound.h"
 #include "field.h"
 #include "world.h"
+#include "gamestate.h"
 #include "world/we_object1.h"
 #include "world/we_object2.h"   /* getAngleDelta */
 #include "psxsdk/libapi.h"
