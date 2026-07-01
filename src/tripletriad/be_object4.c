@@ -612,7 +612,40 @@ u8 *initTripleTriadRenderList(void) {
  *
  * @note Purpose inferred. Decomp scratch: https://decomp.me/scratch/7L33D
  */
-INCLUDE_ASM("asm/ovl/tripletriad/nonmatchings/be_object4", func_800A29D4);
+s32 func_800A29D4(BattleAnimState *base, BattleAnimEntity *elem, u16 newVal, s32 side, s32 entry)
+{
+    s32 repeatTimer;
+    s32 restartDelay;
+    s32 repeatInterval;
+    u16 mask;
+    u16 prevMasked;
+
+    prevMasked = D_801D4AF8[entry][side];
+    D_801D4AF8[entry][side] = newVal;
+    restartDelay = *(u16 *)&base->defaultColor;
+    repeatTimer = D_801D4B08[entry][side];
+    mask = elem->unk10[side];
+
+    repeatInterval = restartDelay >> 8;
+    restartDelay &= 0xFF;
+    newVal &= mask;
+    prevMasked &= mask;
+    if (newVal & prevMasked) {
+        if (newVal != prevMasked) {
+            repeatTimer = restartDelay;
+        }
+        repeatTimer--;
+        if (repeatTimer < 0) {
+            repeatTimer = repeatInterval;
+        } else {
+            newVal = 0;
+        }
+    } else {
+        repeatTimer = restartDelay;
+    }
+    D_801D4B08[entry][side] = repeatTimer;
+    return newVal;
+}
 
 /**
  * @brief Evaluate all four edges of battle-anim entity @p entryIndex against its neighbour.
