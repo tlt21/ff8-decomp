@@ -22,6 +22,21 @@
 #include "common.h"
 #include "character.h"
 #include "field.h"
+#include "psxsdk/libgpu.h"
+
+/**
+ * @brief 4-byte scene-state block at D_80082C8C.
+ *
+ * Shared between the world overlay (struct view) and the main state machine.
+ * Stores the current scene mode, dispatch code, and two marker bytes.
+ */
+typedef struct {
+    /* 0x00 */ s8 mode;   /**< Scene mode / kind. */
+    /* 0x01 */ s8 cmd;    /**< Current dispatch code (copy of D_800C4D38). */
+    /* 0x02 */ s8 unk02;  /**< Marker byte - set to -1 on reset. */
+    /* 0x03 */ s8 unk03;  /**< Marker byte - set to -1 on reset. */
+} SceneState;
+extern SceneState D_80082C8C;   /**< Scene-state block (mode/cmd/markers). */
 
 /* ======================================================================== */
 /* GF Save Data                                                             */
@@ -307,8 +322,8 @@ typedef struct {
     /* 0x20 */ LimitBreakData limitBreaks;                /**< Limit break progress (16 bytes). */
     /* 0x30 */ u8            battleOrder[32];              /**< Battle item menu ordering. */
     /* 0x50 */ ItemSlot      itemSlots[ITEM_SLOT_COUNT];  /**< Item inventory (198 slots). */
-    /* 0x1DC */ u8           padDC[4];                    /**< Battle vars / misc. */
-    /* 0x1E0 */ s32          battleStateFlag;             /**< Battle state word, low byte compared against camera shake. */
+    /* 0x1DC */ volatile s32  frameCounter;                /**< @c 0xCD0: game frame counter; incremented ~every 12 frames by @ref VsyncHandler (VSync ISR). */
+    /* 0x1E0 */ volatile s32  countdownTimer;                  /**< @c 0xCD4: battle countdown timer. Set/get by field event opcodes, decremented by @ref VsyncHandler while nonzero; battle & color code read it as active / camera-shake state. */
     /* 0x1E4 */ u8           pad1E4[0x04];
     /* 0x1E8 */ s32          fieldCDC;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field14. */
     /* 0x1EC */ u16          fieldCE0;                     /**< Snapshotted by @c func_800BFBBC into @c FieldVars.field18. */
@@ -325,6 +340,24 @@ typedef struct {
                                                                divided by 10 gives the page count. */
     /* 0x240 */ u8           pad40[4];                    /**< Battle vars / misc (continued). */
 } SaveMainData; /* 0x244 = 580 bytes */
+
+/**
+ * @brief Camera/field state snapshot saved across a battle transition.
+ *
+ * Lives at GameState + 0xD40; written by func_80011870 and read back by
+ * RestoreSnapshot.
+ */
+typedef struct {
+    /* 0x00 */ u16 vsyncRate;
+    /* 0x02 */ u16 musicTrack;
+    /* 0x04 */ u16 field120;         /**< Saved copy of g_fieldEntity.field_0x120. */
+    /* 0x06 */ u16 positionsX[3];    /**< Party member X positions (>>12 integer). */
+    /* 0x0C */ u16 positionsY[3];    /**< Party member Y positions (>>12 integer). */
+    /* 0x12 */ u16 rotations[3];     /**< Party member rotations. */
+    /* 0x18 */ u8  animStates[3];    /**< Party member animation states. */
+    /* 0x1B */ u8  fade1;
+    /* 0x1C */ u8  fade0;
+} CameraSnapshot; /* 0x1E = 30 bytes (29 data + 1 trailing pad, u16-aligned) */
 
 /**
  * @brief Full game state (g_gameState at 0x80077378, 0x13A0 bytes).
@@ -346,7 +379,9 @@ typedef struct {
     /* 0xAE0 */ GameConfig    config;                      /**< Game config (20 bytes). */
     /* 0xAF4 */ SaveMainData  mainData;                     /**< Party/items/battle state (580 bytes). */
     /* 0xD38 */ u8            battleParty[4];              /**< Battle party member IDs (mirrors party.party). */
-    /* 0xD3C */ u8            padD3C[0x24];                /**< Battle vars / misc (continued). */
+    /* 0xD3C */ u8             padD3C[4];        /**< Battle vars / misc. */
+    /* 0xD40 */ CameraSnapshot cameraSnapshot;   /**< Camera/field snapshot (saved across battle). */
+    /* 0xD5E */ u8             padD5D[2];        /**< Battle vars / misc (continued). */
     /* 0xD60 */ FieldVars     fieldVars;                   /**< Steps, SeeD rank, counters (@c &g_gameState.fieldVars == @c g_fieldVars). */
     /* 0xE60 */ u8            padE60[0x400];               /**< Field script vars, TT rules. */
     /* 0x1260 */ u8           pad1260[0x80];               /**< World map position/vehicles. */
@@ -371,6 +406,17 @@ extern u8 D_80085388;                  /**< @c Eline entity count at @c D_800852
  *         @c func_800BF718's common tail. */
 extern u16 D_800562C8[];
 
+/* Render dispatch mode + fade bytes (main-binary state shared across units). */
+extern volatile s16 g_renderMode;
+extern u8 D_8005F150;
+extern u8 D_8005F151;
+
+/* Display double-buffer state (main-binary; shared with tripletriad). */
+extern volatile s16 g_vsyncRate;
+extern DISPENV      g_dispEnvs[2];
+extern DRAWENV      g_drawEnvs[2];
+extern s8           g_fadeCounter; /* signed: counts toward 0 (be_object1 uses -1 / <0) */
+
 /** @brief Bit @c 0x10 mirrors into @c FieldVars.field58 on full field reset. */
 extern u8  D_80078DF8;
 
@@ -379,6 +425,9 @@ extern u16 *D_800852F0;
 
 /* --- Save / GF / chocobo-world state setters --- */
 extern void setGfExists(s32 gfId);
+extern void clearEntityFlags(void);
+extern void func_80038030(s32 mapAddr);
+extern void func_80038490(s32 descIndex, s32 dest);
 extern void enableChocoboWorld(void);
 
 /** @brief Resolve a character ID (e.g. party slot) to its global character code. */

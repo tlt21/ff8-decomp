@@ -299,7 +299,7 @@ void resetAnimState(void) {
 
 
 /** @brief Get the current value of g_animState (global u16 state variable). */
-u16 getAnimGlobalState(void) {
+s32 getAnimGlobalState(void) {
     return g_animState;
 }
 

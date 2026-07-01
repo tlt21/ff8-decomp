@@ -968,5 +968,6 @@ extern s32  func_80040DE4(SVECTOR *v, s32 *sxy, s32 *p, s32 *flag);
 
 /** @brief Reset battle-transition state (clears @c btl_color flags). */
 extern void initBattleTransition(void);
+extern void func_800D0608(void); /* bc_object17: overlay VSync handler (RENDER_OVERLAY) */
 
 #endif /* BATTLE_H */

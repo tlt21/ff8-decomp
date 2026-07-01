@@ -385,7 +385,6 @@ extern volatile s32  g_tripleTriadFrameCount;       /**< Free-running frame coun
 extern s32           g_tripleTriadInputFlags;       /**< Input-state flags (TT_INPUT_*). */
 extern u8            g_tripleTriadState;        /**< Current phase / next handler to dispatch (TripleTriadState). */
 extern u8            g_drawBufferIndex;        /**< Active double-buffer index. */
-extern DRAWENV       g_drawEnvs[2];     /**< Per-buffer draw environments. */
 extern DRAWENV      *g_activeDrawEnv;   /**< Draw env of the buffer currently being built. */
 extern ObjList            D_801D3028[];      /**< Per-frame update callback list header. */
 extern u8            D_801D3038[];      /**< Backing node pool for D_801D3028. */

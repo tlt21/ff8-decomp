@@ -12,19 +12,6 @@ extern FieldVars *g_fieldVars;
 extern u8 D_8005F388[];
 extern u8 D_80063388[];
 extern s32 D_80085220;
-/**
- * @brief Field-side player entity view (g_fieldEntity at 0x800704A8).
- *
- * Distinct from the script VM `FieldEntity` in field.h — this view is
- * the player-state struct (position, party member mapping, etc.), not
- * the opcode-handler stack/VM context.
- */
-typedef struct {
-    /* 0x00 */ u8 pad000[0x12];
-    /* 0x12 */ u8 memberSlot[3];       /**< Eline index per active party slot (0xFF = none). */
-} FieldPartyEntity;
-
-extern FieldPartyEntity g_fieldEntity;
 extern u8 D_8005644B[];
 extern u8 D_80077E5A;
 extern u16 D_800562C8[];
@@ -433,7 +420,7 @@ INCLUDE_ASM("asm/nonmatchings/gamestate", func_80038030);
  *
  * Part 1: For each of the 3 active party slots, search the battle field
  * entity table for one whose @c partyId matches and record its index in
- * both g_fieldEntity.memberSlot and g_fieldVars->memberSlot. Defaults to
+ * both g_fieldEntity.entityIndex and g_fieldVars->memberSlot. Defaults to
  * 0xFF when no entity matches.
  *
  * Part 2: When the bench-list flag (stateFlags & 0x800) is set, build the
@@ -446,14 +433,14 @@ void func_800381BC(void) {
     Eline *ent;
 
     for (i = 0; i < 3; i++) {
-        g_fieldEntity.memberSlot[i] = 0xFF;
+        g_fieldEntity.entityIndex[i] = 0xFF;
         g_fieldVars->memberSlot[i] = 0xFF;
 
         ent = D_80085224;
         for (j = 0; j < D_80085388; j++) {
             if (g_gameState.battleParty[i] == ent->field_0x255) {
                 g_fieldVars->memberSlot[i] = j;
-                g_fieldEntity.memberSlot[i] = j;
+                g_fieldEntity.entityIndex[i] = j;
                 break;
             }
             ent++;

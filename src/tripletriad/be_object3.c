@@ -1,6 +1,7 @@
 #include "common.h"
 #include "item.h"
 #include "tripletriad.h"
+#include "gamestate.h"
 #include "psxsdk/libgpu.h"
 #include "psxsdk/libc.h"
 #include "tripletriad/be_object1.h"

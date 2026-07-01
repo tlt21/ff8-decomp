@@ -14,4 +14,6 @@ extern s32  func_80027CF8(s32 a, s32 b, s32 c); /**< Fold a recentred analog sti
    result as s32 with no widening mask — an inconsistent caller view that can't share a decl here,
    so those callers keep their own `extern s32 getAnimFrameParam(...)`. */
 
+extern void func_80026D8C(void); /* per-frame battle VSync handler (RENDER_BATTLE) */
+extern void func_80027448(void);
 #endif /* THREAD_H */

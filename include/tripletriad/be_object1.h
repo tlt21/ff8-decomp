@@ -149,7 +149,6 @@ extern ResHeader     g_tripleTriadCardFrames;  /**< Card frame/border graphics (
 extern ResHeader     g_tripleTriadCardArt;     /**< Card face artwork (8bpp TIM, ~110 cards at 64x64, uploaded to VRAM at init). */
 
 /* Private data — draw buffers / VRAM scratch */
-extern DISPENV       g_dispEnvs[2];     /**< Per-buffer display environments. */
 extern RECT          g_fbClearRect;
 extern RECT          g_texClearRect;
 extern u32           g_orderingTables[2][TT_OT_LEN];  /**< Per-buffer ordering tables (OT). */
@@ -169,8 +168,6 @@ extern s16           g_textLineX;
 extern s16           g_textCursorY;
 extern s16           g_textCursorX;
 extern u8            g_vsyncMode;        /**< VSync() wait mode (0 = wait one vblank). */
-extern s8            g_fadeCounter;      /**< Display fade counter; counts toward 0, toggling SetDispMask. */
-extern volatile u16  g_vsyncRate;        /**< Display vsync rate (main-binary global); reset to 100 on TT exit. */
 extern RGB           g_textColor;        /**< Debug-text rgb color. */
 extern u32           g_textPalette[];      /**< Color palette table, indexed by ASCII byte '0'..'8'. */
 

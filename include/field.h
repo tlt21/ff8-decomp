@@ -272,6 +272,7 @@ typedef struct {
 } SystemState;
 
 extern SystemState D_800704A8;
+extern SystemState g_fieldEntity;
 
 /**
  * @brief 256-byte misc3 region of @c GameState — held at @c g_gameState+0xD60
@@ -878,9 +879,22 @@ extern u8 D_8005630C[];
 /** @brief Sound-init parameter passed to @c func_80037FB0. */
 extern s32 D_8005F13C;
 
-/** @brief Misc sound state halfword used by @c func_800BF718; low byte stashed
- *         into @c FieldVars.field57 on full field reset. */
-extern u16 D_8005F14C;
+/** @brief Field/battle load sub-state halfword driving the @c ff8main state
+ *         machine (values 0/1/2/3/6/0xA). Read as a signed halfword there
+ *         (@c switch dispatch) and copied into @c FieldVars.field57 (low byte)
+ *         on full field reset by @c func_800BF718. */
+extern volatile s16 D_8005F14C;
+
+/** @brief Secondary field-load flag consumed by the @c ff8main state machine
+ *         (non-zero enables the incremental @c func_80038490 reload path). */
+extern s16 D_8005F14A;
+
+/** @brief Field-load music/threshold halfword (initialised to 0x49; the reload
+ *         path is taken only while @c D_8005F100 < 0x4A). */
+extern s16 D_8005F100;
+
+/** @brief Field-load CD descriptor index passed to @c func_80038490. */
+extern s32 D_8005F104;
 
 /** @brief Misc field byte; copied into @c FieldVars.field56 on full reset. */
 extern u8  D_80082C8D;
