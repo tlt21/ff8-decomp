@@ -12,8 +12,8 @@ extern s32 getXpToNextLevel(u32 exp, s32 charIdx);
 extern s32 findCharXpLevel(u32 exp, s32 charIdx);
 extern s32 func_80021A64(s32 level, s32 charIdx);
 extern s32 func_80021C10(s32 level, s32 charIdx, s32 kind);
-extern s32 func_80022228(s32 charIdx, s32 idx);
-extern s32 func_8002247C(s32 charIdx, s32 idx);
+extern s32 getElemResistance(s32 charIdx, s32 shiftBit);
+extern s32 getStatusResistance(s32 charIdx, s32 shiftBit);
 extern s32 calcHitStat(s32 charIdx);
 extern s32 calcEvaStat(s32 charIdx, s32 hit);
 extern s32 getAtkElemBase(s32 charIdx);
@@ -270,7 +270,7 @@ void func_800231E0(s32 charIdx, s32 battleSlot)
     bc->atkElemBonus = getAtkElemBonus(charIdx);
 
     for (i = 0; i < 8; i++) {
-        bc->elemResistances[i] = func_80022228(charIdx, i);
+        bc->elemResistances[i] = getElemResistance(charIdx, i);
     }
 
     bc->abilityFlags = decodeAtkStatusMask(charIdx);
@@ -278,7 +278,7 @@ void func_800231E0(s32 charIdx, s32 battleSlot)
     bc->atkStatusHit = calcAtkStatusHit(charIdx);
 
     for (i = 0; i < 13; i++) {
-        bc->statusResistances[i] = func_8002247C(charIdx, i);
+        bc->statusResistances[i] = getStatusResistance(charIdx, i);
     }
 
     if (bc->field188 & 0x60000) {

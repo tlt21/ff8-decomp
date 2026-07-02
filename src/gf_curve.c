@@ -191,10 +191,72 @@ s32 getAbilityModifier(s32 charIdx, s32 a1) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021A64);
+
+/**
+* @brief Compute a character's base HP from level, class curve, and HP junction bonus.
+* @param level Character level.
+* @param charIdx Character slot index (stride 152 in g_gameState).
+* @return HP value computed as: level*coef - level²×10/div + base + maxHp + junctionBonus.
+* @note Uses xpCurves36[characterClass] fields at +0x08 (coef), +0x09 (div), +0x0A (base).
+*       The junction bonus is: junctionData[hpSlot].pad12[5] * getMagicQuantity().
+*/
+asm(".globl func_80021A64\n.set func_80021A64, calcHpFromLevel");
+s32 calcHpFromLevel(s32 level, s32 charIdx) {
+    u8 hpJunc;
+    u8 charId;
+    s32 count;
+    s32 juncMult;
+    u8 _div;
+    u8 coef;
+    u8 addBase;
+    u16 maxHp;
+    s32 result;
+
+    hpJunc = g_gameState.chars[charIdx].junctions[0];
+    charId = g_gameState.chars[charIdx].characterId;
+    count = getMagicQuantity(charIdx, hpJunc);
+    juncMult = multiply(g_gfData.junctionData[hpJunc].pad12[5], count);
+    _div = g_gfData.xpCurves36[charId].pad09[0];
+    coef = g_gfData.xpCurves36[charId].constant;
+    addBase = g_gfData.xpCurves36[charId].pad09[1];
+    maxHp = g_gameState.chars[charIdx].maxHp;
+    result = level * coef - (level * level * 10) / _div + addBase + maxHp + juncMult;
+    return result;
+}
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021B58);
+/**
+ * @brief Resolve GF index for a character (used by calcHitStat).
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param fallback Fallback value returned when characterId is not 8, 9, or 10 in locked mode.
+ * @return GF index from PartyData if party is locked and characterId is 8/9/10,
+ *         weaponId if party is unlocked, or fallback otherwise.
+ * @note When partyLockFlag bit 0 is set, maps characterId 8->gfIndex0, 9->gfIndex1, 10->gfIndex2.
+ *       When party is unlocked, returns the character's weaponId.
+ */
+asm(".globl func_80021B58\n.set func_80021B58, getGfIndexForChar");
+s32 getGfIndexForChar(s32 charIdx, s32 fallback) {
+    s32 val;
+    s32 charId;
+    if (g_gameState.mainData.partyLockFlag & 1) {
+        charId = g_gameState.chars[charIdx].characterId;
+        val = fallback;
+        switch (charId) {
+            case 8:
+                val = g_gameState.mainData.party.gfIndex0;
+                break;
+            case 9:
+                val = g_gameState.mainData.party.gfIndex1;
+                break;
+            case 10:
+                val = g_gameState.mainData.party.gfIndex2;
+                break;
+        }
+    } else {
+        val = g_gameState.chars[charIdx].weaponId;
+    }
+    return val;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021C10);
@@ -211,7 +273,7 @@ INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021C10);
 s32 calcHitStat(s32 charIdx, s32 a1) {
     u8 idx = g_gameState.chars[charIdx].junctions[JUNCTION_HIT];
     u8 val = g_gfData.junctionData[idx].magicParam;
-    s32 result1 = func_80021B58(charIdx, a1);
+    s32 result1 = getGfIndexForChar(charIdx, a1);
     return clampToByte(g_gfData.levelCurve12[result1].field07 + multiplyDiv100(val, getMagicQuantity(charIdx, idx)));
 }
 
@@ -255,7 +317,26 @@ s32 getAtkElemBonus(s32 charIdx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80022228);
+/**
+ * @brief Compute element defense resistance for a character.
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param shiftBit Element type bit index to check (0-7 for 8 elements).
+ * @return Element resistance percentage (capped at 1000).
+ */
+s32 getElemResistance(s32 charIdx, s32 shiftBit) {
+    s32 result = 0;
+    s32 i;
+    for (i = 0; i < 4; i++) {
+        u8 idx = g_gameState.chars[charIdx].junctions[JUNCTION_DEF_ELEM_0 + i];
+        if ((g_gfData.junctionData[idx].defElemFlag >> shiftBit) & 1) {
+            u8 mult = g_gfData.junctionData[idx].defElemMult;
+            result += multiplyDiv100(mult, getMagicQuantity(charIdx, idx));
+        }
+    }
+    result += 800;
+    if (result > 1000) result = 1000;
+    return result;
+}
 
 
 /**
@@ -306,12 +387,128 @@ s32 calcAtkStatusHit(s32 charIdx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002247C);
+/**
+ * @brief Compute status defense resistance for a character.
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param shiftBit Status type bit index to check (0-12 for 13 statuses).
+ * @return Status resistance percentage (capped at 200).
+ */
+s32 getStatusResistance(s32 charIdx, s32 shiftBit) {
+    s32 result = 0;
+    s32 i;
+    for (i = 0; i < 4; i++) {
+        u8 idx = g_gameState.chars[charIdx].junctions[JUNCTION_DEF_STATUS_0 + i];
+        if ((g_gfData.junctionData[idx].defStatusFlags >> shiftBit) & 1) {
+            u8 base = g_gfData.junctionData[idx].defStatusBase;
+            result += multiplyDiv100(base, getMagicQuantity(charIdx, idx));
+        }
+    }
+    result += 100;
+    if (result > 200) result = 200;
+    return result;
+}
 
 
+/**
+ * @brief Capped additive character XP, checking for GF assignment and level-ups.
+ * @param partySlot Party slot index (0-2).
+ * @param xpToAdd XP value to add (masked to 16 bits).
+ * @return New level after XP addition, capped at 100, or 0xFF if slot is empty.
+ * @note Per-level stat upgrades check 5 status flags on the battle character data:
+ *       0x80 → addCharMaxHp, 0x100/0x200/0x400/0x800 → func_8002153C with stat indices 0-3.
+ *       Level is capped at 100 via evalQuadraticCurve(99, ...) to compute XP for level 99.
+ * @bug NON_MATCHING: 1 scheduling diff — `addiu v1,v1,0x490` at instr 17 instead of 23.
+ *      The gcc 2.7.2 backend schedules this independent addiu before the partyMemberId*152
+ *      multiply chain, while the original PsyQ build scheduled it after. All other 116
+ *      instructions match.
+ */
+#ifdef NON_MATCHING
+asm(".globl func_8002257C\n.set func_8002257C, addCharXp");
+s32 addCharXp(s32 partySlot, s32 xpToAdd) {
+    u8 partyMemberId;
+    s32 oldLevel;
+    s32 newLevel;
+    s32 i;
+    s32 charOff;
+    u8 *state;
+    u8 *charPtr;
+    u8 *battleCharPtr;
+
+    state = (u8 *)&g_gameState;
+    partyMemberId = *(state + 0xAF4 + partySlot);
+    if (partyMemberId == 0xFF) {
+        return 0xFF;
+    }
+    charOff = partyMemberId * 152;
+    state += 0x490;
+    charPtr = state + charOff;
+    battleCharPtr = (u8 *)&g_battleChars + partySlot * 464;
+    oldLevel = findCharXpLevel(*(s32 *)(charPtr + 4), partyMemberId);
+    *(s32 *)(charPtr + 4) += xpToAdd & 0xFFFF;
+    *(s32 *)(battleCharPtr + 0x178) = *(s32 *)(charPtr + 4);
+    newLevel = findCharXpLevel(*(s32 *)(charPtr + 4), partyMemberId);
+    if (newLevel >= 100) {
+        newLevel = 100;
+        *(s32 *)(charPtr + 4) = evalQuadraticCurve(99,
+            g_gfData.xpCurves36[partyMemberId].linearCoeff,
+            g_gfData.xpCurves36[partyMemberId].quadDivisor);
+        *(s32 *)(battleCharPtr + 0x178) = *(s32 *)(charPtr + 4);
+    }
+    if (oldLevel != 100) {
+        for (i = 0; i < newLevel - oldLevel; i++) {
+            if (*(s32 *)(battleCharPtr + 0x190) & 0x80) {
+                addCharMaxHp(partySlot, 0x1E);
+            }
+            if (*(s32 *)(battleCharPtr + 0x190) & 0x100) {
+                func_8002153C(partySlot, 0);
+            }
+            if (*(s32 *)(battleCharPtr + 0x190) & 0x200) {
+                func_8002153C(partySlot, 1);
+            }
+            if (*(s32 *)(battleCharPtr + 0x190) & 0x400) {
+                func_8002153C(partySlot, 2);
+            }
+            if (*(s32 *)(battleCharPtr + 0x190) & 0x800) {
+                func_8002153C(partySlot, 3);
+            }
+        }
+    }
+    return newLevel;
+}
+#else
 INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002257C);
+#endif
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002274C);
+/**
+ * @brief Compute capped GF level from XP addition, store result back to runtime data.
+ * @param a0 GF index (stride 68 in D_800773C8).
+ * @param a1 XP value to add (masked to 16 bits).
+ * @return The findAbilityLevel result if under 100, otherwise 100.
+ * @note Reads/writes offset 0xC in the GF runtime entry (stride 68 at D_800773C8),
+ *       uses findAbilityLevel to compute new level, and caps at evalQuadraticCurve(0x63, ...) if level >= 100.
+ */
+asm(".globl func_8002274C\n.set func_8002274C, addGfXp");
+s32 addGfXp(s32 a0, s32 a1) {
+    s32 *s1;
+    s32 maskedXp;
+    s32 sum;
+    s32 ret;
 
+    s1 = (s32 *)((u8 *)&D_800773C8 + a0 * 0x44);
+    maskedXp = a1 & 0xFFFF;
+    sum = s1[3] + maskedXp;
 
+    s1[3] = sum;
+    ret = findAbilityLevel(sum, a0);
+
+    if (ret < 0x64) {
+        return ret;
+    }
+
+    ret = 0x64;
+    REGALLOC_BARRIER(ret);
+    s1[3] = evalQuadraticCurve(0x63, g_gfData.abilityTable132[a0].xpParamB,
+                               g_gfData.abilityTable132[a0].xpParamC);
+    return ret;
+}

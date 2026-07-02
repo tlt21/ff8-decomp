@@ -86,12 +86,14 @@ typedef struct {
     u8 pad1F;         /**< +0x1F: Unknown. */
     u8 statParamA;    /**< +0x20: Stat parameter A (func_8002216C). */
     u8 statParamB;    /**< +0x21: Stat parameter B (func_800221B4). */
-    u8 pad22[2];      /**< +0x22..+0x23: Unknown. */
+    u8 defElemFlag;   /**< +0x22: Element defense flag (checked for bit in getElemResistance). */
+    u8 defElemMult;   /**< +0x23: Element defense multiplier (getElemResistance). */
     u8 hitParam;      /**< +0x24: Hit parameter (func_80022404). */
-    u8 pad25;         /**< +0x25: Unknown. */
+    u8 defStatusBase; /**< +0x25: Status defense base value (getStatusResistance). */
     u16 statusFlags;  /**< +0x26: Status flags bitmask (func_80022328/func_80022370). */
-    u8 pad28[0x14];   /**< +0x28..+0x3B: Unknown. */
-} GfJunctionEntry; /* 60 bytes: 2+2+1+1+1+1+1+1+1+1+1+1+2+2+11+1+1+1+1+1+2+1+1+2+20 = 60 */
+    u16 defStatusFlags;/**< +0x28: Status defense flags (checked for bit in getStatusResistance). */
+    u8 pad2A[0x12];   /**< +0x2A..+0x3B: Unknown. */
+} GfJunctionEntry; /* 60 bytes: 2+2+1+1+1+1+1+1+1+1+1+1+2+2+11+1+1+1+1+1+1+1+1+1+2+2+18 = 60 */
 
 /**
  * @brief GF XP curve entry (stride 36 bytes).
@@ -296,6 +298,16 @@ typedef struct {
 
 /** @brief Runtime GF data region (BSS, populated at load time). */
 extern GfData g_gfData;
+
+/**
+ * @brief Per-GF runtime ability data base (BSS at 0x800773C8, separate from g_gfData).
+ *
+ * Used as a base pointer for per-GF runtime state. Access via byte arithmetic:
+ *   entry = (s32 *)((u8 *)&D_800773C8 + gfIdx * 0x44)
+ * Offset 0xC (word index 3) within each entry holds the accumulated XP/level value.
+ * Stride is 0x44 (68 bytes) per GF entry.
+ */
+extern u32 D_800773C8;
 
 /**
  * @brief Per-magic-spell junction data (stride 60 bytes).
