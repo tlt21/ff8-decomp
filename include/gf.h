@@ -99,7 +99,7 @@ typedef struct {
  * @brief GF XP curve entry (stride 36 bytes).
  *
  * 11 entries starting at offset 0x37A4 within g_gfData (ptr slot +0x98).
- * Holds experience curve coefficients used by func_80021A64.
+ * Holds experience curve coefficients used by calcHpFromLevel.
  */
 typedef struct {
     u16 lookupParam;  /**< +0x00: Lookup param (getBattleCharName/getCharNamePtr). */
@@ -112,9 +112,9 @@ typedef struct {
     u8 pad09[3];      /**< +0x09..+0x0B: Unknown. */
     u8 field0C;       /**< +0x0C: Unknown. */
     u8 field0D;       /**< +0x0D: Unknown. */
-    u8 subIdx;        /**< +0x0E: func_80021A64 multiplier. */
-    u8 divisorField;  /**< +0x0F: func_80021A64 divisor. */
-    u8 addend;        /**< +0x10: func_80021A64 addend. */
+    u8 subIdx;        /**< +0x0E: calcHpFromLevel multiplier. */
+    u8 divisorField;  /**< +0x0F: calcHpFromLevel divisor. */
+    u8 addend;        /**< +0x10: calcHpFromLevel addend. */
     u8 pad11[0x13];   /**< +0x11..+0x23: Remaining (stride 36 total). */
 } GfCurveEntry; /* 36 bytes */
 
@@ -300,14 +300,15 @@ typedef struct {
 extern GfData g_gfData;
 
 /**
- * @brief Per-GF runtime ability data base (BSS at 0x800773C8, separate from g_gfData).
- *
- * Used as a base pointer for per-GF runtime state. Access via byte arithmetic:
- *   entry = (s32 *)((u8 *)&D_800773C8 + gfIdx * 0x44)
- * Offset 0xC (word index 3) within each entry holds the accumulated XP/level value.
- * Stride is 0x44 (68 bytes) per GF entry.
+ * @brief Per-GF runtime entry (stride 0x44 = 68 bytes, BSS at 0x800773C8).
  */
-extern u32 D_800773C8;
+typedef struct {
+    u8 pad00[0xC];
+    s32 xp;       /**< +0x0C: Accumulated XP/level value (word index 3). */
+    u8 pad10[0x34];
+} GfRuntimeEntry; /* 0x44 = 68 bytes */
+
+extern GfRuntimeEntry D_800773C8[];
 
 /**
  * @brief Per-magic-spell junction data (stride 60 bytes).

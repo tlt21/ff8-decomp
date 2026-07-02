@@ -10,7 +10,7 @@ extern CharacterData g_characters[];
 
 extern s32 getXpToNextLevel(u32 exp, s32 charIdx);
 extern s32 findCharXpLevel(u32 exp, s32 charIdx);
-extern s32 func_80021A64(s32 level, s32 charIdx);
+extern s32 calcHpFromLevel(s32 level, s32 charIdx);
 extern s32 func_80021C10(s32 level, s32 charIdx, s32 kind);
 extern s32 getElemResistance(s32 charIdx, s32 shiftBit);
 extern s32 getStatusResistance(s32 charIdx, s32 shiftBit);
@@ -250,7 +250,7 @@ void func_800231E0(s32 charIdx, s32 battleSlot)
     bc->xpToNext = getXpToNextLevel(cd->experience, charIdx);
     bc->level = findCharXpLevel(cd->experience, charIdx);
 
-    hp = clampToMaxHp(bc->statCoefs[0] * func_80021A64(bc->level, charIdx) / 100);
+    hp = clampToMaxHp(bc->statCoefs[0] * calcHpFromLevel(bc->level, charIdx) / 100);
     bc->hpRegenCap = hp;
     if ((s16)hp < (s32)cd->currentHp) {
         cd->currentHp = hp;
