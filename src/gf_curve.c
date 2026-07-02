@@ -407,19 +407,6 @@ s32 getStatusResistance(s32 charIdx, s32 shiftBit) {
 }
 
 
-/**
- * @brief Capped additive character XP, checking for GF assignment and level-ups.
- * @param partySlot Party slot index (0-2).
- * @param xpToAdd XP value to add (masked to 16 bits).
- * @return New level after XP addition, capped at 100, or 0xFF if slot is empty.
- * @note Per-level stat upgrades check 5 status flags on the battle character data:
- *       0x80 → addCharMaxHp, 0x100/0x200/0x400/0x800 → func_8002153C with stat indices 0-3.
- *       Level is capped at 100 via evalQuadraticCurve(99, ...) to compute XP for level 99.
- * @bug NON_MATCHING: 1 scheduling diff — `addiu v1,v1,0x490` at instr 17 instead of 23.
- *      The gcc 2.7.2 backend schedules this independent addiu before the partyMemberId*152
- *      multiply chain, while the original PsyQ build scheduled it after. All other 116
- *      instructions match.
- */
 INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002257C);
 
 
