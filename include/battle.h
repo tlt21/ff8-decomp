@@ -935,7 +935,8 @@ typedef struct {
 extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
 extern u8 D_800EE4C1;     /**< 0x800EE4C1: misc state byte. */
 extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
-extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */
+extern u8 D_80098030[];
+extern u8 D_800EEBB0;     /**< 0x800EEBB0: misc state. */
 extern u8 D_800EEBB8;     /**< 0x800EEBB8: misc state byte. */
 extern u8 D_800EEBB9;     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA;     /**< 0x800EEBBA: misc state byte. */

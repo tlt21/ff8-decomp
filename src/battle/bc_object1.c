@@ -955,11 +955,10 @@ SoundCmd *func_8009B134(s32 cmd, s32 vol, s32 entry) {
  * @return Random byte value from the lookup table.
  */
 s32 func_8009B15C(void) {
-    s32 idx = D_800EEBB0[0];
-    u8 *entry = D_800EEBA8 + idx;
-    s32 val = *entry;
-    *entry = val + 1;
-    return D_80098030[val];
+    u8 index;
+
+    index = D_800EEBA8[D_800EEBB0]++;
+    return D_80098030[index];
 }
 
 /**
@@ -974,7 +973,7 @@ void func_8009B198(s32 a0) {
     s32 buf;
     s32 i;
 
-    D_800EEBB0[0] = 0;
+    D_800EEBB0 = 0;
     i = 0;
     buf = (s32)D_800EEBA8;
 
@@ -984,7 +983,7 @@ void func_8009B198(s32 a0) {
         i++;
     } while (i < 8);
 
-    D_800EEBB0[0] = func_8009B15C() & 7;
+    D_800EEBB0 = func_8009B15C() & 7;
 }
 
 /**

@@ -1459,7 +1459,19 @@ s32 func_8009F23C(s32 arg0, s32 arg1) {
     return var_s2;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F350);
+s32 func_8009F350(s32 arg0) {
+    s32 val;
+    s32 calc;
+
+    val = func_8009B15C();
+    D_800EE4C4 = 5;
+
+    val = (val % 5);
+
+    do {} while(0); // hack
+    
+    return D_800ED148.entities[arg0].field2C * (val + 5) / 100;
+}
 
 /**
  * @brief Read and clear an entity's pending damage value.
