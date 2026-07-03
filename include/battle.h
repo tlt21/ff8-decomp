@@ -205,7 +205,16 @@ typedef struct {
 #define ENTITY_FLAG_1 1
 #define ENTITY_FLAG_4 8
 typedef struct {
-    s32 unk0;             /* 0x00: 4-byte field (semantics unknown). */
+    union{
+        s32 unk0;
+        struct {
+            u8 unk0;
+            u8 unk1; 
+            u8 unk2; 
+            u8 unk3;
+        } bytes;
+    }stateMachine;            
+     /* 0x00: 4-byte field (semantics unknown). */
     /* 0x04: state machine value. Byte 3 (offset 0x07) is also accessed
        as a "trigger type" code (read by @c func_8009A990). */
     union {
@@ -280,8 +289,7 @@ typedef struct {
     u8 fieldCD;        /* 0xCD: stat byte used in case-0 damage formula (squared). */
     u8 unkCE;
     u8 fieldCF;        /* 0xCF: stat byte averaged with arg2 in func_8009DEF0 mode-7. */
-    /* 0xD0 */
-} BattleEntity;
+} BattleEntity; /* 208 bytes */
 
 /**
  * @brief Battle system block at D_800ED148.

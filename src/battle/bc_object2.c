@@ -153,7 +153,27 @@ void func_8009BE24(s32 a0, s32 unused) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BEA4);
+s32 func_8009BEA4(s32 arg0, s32 arg1) {
+    BattleSystem *bs = &D_800ED148;
+    BattleEntity *slotA = &bs->entities[arg0];
+    BattleEntity *slotB;
+    s32 baseVal;
+    s32 result;
+    
+    if (slotA->status & 8) {
+        D_800EEBBB = D_800EEBBB / 4;
+    }
+    
+    baseVal = D_800EEBBB + (slotA[1].stateMachine.bytes.unk2 / 2);
+    slotB = &bs->entities[arg1];
+    result = baseVal - slotB[1].stateMachine.bytes.unk3 - slotB[1].stateMachine.bytes.unk2;
+
+    if (result < 0) {
+        result = 0;
+    }
+    
+    return func_8009B79C(result, 100);
+}
 
 /**
  * @brief Conditionally XOR masked flag bits.
@@ -253,7 +273,7 @@ s32 func_8009C300(s32 arg0, s32 arg1) {
     } 
     
     else {
-        result = (D_800ED148.entities + arg0 + index)->unk0;
+        result = (D_800ED148.entities + arg0 + index)->stateMachine.unk0;
     }
     
     if (D_800ED148.entities[arg0].flags & 0x01000000) {
