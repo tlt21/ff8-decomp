@@ -262,7 +262,41 @@ s32 func_8009C090(s32 arg0, s32 arg1, s32* arg2, u32 arg3) {
     return 1;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009C104);
+s32 func_8009C104(s32 unused, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7) {
+    s32 var_v0;
+
+    if (arg4 == 0) {
+        var_v0 = D_800ED148.entities[arg1].status & arg3;
+        if (var_v0 != 0) {
+            return 0;
+        }
+    } else {
+        var_v0 = D_800ED148.entities[arg1].flags & arg3;
+        if (var_v0 != 0) {
+            return 0;
+        }
+    }
+
+
+    if (arg7 != 255) {
+        if (D_800ED148.entities[arg1].unkA0[arg2] >= 200) {
+            goto bail;
+        }
+        if ((arg7 + 300 + (arg5 / 4) - D_800ED148.entities[arg1].unkA0[arg2] - (arg6 / 4) <= 300) || 
+            (arg7 < 250 && func_8009B79C((arg7 + (arg5 / 4) - D_800ED148.entities[arg1].unkA0[arg2] - (arg6 / 4)) * 255 / 100, 255) == 0)) {
+            return 0;
+        }
+    }
+
+    if (arg4 == 0) {
+        return func_8009BFE0(arg1, &D_800ED148.entities[arg1].status, &D_800ED148.entities[arg1].flags, arg3);
+    }
+
+    return func_8009C090(arg1, D_800ED148.entities[arg1].status, &D_800ED148.entities[arg1].flags, arg3);
+    
+    bail:
+    return 0;
+}
 
 s32 func_8009C300(s32 arg0, s32 arg1) {
     u8 result;

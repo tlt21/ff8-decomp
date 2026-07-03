@@ -213,7 +213,7 @@ typedef struct {
             u8 unk2; 
             u8 unk3;
         } bytes;
-    }stateMachine;            
+    } stateMachine;            
      /* 0x00: 4-byte field (semantics unknown). */
     /* 0x04: state machine value. Byte 3 (offset 0x07) is also accessed
        as a "trigger type" code (read by @c func_8009A990). */
@@ -272,13 +272,15 @@ typedef struct {
     u16 animParam3;
     u8 pad8A[0x2];
     volatile ControlFlags controlFlags;
-    u16 status;
+    u16 status; /* D_800ED1D8 */
     u16 statusBackup;
     u16 hpDisplay;     /* 0x94: HP value mirrored from BattleCharData.currentHp. */
     u16 unk96;
     u8 pad98;
     u8 unk99;
-    u8 pad9A[0x1D];
+    u8 pad9A[0x6];
+    u8 unkA0[1];
+    u8 padA1[0x16];
     u8 unkB7;
     u8 padB8[0x3];
     u8 linkedIdx2;
