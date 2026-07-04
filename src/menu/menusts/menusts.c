@@ -13,6 +13,8 @@ extern s32 D_801E961C[];
 extern StatusEntry D_801E95CC[];
 extern BattleCharData D_801E9EE4;
 extern u8 D_80083858;
+extern u8 D_801E9964[]; //s_statusTable
+extern u8 D_801E99AC[]; //s_coordBase
 
 extern void *func_801F6AFC(s32 a0);
 extern s32 func_8002FF34(s32 displayList, s32 ot, s32 textId, s32 x, s32 y, s32 color);
@@ -34,10 +36,14 @@ u16 func_801E5800(s32 a0) {
  * Indexes into D_801E9964 (8-byte stride) and returns the byte
  * at offset 4.
  *
- * @param a0 Status entry index.
+ * @param index Status entry index.
  * @return Type byte.
  */
-INCLUDE_ASM("asm/ovl/menusts/nonmatchings/menusts", func_801E582C);
+u8 func_801E582C(s32 index) {
+    u8 *entry = D_801E9964;
+    entry += index * 8;
+    return entry[4];
+}
 
 /**
  * @brief Compute status display x-position.
@@ -45,10 +51,15 @@ INCLUDE_ASM("asm/ovl/menusts/nonmatchings/menusts", func_801E582C);
  * Indexes into D_801E9964 (8-byte stride), loads halfword at offset 0,
  * and adds D_801E99AC base.
  *
- * @param a0 Status entry index.
+ * @param index Status entry index.
  * @return Computed address.
  */
-INCLUDE_ASM("asm/ovl/menusts/nonmatchings/menusts", func_801E5848);
+s32 func_801E5848(s32 index) {
+    u8 *entry = D_801E9964;
+    u8 *coordBase = D_801E99AC;
+    entry += index * 8;
+    return (s32)coordBase + *(u16 *)entry;
+}
 
 /**
  * @brief Compute status display y-position.
@@ -56,10 +67,15 @@ INCLUDE_ASM("asm/ovl/menusts/nonmatchings/menusts", func_801E5848);
  * Indexes into D_801E9964 (8-byte stride), loads halfword at offset 2,
  * and adds D_801E99AC base.
  *
- * @param a0 Status entry index.
+ * @param index Status entry index.
  * @return Computed address.
  */
-INCLUDE_ASM("asm/ovl/menusts/nonmatchings/menusts", func_801E586C);
+s32 func_801E586C(s32 index) {
+    u8 *entry = D_801E9964;
+    u8 *coordBase = D_801E99AC;
+    entry += index * 8;
+    return (s32)coordBase + *(u16 *)(entry + 2);
+}
 
 /**
  * @brief Wrapper that calls getMagicNamePtr with a0 offset by 0x33.
