@@ -45,8 +45,8 @@ u16 func_8009BAC4(s32 arg0, u16 arg1) {
     s16 result;
     
     D_800EE476 = arg0;
-    result = func_800B0F9C(D_80078E00.unk3737[arg0].val) 
-           | func_800B0F7C(D_80078E00.unk3737[arg0].val);
+    result = func_800B0F9C(D_80078E00.unk3738[arg0].val) 
+           | func_800B0F7C(D_80078E00.unk3738[arg0].val);
     
     if (result & BATTLE_ENTITY_FLAG_BIT_15) {
         return result;
@@ -143,7 +143,7 @@ s32 func_8009BDD0(s32 arg0, s32 arg1) {
 void func_8009BE24(s32 a0, s32 unused) {
     volatile u8 *base = (volatile u8 *)&D_800ED148;
     u8 *entity = (u8 *)base + a0 * 0xD0;
-    s32 val = *(u8 *)(entity + 0xD2) + *(u8 *)D_800EEBBC;
+    s32 val = *(u8 *)(entity + 0xD2) + D_800EEBBC;
     if (func_8009B79C(val, 0xFF)) {
         s32 buf = (s32)&D_800EE4C0;
         *(u8 *)((u8 *)base + 0x1307) = 1;
@@ -153,7 +153,27 @@ void func_8009BE24(s32 a0, s32 unused) {
     }
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BEA4);
+s32 func_8009BEA4(s32 arg0, s32 arg1) {
+    BattleSystem *bs = &D_800ED148;
+    BattleEntity *slotA = &bs->entities[arg0];
+    BattleEntity *slotB;
+    s32 baseVal;
+    s32 result;
+    
+    if (slotA->status & 8) {
+        D_800EEBBB = D_800EEBBB / 4;
+    }
+    
+    baseVal = D_800EEBBB + (slotA[1].stateMachine.bytes.unk2 / 2);
+    slotB = &bs->entities[arg1];
+    result = baseVal - slotB[1].stateMachine.bytes.unk3 - slotB[1].stateMachine.bytes.unk2;
+
+    if (result < 0) {
+        result = 0;
+    }
+    
+    return func_8009B79C(result, 100);
+}
 
 /**
  * @brief Conditionally XOR masked flag bits.
@@ -242,7 +262,41 @@ s32 func_8009C090(s32 arg0, s32 arg1, s32* arg2, u32 arg3) {
     return 1;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009C104);
+s32 func_8009C104(s32 unused, s32 arg1, s32 arg2, s32 arg3, s32 arg4, s32 arg5, s32 arg6, s32 arg7) {
+    s32 var_v0;
+
+    if (arg4 == 0) {
+        var_v0 = D_800ED148.entities[arg1].status & arg3;
+        if (var_v0 != 0) {
+            return 0;
+        }
+    } else {
+        var_v0 = D_800ED148.entities[arg1].flags & arg3;
+        if (var_v0 != 0) {
+            return 0;
+        }
+    }
+
+
+    if (arg7 != 255) {
+        if (D_800ED148.entities[arg1].unkA0[arg2] >= 200) {
+            goto bail;
+        }
+        if ((arg7 + 300 + (arg5 / 4) - D_800ED148.entities[arg1].unkA0[arg2] - (arg6 / 4) <= 300) || 
+            (arg7 < 250 && func_8009B79C((arg7 + (arg5 / 4) - D_800ED148.entities[arg1].unkA0[arg2] - (arg6 / 4)) * 255 / 100, 255) == 0)) {
+            return 0;
+        }
+    }
+
+    if (arg4 == 0) {
+        return func_8009BFE0(arg1, &D_800ED148.entities[arg1].status, &D_800ED148.entities[arg1].flags, arg3);
+    }
+
+    return func_8009C090(arg1, D_800ED148.entities[arg1].status, &D_800ED148.entities[arg1].flags, arg3);
+    
+    bail:
+    return 0;
+}
 
 s32 func_8009C300(s32 arg0, s32 arg1) {
     u8 result;
@@ -253,7 +307,7 @@ s32 func_8009C300(s32 arg0, s32 arg1) {
     } 
     
     else {
-        result = (D_800ED148.entities + arg0 + index)->unk0;
+        result = (D_800ED148.entities + arg0 + index)->stateMachine.unk0;
     }
     
     if (D_800ED148.entities[arg0].flags & 0x01000000) {
@@ -808,11 +862,11 @@ s32 func_8009D508(s32 arg0, s32 arg1) {
 }
 
 s32 func_8009D594(s32 unused, s32 arg1) {
-    UnknownStruct* temp_v0;
+    Struct_12CC* temp_v0;
     
     if ((D_800EE4C0.unk1 != 247) && (D_800ED148.unk130E & CTRL_FLAG_10)) {
         if (D_800ED148.entities[arg1].flags & CTRL_FLAG_80) {
-            temp_v0 = &D_800ED148.array[D_800ED148.unk130B];
+            temp_v0 = &D_800ED148.array12CC[D_800ED148.unk130B];
             temp_v0->unk0 = D_800EE4C0.unk1;
             temp_v0->unk1 = D_800EE4C0.statusCode;
             temp_v0->unk2 = arg1;
@@ -1385,8 +1439,8 @@ u8 func_8009F040(s32 arg0, s32 arg1, s32 unused) {
             
         
             func_800A4320(resolveKernelPtr(
-                D_80078E00.unk4C0A[D_800ED148.unk1327].lookupId, 
-                D_80078E00.unk4C0AArg, 
+                D_80078E00.unk4C0C[D_800ED148.unk1327].lookupId, 
+                D_80078E00.unk4C0CArg, 
                 &D_80078E00
             ));
         }
@@ -1410,7 +1464,7 @@ u8 func_8009F040(s32 arg0, s32 arg1, s32 unused) {
 void func_8009F168(s32 arg0, s32 arg1) {
     u8 temp_s0;
      
-    temp_s0 = D_80078E00.unk4C0A[arg1].flags;
+    temp_s0 = D_80078E00.unk4C0C[arg1].flags;
     if (temp_s0 & 1) {
         func_8002153C(arg0, 0);
     }
@@ -1435,17 +1489,17 @@ void func_8009F168(s32 arg0, s32 arg1) {
         func_8002153C(arg0, 5);
     }
 
-    addCharMaxHp(arg0, D_80078E00.unk4C0A[arg1].maxHP);
+    addCharMaxHp(arg0, D_80078E00.unk4C0C[arg1].maxHP);
 }
 
 s32 func_8009F23C(s32 arg0, s32 arg1) {
     s32 var_s2;
     s32 temp_a3;
 
-    temp_a3 = D_80078E00.unk4C0A[D_800ED148.unk1327].unk4;
+    temp_a3 = D_80078E00.unk4C0C[D_800ED148.unk1327].unk4;
     var_s2 = D_800ED148.entities[arg1].field2C * temp_a3 / 16;
     
-    switch (D_80078E00.unk4C0A[D_800ED148.unk1327].unk3) {
+    switch (D_80078E00.unk4C0C[D_800ED148.unk1327].unk3) {
     case 30:
         D_800EE4C0.flags6 |= 1;
         func_8009DD2C(arg1, temp_a3, D_800EEBC2, D_800EEBC4);
@@ -1459,7 +1513,19 @@ s32 func_8009F23C(s32 arg0, s32 arg1) {
     return var_s2;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009F350);
+s32 func_8009F350(s32 arg0) {
+    s32 val;
+    s32 calc;
+
+    val = func_8009B15C();
+    D_800EE4C4 = 5;
+
+    val = (val % 5);
+
+    do {} while(0); // hack
+    
+    return D_800ED148.entities[arg0].field2C * (val + 5) / 100;
+}
 
 /**
  * @brief Read and clear an entity's pending damage value.
@@ -1682,10 +1748,10 @@ void func_8009FCF4(s32 cmd) {
 void func_8009FD28(s32 arg0, s32 arg1) {
     u8 var;
 
-    func_8009FCF4(D_80078E00.spells[D_800EE4C0.statusCode].unk05);
-    var = D_80078E00.spells[D_800EE4C0.statusCode].unk02;
-    D_800EE4C0.unk4 = D_80078E00.spells[D_800EE4C0.statusCode].unk00;
-    func_8009F930(D_80078E00.spells[D_800EE4C0.statusCode].unk01, arg1, arg0, var);
+    func_8009FCF4(D_80078E00.spells[D_800EE4C0.statusCode].unk7);
+    var = D_80078E00.spells[D_800EE4C0.statusCode].unk4;
+    D_800EE4C0.unk4 = D_80078E00.spells[D_800EE4C0.statusCode].unk2;
+    func_8009F930(D_80078E00.spells[D_800EE4C0.statusCode].unk3, arg1, arg0, var);
 }
 
 /**
@@ -1715,7 +1781,7 @@ s32 func_8009FDE0(s32 a0, s32 a1) {
     return a1 + *(u8 *)(base + a0 * 208 + 0xDA);
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009FE14);
+INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009FE14); 
 
 s32 func_800A085C(void) {
     s32 i;

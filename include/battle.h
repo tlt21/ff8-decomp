@@ -205,7 +205,16 @@ typedef struct {
 #define ENTITY_FLAG_1 1
 #define ENTITY_FLAG_4 8
 typedef struct {
-    s32 unk0;             /* 0x00: 4-byte field (semantics unknown). */
+    union{
+        s32 unk0;
+        struct {
+            u8 unk0;
+            u8 unk1; 
+            u8 unk2; 
+            u8 unk3;
+        } bytes;
+    } stateMachine;            
+     /* 0x00: 4-byte field (semantics unknown). */
     /* 0x04: state machine value. Byte 3 (offset 0x07) is also accessed
        as a "trigger type" code (read by @c func_8009A990). */
     union {
@@ -235,12 +244,13 @@ typedef struct {
     s32 field24;
     s32 field28;
     s32 field2C;
-    u8 pad30[0x24];     
+    s32 unk30;
+    u8 pad34[0x20];     
     u16 unk54[1];  /* used in  func_8009C598 */
     u8 unk56;
     u8 unk57;
     u16 unk58;
-    u8 pad59[0x0A];
+    u8 pad59[0xA];
     /* 0x64: byte-bit-slot view (14 halfwords, indexed by lowest set bit
        of a flag mask). The trailing 4 bytes (@c 0x7C-0x7F) are also
        read/written as a 4-byte slot flag word during init. */
@@ -260,25 +270,28 @@ typedef struct {
     u16 animParam1;
     u16 animParam2;
     u16 animParam3;
-    u8 pad8A[0x02];
+    u8 pad8A[0x2];
     volatile ControlFlags controlFlags;
-    u16 status;
+    u16 status; /* D_800ED1D8 */
     u16 statusBackup;
     u16 hpDisplay;     /* 0x94: HP value mirrored from BattleCharData.currentHp. */
-    u8 pad96[0x03];
+    u16 unk96;
+    u8 pad98;
     u8 unk99;
-    u8 pad9A[0x1D];
+    u8 pad9A[0x6];
+    u8 unkA0[1];
+    u8 padA1[0x16];
     u8 unkB7;
-    u8 padB8[0x03];
+    u8 padB8[0x3];
     u8 linkedIdx2;
-    u8 padBC[0x0F];
+    u8 padBC[0xE];
+    u8 unkCA;
     u8 linkedIdx;
     u8 unkCC;
     u8 fieldCD;        /* 0xCD: stat byte used in case-0 damage formula (squared). */
     u8 unkCE;
     u8 fieldCF;        /* 0xCF: stat byte averaged with arg2 in func_8009DEF0 mode-7. */
-    /* 0xD0 */
-} BattleEntity;
+} BattleEntity; /* 208 bytes */
 
 /**
  * @brief Battle system block at D_800ED148.
@@ -335,7 +348,7 @@ typedef struct {
     u8 unk0;
     u8 unk1;
     u8 unk2;
-} UnknownStruct;/* used in func_8009D594 */
+} Struct_12CC; /* used in func_8009D594 */
 
 typedef struct {
     /* 0x0000 */ BattleEntity entities[7];      /**< 7 × 0xD0 = 0x5B0. Index 0 is also the header proxy. */
@@ -361,7 +374,7 @@ typedef struct {
     /* 0x1292 */ s16 unk1292;
     /* 0x1294 */ s16 unk1294;
     /* 0x1296 */ u8 pad1296[0x36];
-    /* 0x12CC */ UnknownStruct array[1];        /* used in func_8009D594 */
+    /* 0x12CC */ Struct_12CC array12CC[1];        /* used in func_8009D594 */
     /* 0x12CF */ u8 pad12CF[0x9];
     /* 0x12D8 */ s32 unk12D8;                   /**< Cached length argument for callback. */
     /* 0x12DC */ u8 pad12DC[0x4];               /**< Misc state. */
@@ -572,7 +585,8 @@ typedef struct {
 /** @brief GF battle level entry (12 bytes). */
 typedef struct {
     u8 level;           /* 0x00 */
-    u8 pad01[3];
+    u8 unk1;
+    u8 pad2[2];
     u8 abilityFlags;    /* 0x04: party ability flags (used in entry 15). */
     u8 pad05[7];
 } BattleLevelEntry;
@@ -584,8 +598,7 @@ typedef struct {
     /* 0x610 */ BattleGfEntry gfEntries[1];       /* hp sub-array (stride 12, 16 entries) */
     /* 0x61C */ u8 pad61C[0x04];
     /* 0x620 */ BattleLevelEntry levelEntries[16]; /* 16 × 12 bytes */
-    /* 0x6E0 */
-} BattleCharState;
+} BattleCharState;/* 0x6E0 */
 
 extern BattleCharState g_battleChars;
 
@@ -621,13 +634,20 @@ extern BattleSceneCtx *D_800D244C;
  * Only byte 0 (magicId) is read by the known callers.
  */
 typedef struct {
-    u8 unk00;
-    u8 unk01;
-    u8 unk02;
-    u8 unk03;
+    u8 pad[2];
+    u8 unk2;
+    u8 unk3;
+    u8 unk4;
+    u8 pad2; 
     u8 magicId; /**< [0x4 (0x226)] Magic/spell ID byte (input to ability flag funcs) */
-    u8 unk05;
-    u8 pad02[0x36];      /**< Remaining record bytes */
+    u8 unk7;
+    u8 pad3[2];
+    u8 unkA;
+    u8 pad4;
+    u32 unkC;
+    u16 unk10;
+    u8 unk12;
+    u8 pad5[41];
 } BattleSpellRow; /* 60 bytes */
 
 /**
@@ -635,10 +655,25 @@ typedef struct {
  *
  * Only byte 0 (abilityId) is read by the known callers.
  */
-typedef struct {
-    u8 abilityId;        /**< [0x00] Ability ID byte (input to ability flag funcs) */
-    u8 unk01[0x16];      /**< [0x01..0x16] Padding */
+typedef struct {    
+    u8 pad;              // 0x00
+    u8 abilityId;        /**< [0x01] Ability ID byte (input to ability flag funcs) */
+    u8 unk2;
+    u8 unk3;
+    u8 pad1;           // 0x02..0x04 
+    u8 unk5;             // 0x05
+    u16 unk09;           // 0x06..0x07
+    u32 unkA;            // 0x08..0x0B
+    u8 unkC;             // 0x0C
+    u8 pad3[2];          // 0x0D..0x0E
+    u8 unk11;            // 0x0F
+    u8 pad4[2];          // 0x10..0x16
+    u8 unk13;
+    u8 pad14;
+    u8 unk15;
+    u8 unk16;
     u8 val;              /**< [0x17] used in func_8009BAC4 */
+    u8 unk18;             // 0x18
 } BattleAbilityRow; /* 24 bytes */
 
 /**
@@ -647,15 +682,58 @@ typedef struct {
  */
 typedef struct {
     u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */
-    u8 unk02[0x12];     /**< 0x02..0x13: unknown. */
+    u8 pad[3];
+    u8 unk5;
+    u8 unk6;   
+    u8 unk7;
+    u8 unk8;
+    u8 pad2;
+    u8 unkA;         
+    u8 unkB;         
+    u8 unkC;       
+    u8 unkD;          
+    u16 unkE;
+    u32 unk10;         
 } BattleSceneEntry;     /* 20 bytes */
+
+typedef struct {
+    u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */    
+    u8 pad[2];
+    u8 unk4;
+    u8 unk5;
+    u8 unk6;           /**< 0x06 */
+    u8 unk7;
+    u8 unk8;
+    u8 unk9;
+    u8 pad2;
+    u8 unkB;           /**< 0x0B */
+    u32 unkC;           /**< 0x0C */
+    u16 unk10;           /**< 0x10 */
+    u8 unk12;
+    u8 unk13;           /**< 0x13 */
+} BattleSceneEntry2;     /* 20 bytes */
+
 
 /**
  * @brief 132-byte scene row indexed by func_800AFF70 (a0 offset by 0x40).
  */
 typedef struct {
     u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */
-    u8 unk02[0x82];     /**< 0x02..0x83: unknown. */
+    u8 pad2[4];
+    u8 unk4;
+    u8 unk5;
+    u8 pad3[2];
+    u8 unk8;
+    u8 unk9;
+    u8 pad4;
+    u8 unkD;
+    u16 unkE;
+    u32 unk10;
+    u8 pad11[7];
+    u8 unk1B;
+    u8 pad1C[102];
+    u8 unk83;
+    u8 unk84;
 } BattleSceneRow;       /* 132 bytes */
 
 /**
@@ -676,10 +754,111 @@ typedef struct {
     u16 lookupId;   /* 0x4C0C */
     u8 unk3;        /* 0x4C0E */
     u8 unk4;        /* 0x4C0F */
-    u8 pad5[0x6];
+    u32 unk5;
+    u16 unk8;
     u8 flags;       /* 0x4C16 */
     u8 maxHP;       /* 0x4C17 */
-} Struct_4C0A; /* 12 bytes */
+} Struct_4C0C;     /* 12 bytes */
+
+typedef struct {
+    u8 pad[2];
+    u8 unk48BE;
+    u8 unk48BF;
+    u8 unk48C0;
+    u8 pad2[2];
+    u8 unk48C3;
+    u8 pad3;
+    u8 unk48C5;
+    u8 unk48C6;
+    u8 unk48C7;
+    u8 pad4[10];
+    u16 unk48D2;
+    u32 unk48D4;
+    u8 pad5[4];
+} Struct_48BC;    /* 32 bytes */
+
+typedef struct {
+    u8 pad[2];
+    u8 unk09;
+    u8 unk10;
+    u8 unk11;
+    u8 unk12;
+    u8 unk13;
+    u8 unk14;
+    u8 unk0;
+    u8 unk1;
+    u16 unk2;
+    u32 unk4;
+} Struct_4020;    /* 16 bytes */
+
+typedef struct {
+    u8 unk0;
+    u8 unk1;
+    u8 unk2;
+    u8 pad[2];
+    u8 unkunk;
+    u8 pad2;
+    u8 unk3;
+    u8 unk4;
+    u8 unk5;
+    u16 unk6;
+    u32 unk8;
+    u8 pad3[4];
+} Struct_4A70;    /* 20 bytes */
+
+
+typedef struct {
+    s32 unk0;    
+    u16 unk4;        
+    u8 unk6;    
+    u8 unk7;       
+} Struct_45F8;      /* 8 bytes */
+
+typedef struct {
+    u8 pad[2];
+    u8 var;
+    u8 var1;
+    u8 var2;
+    u8 pad1[2];
+    u8 var3;
+    u8 pad2;
+    u8 unk1;
+    u8 unk2;
+    u8 unk3;
+    u16 unk4;
+    u8 unk6;
+    u8 unk7;
+    u32 unk8;
+    u8 pad3[4];
+} Struct_446C; /* 24 bytes */
+
+
+typedef struct {
+    u8 pad;
+    u8 unk1;
+    u8 unk2;
+    u8 unk3;
+    u16 unk4;
+    u16 unk6;
+    u32 unk8;
+    u8 pad1[10];
+    u8 unk17;
+    u8 unk18;
+} Struct_3750; /* 24 bytes */
+
+typedef struct {
+    u8 unk1;
+    u8 unk2;
+    u8 pad[3];
+    u8 unk0;
+    u8 pad2[6];    
+} Struct_35BD; /* 12 bytes */
+
+
+typedef struct {
+    u8 unk0;
+    u8 pad[35];      
+} Struct_37A9; /* 36 bytes */
 
 
 /**
@@ -689,31 +868,48 @@ typedef struct {
  * unidentified — fields will be added as more code is decompiled.
  */
 typedef struct {
-    /* 0x0000 */ u8 pad0000[0x88];
+    /* 0x0000 */ u8 pad0000[0x88 - 0x00];
     /* 0x0088 */ s32 rows132Arg;                /**< resolveKernelPtr arg paired with rows132[]. */
     /* 0x008C */ s32 entries17Arg;              /**< resolveKernelPtr arg paired with entries17[]. */
-    /* 0x0090 */ u8 pad0090[0x14];
+    /* 0x0090 */ u8 pad0090[0xA4 - 0x90];
     /* 0x00A4 */ s32 entriesA0Arg;              /**< resolveKernelPtr arg paired with entriesA0[]. */
-    /* 0x00A8 */ u8 pad00A8[0x2C];
+    /* 0x00A8 */ u8 pad00A8[0xD4 - 0xA8];
     /* 0x00D4 */ s32 rows8Arg;                  /**< resolveKernelPtr arg paired with rows8[]. */
-    /* 0x00D8 */ u8 pad00D8[4];                
-    /* 0x00DC */ s32 unk4C0AArg;                /**< resolveKernelPtr arg paired with unk4C0A[]. */
-    /* 0x00E0 */ u8 pad00E0[0x142]; 
-    /* 0x0222 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
-    /* 0x025E */ u8 pad025E[0xD1A];
+    /* 0x00D8 */ u8 pad00D8[0xDC - 0xD8];                
+    /* 0x00DC */ s32 unk4C0CArg;                /**< resolveKernelPtr arg paired with unk4C0C[]. */
+    /* 0x00E0 */ u8 pad00E0[0x220 - 0xE0]; 
+    /* 0x0220 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
+    /* 0x025C */ u8 pad025C[0x0F78 - 0x025C];
     /* 0x0F78 */ BattleSceneRow rows132[1];     /**< 132-byte stride (size unknown, index past). */
-    /* 0x0FFC */ u8 padFFC[0x7BC];
+    /* 0x0FFC */ u8 pad0FFC[0x17B8 - 0xFFC];
     /* 0x17B8 */ BattleSceneEntry entries17[1]; /**< stride 20 (size unknown, index past). */
-    /* 0x17CC */ u8 pad17CC[0x1F6B];
-    /* 0x3737 */ BattleAbilityRow unk3737[1];
-    /* 0x374F */ u8 pad1F9A[0x1EA];
-    /* 0x3939 */ BattleAbilityRow abilities[1]; /**< 24-byte stride (size unknown, index past). */
-    /* 0x3951 */ u8 pad3951[0x58F];
-    /* 0x3EE0 */ BattleSceneEntry entriesA0[1]; /**< stride 20 (size unknown, index past). */
-    /* 0x3EF4 */ u8 pad3EF4[0xB6A];
+    /* 0x17CC */ u8 pad17CC[0x35BD - 0x17CC];
+    /* 0x35BD */ Struct_35BD array35BD[1];
+    /* 0x35C9 */ u8 pad35C9[0x3738 - 0x35C9];
+    /* 0x3738 */ BattleAbilityRow unk3738[1];
+    /* 0x3750 */ Struct_3750 array3750[1];
+    /* 0x3768 */ u8 pad3768[0x3938 - 0x3768];
+    /* 0x3938 */ BattleAbilityRow abilities[1]; /**< 24-byte stride (size unknown, index past). */
+    /* 0x3950 */ u8 pad3950[0x3EE0 - 0x3950];
+    /* 0x3EE0 */ BattleSceneEntry2 entriesA0[1]; /**< stride 20 (size unknown, index past). */
+    /* 0x3EF4 */ u8 pad3EF4[0x4020 - 0x3EF4];
+    /* 0x4020 */ Struct_4020 array4020[1];
+    /* 0x4030 */ u8 pad4034[0x448C - 0x4030];
+    /* 0x448C */ Struct_3750 array448C[1]; 
+    /* 0x44A4 */ u8 pad44A4[0x44FC - 0x44A4];
+    /* 0x44FC */ Struct_4020 array44FC[1];
+    /* 0x450C */ u8 pad4510[0x45F8 - 0x450C];
+    /* 0x45F8 */ Struct_45F8 array45F8[1];      /**< stride 8 */
+    /* 0x4600 */ u8 pad4600[0x4804 - 0x4600];
+    /* 0x4804 */ Struct_3750 array4804[1];
+    /* 0x481D */ u8 pad481D[0x48BC - 0x481D];
+    /* 0x48BC */ Struct_48BC array48BC[1];
+    /* 0x48DC */ u8 pad48DC[0x4A5E - 0x48DC];
     /* 0x4A5E */ BattleSceneRow8 rows8[1];      /**< stride 8 (size unknown, index past). */
-    /* 0x4A66 */ u8 pad4A66[422];
-    /* 0x4C0A */ Struct_4C0A unk4C0A[1];
+    /* 0x4A66 */ u8 pad4A66[0x4A70 - 0x4A66];
+    /* 0x4A70 */ Struct_4A70 array4A70[1];
+    /* 0x4A84 */ u8 pad4A84[0x4C0C - 0x4A84];
+    /* 0x4C0C */ Struct_4C0C unk4C0C[1];
     /* 0x4C18 */ u8 pad4C18[180];
     /* 0x4CCC */ u8 unk_4CCC[14];
 } BattleSceneData;
@@ -794,33 +990,38 @@ typedef struct {
     /* 0x05 */ u8 flags5;        /**< Flag byte; bits 0x01 and 0x20 are set by various paths. */
     /* 0x06 */ u8 flags6;        /**< Flag byte; bits 0x01/0x02/0x04/0x10 mark command-completion states. */
     /* 0x07 */ u8 unk7;
-    /* 0x08 */ u8 pad08[2];
+    /* 0x08 */ u8 unk08;
+    /* 0x08 */ u8 unk09;
     /* 0x0A */ u8 unkA;    
     /* 0x0B */ u8 unkB;
     /* 0x0C */ u32 unk0C;        /**< Scaled by 3/2 when the active entity has controlFlag bit 0x20. */
-    /* 0x10 */ u8 pad10[0x4];
+    /* 0x10 */ u32 unk10;
     /* 0x14 */ u32 unk14;
-    /* 0x18 */ u8 pad18[4];
+    /* 0x18 */ u32 unk18;
     /* 0x1C */ u16 statusCode;   /**< Status/command code; compared against 0x49 in func_8009D68C. */
-    /* 0x1E */ u8 pad1E[0x22];
-    /* 0x40 */
-} BattleCmdBuf;
+    /* 0x1E */ u16 unk1E;
+    /* 0x20 */ u16 unk20;
+    /* 0x21 */ u8 pad21[0x1E];
+} BattleCmdBuf;     /* 64 bytes */
 
 extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
 extern u8 D_800EE4C1;     /**< 0x800EE4C1: misc state byte. */
 extern u8 D_800EEBA8[];     /**< 0x800EEBA8: misc state. */
-extern u8 D_800EEBB0[];     /**< 0x800EEBB0: misc state. */
+extern u8 D_80098030[];
+extern u8 D_800EEBB0;     /**< 0x800EEBB0: misc state. */
 extern u8 D_800EEBB8;     /**< 0x800EEBB8: misc state byte. */
 extern u8 D_800EEBB9;     /**< 0x800EEBB9: misc state byte. */
 extern u8 D_800EEBBA;     /**< 0x800EEBBA: misc state byte. */
 extern u8 D_800EEBBB;     /**< 0x800EEBBB: misc state byte. */
-extern u8 D_800EEBBC[];     /**< 0x800EEBBC: stat clamp threshold. */
+extern u8 D_800EEBBC;     /**< 0x800EEBBC: stat clamp threshold. */
+extern u8 D_800EEBC0;
 extern u8 D_800EEBBF;
 extern u16 D_800EEBC2;      /**< 0x800EEBC2: status code halfword. */
 extern s32 D_800EEBC4;      /**< 0x800EEBC4: status flags word (bit 0x4000000). */
 extern u8  D_800EE470;      /*   0x800EE470: used in func_8009F040*/
 extern u8  D_800EE471;
 extern u8  D_800EE4C4;
+extern u16 D_800EE4DC;
 extern u16 D_80077E5C;
 /* ---------------------------------------------------------------- *
  *  Battle-overlay function prototypes (battle internals).
