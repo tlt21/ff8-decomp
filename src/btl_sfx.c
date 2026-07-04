@@ -12,7 +12,7 @@ extern s32 g_menuColor[2];
 extern u8 D_800834D8[];
 void func_8002D970(void);
 void func_8002DBF8(void);
-void func_8002CDE4(RECT *rect, s16 offsetX, s16 offsetY);
+void func_8002CDE4(RECT *rect, s32 scale, s32 arg2);
 void setBattleEntityBoundRect(s32 idx, RECT *src);
 void setBattleEntityRectClamp(s32 idx, RECT *src);
 void func_8002E064(s32 index, RECT *srcRect);
@@ -169,7 +169,55 @@ INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002CAE0);
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002CC4C);
 
 
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002CDE4);
+/**
+ * @brief Scale a battle SFX rectangle about its center by a fixed-point factor.
+ *
+ * @p scale is a signed Q12 fixed-point multiplier where @c 0x1000 (4096 == ONE)
+ * is 1.0; at exactly 1.0 the rectangle is left unchanged. Otherwise each axis is
+ * recentered: the origin moves to @c center @c - @c (dimension @c * @c scale) @c /
+ * @c 8192 (unscale the Q12 product, then halve) and the dimension becomes
+ * @c (dimension @c * @c scale) @c / @c 4096.
+ *
+ * Written in the in-place register-reuse style of the sibling RECT helpers
+ * (cf. @ref func_8002B080, and @c func_800A3398 which scales a RECT the same
+ * way): the packed @c s16 pairs are read once as words and each value is
+ * progressively transformed in its own variable, which keeps gcc 2.7.2 from
+ * spilling copies. The @c do/while(0) wraps the arithmetic as a single basic
+ * block so the compiler emits both extractions before the multiplies rather
+ * than interleaving them.
+ *
+ * @param rect  Rectangle to scale in place.
+ * @param scale Q12 fixed-point scale factor (@c 0x1000 == 1.0).
+ * @param arg2  Unused by this routine (the caller passes @c rateDelta).
+ */
+void func_8002CDE4(RECT *rect, s32 scale, s32 arg2) {
+    s32 x, y, w, h, prodW, prodH;
+
+    if (scale == 0x1000) {
+        return;
+    }
+
+    x = *(s32 *)&rect->x;
+    y = x >> 16;
+    x = x << 16;
+    x = x >> 16;
+    w = *(s32 *)&rect->w;
+    h = w >> 16;
+    w = w << 16;
+    do {
+        w = w >> 16;
+        x = x + ((u32)w / 2);
+        y = y + ((u32)h / 2);
+        prodW = w * scale;
+        prodH = h * scale;
+        w = (u32)prodW / 4096;
+        rect->x = x - ((u32)prodW / 8192);
+        rect->w = w;
+        h = (u32)prodH / 4096;
+        rect->y = y - ((u32)prodH / 8192);
+        rect->h = h;
+    } while (0);
+}
 
 
 /** @brief Set the global SFX flag. */
