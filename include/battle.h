@@ -762,16 +762,19 @@ typedef struct {
 
 typedef struct {
     u8 pad[2];
-    u8 unk1;
-    u8 unk2;
-    u8 unk3;
+    u8 unk48BE;
+    u8 unk48BF;
+    u8 unk48C0;
+    u8 pad2[2];
+    u8 unk48C3;
+    u8 pad3;
     u8 unk48C5;
     u8 unk48C6;
     u8 unk48C7;
-    u8 pad2[10];
+    u8 pad4[10];
     u16 unk48D2;
     u32 unk48D4;
-    u8 pad3[8];
+    u8 pad5[4];
 } Struct_48BC;    /* 32 bytes */
 
 typedef struct {
@@ -794,12 +797,13 @@ typedef struct {
     u8 unk2;
     u8 pad[2];
     u8 unkunk;
+    u8 pad2;
     u8 unk3;
     u8 unk4;
     u8 unk5;
     u16 unk6;
     u32 unk8;
-    u8 pad2[4];
+    u8 pad3[4];
 } Struct_4A70;    /* 20 bytes */
 
 
