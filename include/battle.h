@@ -658,16 +658,22 @@ typedef struct {
 typedef struct {    
     u8 pad;              // 0x00
     u8 abilityId;        /**< [0x01] Ability ID byte (input to ability flag funcs) */
-    u8 pad2[3];           // 0x02..0x04 
+    u8 unk2;
+    u8 unk3;
+    u8 pad1;           // 0x02..0x04 
     u8 unk5;             // 0x05
     u16 unk09;           // 0x06..0x07
     u32 unkA;            // 0x08..0x0B
     u8 unkC;             // 0x0C
     u8 pad3[2];          // 0x0D..0x0E
     u8 unk11;            // 0x0F
-    u8 pad4[6];          // 0x10..0x16
+    u8 pad4[2];          // 0x10..0x16
+    u8 unk13;
+    u8 pad14;
+    u8 unk15;
+    u8 unk16;
     u8 val;              /**< [0x17] used in func_8009BAC4 */
-    u8 pad5;             // 0x18
+    u8 unk18;             // 0x18
 } BattleAbilityRow; /* 24 bytes */
 
 /**
@@ -676,26 +682,34 @@ typedef struct {
  */
 typedef struct {
     u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */
-    u8 pad[4];
-    u8 unk6;        
-    u8 pad2[3];
+    u8 pad[3];
+    u8 unk5;
+    u8 unk6;   
+    u8 unk7;
+    u8 unk8;
+    u8 pad2;
     u8 unkA;         
     u8 unkB;         
     u8 unkC;       
     u8 unkD;          
     u16 unkE;
-    u32 unk10;           
+    u32 unk10;         
 } BattleSceneEntry;     /* 20 bytes */
 
 typedef struct {
-    u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */
-    u8 pad[4];
+    u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */    
+    u8 pad[2];
+    u8 unk4;
+    u8 unk5;
     u8 unk6;           /**< 0x06 */
-    u8 pad2[4];
+    u8 unk7;
+    u8 unk8;
+    u8 unk9;
+    u8 pad2;
     u8 unkB;           /**< 0x0B */
     u32 unkC;           /**< 0x0C */
     u16 unk10;           /**< 0x10 */
-    u8 pad3[1];
+    u8 unk12;
     u8 unk13;           /**< 0x13 */
 } BattleSceneEntry2;     /* 20 bytes */
 
@@ -705,13 +719,21 @@ typedef struct {
  */
 typedef struct {
     u16 lookupId;       /**< 0x00: u16 passed to resolveKernelPtr. */
-    u8 pad2[0xB];
+    u8 pad2[4];
+    u8 unk4;
+    u8 unk5;
+    u8 pad3[2];
+    u8 unk8;
+    u8 unk9;
+    u8 pad4;
     u8 unkD;
     u16 unkE;
     u32 unk10;
-    u8 pad11[0x7];
+    u8 pad11[7];
     u8 unk1B;
-    u8 pad1C[0x68];
+    u8 pad1C[102];
+    u8 unk83;
+    u8 unk84;
 } BattleSceneRow;       /* 132 bytes */
 
 /**
@@ -739,7 +761,10 @@ typedef struct {
 } Struct_4C0C;     /* 12 bytes */
 
 typedef struct {
-    u8 pad[5];
+    u8 pad[2];
+    u8 unk1;
+    u8 unk2;
+    u8 unk3;
     u8 unk48C5;
     u8 unk48C6;
     u8 unk48C7;
@@ -750,7 +775,13 @@ typedef struct {
 } Struct_48BC;    /* 32 bytes */
 
 typedef struct {
-    u8 pad[8];
+    u8 pad[2];
+    u8 unk09;
+    u8 unk10;
+    u8 unk11;
+    u8 unk12;
+    u8 unk13;
+    u8 unk14;
     u8 unk0;
     u8 unk1;
     u16 unk2;
@@ -758,7 +789,11 @@ typedef struct {
 } Struct_4020;    /* 16 bytes */
 
 typedef struct {
-    u8 pad[7];
+    u8 unk0;
+    u8 unk1;
+    u8 unk2;
+    u8 pad[2];
+    u8 unkunk;
     u8 unk3;
     u8 unk4;
     u8 unk5;
@@ -771,9 +806,28 @@ typedef struct {
 typedef struct {
     s32 unk0;    
     u16 unk4;        
-    u8 pad[1];    
+    u8 unk6;    
     u8 unk7;       
 } Struct_45F8;      /* 8 bytes */
+
+typedef struct {
+    u8 pad[2];
+    u8 var;
+    u8 var1;
+    u8 var2;
+    u8 pad1[2];
+    u8 var3;
+    u8 pad2;
+    u8 unk1;
+    u8 unk2;
+    u8 unk3;
+    u16 unk4;
+    u8 unk6;
+    u8 unk7;
+    u32 unk8;
+    u8 pad3[4];
+} Struct_446C; /* 24 bytes */
+
 
 typedef struct {
     u8 pad;
@@ -781,22 +835,26 @@ typedef struct {
     u8 unk2;
     u8 unk3;
     u16 unk4;
-    union {
-        u16 unk6;
-        struct {
-            u8 unk6;
-            u8 unk7;
-        } bytes;
-    } u;  /* func_8009FE14 makes use of both union members*/
+    u16 unk6;
     u32 unk8;
-    u8 pad1[12];
+    u8 pad1[10];
+    u8 unk17;
+    u8 unk18;
 } Struct_3750; /* 24 bytes */
 
 typedef struct {
-    u8 pad[5];
+    u8 unk1;
+    u8 unk2;
+    u8 pad[3];
     u8 unk0;
-    u8 pad2[6];      
+    u8 pad2[6];    
 } Struct_35BD; /* 12 bytes */
+
+
+typedef struct {
+    u8 unk0;
+    u8 pad[35];      
+} Struct_37A9; /* 36 bytes */
 
 
 /**
@@ -928,15 +986,18 @@ typedef struct {
     /* 0x05 */ u8 flags5;        /**< Flag byte; bits 0x01 and 0x20 are set by various paths. */
     /* 0x06 */ u8 flags6;        /**< Flag byte; bits 0x01/0x02/0x04/0x10 mark command-completion states. */
     /* 0x07 */ u8 unk7;
-    /* 0x08 */ u8 pad08[2];
+    /* 0x08 */ u8 unk08;
+    /* 0x08 */ u8 unk09;
     /* 0x0A */ u8 unkA;    
     /* 0x0B */ u8 unkB;
     /* 0x0C */ u32 unk0C;        /**< Scaled by 3/2 when the active entity has controlFlag bit 0x20. */
-    /* 0x10 */ u8 pad10[0x4];
+    /* 0x10 */ u32 unk10;
     /* 0x14 */ u32 unk14;
-    /* 0x18 */ u8 pad18[4];
+    /* 0x18 */ u32 unk18;
     /* 0x1C */ u16 statusCode;   /**< Status/command code; compared against 0x49 in func_8009D68C. */
-    /* 0x1E */ u8 pad1E[0x22];
+    /* 0x1E */ u16 unk1E;
+    /* 0x20 */ u16 unk20;
+    /* 0x21 */ u8 pad21[0x1E];
 } BattleCmdBuf;     /* 64 bytes */
 
 extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
