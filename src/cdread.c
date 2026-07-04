@@ -4,11 +4,8 @@
 #include "sound.h"
 #include "cd.h"
 
-extern CdDriveState D_8008A3C8;
-extern s32 D_8008A3B8;
-extern u8 D_8008A3DC[];
+/* D_8008A3C8 / D_8008A3B8 / D_8008A3DC / D_800853B8 come from cd.h. */
 extern u8 *D_80039418;
-extern u8 D_800853B8[];
 extern s32 D_80056558;
 
 typedef void (*CdHandler)(void);

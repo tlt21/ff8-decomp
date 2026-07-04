@@ -23,11 +23,11 @@ typedef struct {
     /* 0x00 */ u32 timeout;       /**< Timeout counter (resets at 0x708 / 1800). */
     /* 0x04 */ u32 readSectors;   /**< Number of sectors for current read. */
     /* 0x08 */ u16 state;         /**< CD drive state machine phase. */
-    /* 0x0A */ u16 discNumber;    /**< Disc number (set by setDiscNumber). */
+    /* 0x0A */ s16 discNumber;    /**< Disc number, 1..4 or -1 (write-only; set by setDiscNumber). */
     /* 0x0C */ u8 pad0C[4];
     /* 0x10 */ u8 busyFlag;       /**< CD busy flag (setCdBusyFlag/clearCdBusyFlag). */
     /* 0x11 */ u8 cdState;        /**< CD state byte (getCdState/resetCdDriveMode). */
-    /* 0x12 */ u8 discId;         /**< Disc ID (getDiscId). */
+    /* 0x12 */ s8 discId;         /**< Disc ID (read signed by getDiscId). */
     /* 0x13 */ u8 pad13;
 } CdDriveState; /* 0x14 = 20 bytes */
 
@@ -51,6 +51,12 @@ typedef struct {
 
 /** @brief Async CD read state owned by @c cdread.c; polled by @c func_800393C8. */
 extern CdReadState D_8008A3D8;
+
+/* Shared CD driver state / buffers (used by both cdrom.c and cdread.c). */
+extern CdDriveState D_8008A3C8; /**< CD drive timeout / state machine. */
+extern u8  D_8008A3DC[];        /**< CD command parameter buffer (aliases @c D_8008A3D8.params). */
+extern s32 D_8008A3B8;          /**< Rolling read-cursor LBA (set by @c func_80038868). */
+extern u8  D_800853B8[];        /**< CD read staging buffer. */
 
 extern s32 cdReadAsyncSync(s32 lba, u32 size, u8 *dest, void (*callback)(void));
 
