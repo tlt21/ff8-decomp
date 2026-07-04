@@ -12,6 +12,7 @@ extern s32 g_menuColor[2];
 extern u8 D_800834D8[];
 void func_8002D970(void);
 void func_8002DBF8(void);
+void func_8002CC4C(s32 idx, s32 arg0);
 void func_8002CDE4(RECT *rect, s32 scale, s32 arg2);
 void setBattleEntityBoundRect(s32 idx, RECT *src);
 void setBattleEntityRectClamp(s32 idx, RECT *src);
@@ -416,7 +417,27 @@ void func_8002D818(s32 arg0, u8 *str, s32 count, s32 min, s32 max, s32 val, s32 
  * @param index SFX entry index.
  * @see https://decomp.me/scratch/mYKYb
  */
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002D8CC);
+void func_8002D8CC(s32 arg0, s32 index) {
+    SfxEntry *entry = &g_sfxEntries.entries[index];
+
+    if (entry->flags.fields.state != 0) {
+        s32 savedGp;
+        s16 saved;
+        s32 ret;
+
+        GP_SAVE_SCRATCH(savedGp);
+        /* Narrowing the saved GP to s16 here (it never leaves a register, so no
+         * truncation happens) forces the same GP-save register routing the
+         * original compiler emitted. */
+        saved = savedGp;
+        if (entry->field34 != 0) {
+            ((void (*)(SfxEntry *, s32))entry->field34)(entry, arg0);
+        }
+        dispatchSfxColorUpdate(index);
+        func_8002CC4C(index, arg0);
+        GP_RESTORE_RET(saved, ret);
+    }
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002D970);
