@@ -411,30 +411,18 @@ INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002257C);
 
 
 /**
- * @brief Compute capped GF level from XP addition, store result back to runtime data.
- * @param a0 GF index into D_800773C8 runtime entries.
- * @param a1 XP value to add (masked to 16 bits).
- * @return The findAbilityLevel result if under 100, otherwise 100.
+ * @brief Add XP to a GF ability and return the new ability level.
+ * @param gfIdx GF index into g_gameState.gfs.
+ * @param delta XP amount to add (only lower 16 bits used).
+ * @return New ability level, capped at 100.
  */
-s32 func_8002274C(s32 a0, s32 a1) {
-    GfRuntimeEntry *entry;
-    s32 maskedXp;
-    s32 sum;
-    s32 ret;
-
-    entry = &D_800773C8[a0];
-    maskedXp = a1 & 0xFFFF;
-    sum = entry->xp + maskedXp;
-    entry->xp = sum;
-    ret = findAbilityLevel(sum, a0);
-
-    if (ret < 0x64) {
-        return ret;
+s32 func_8002274C(s32 gfIdx, u16 delta) {
+    GfSaveData *gf = &g_gameState.gfs[gfIdx];
+    s32 level = findAbilityLevel(gf->exp += (delta & 0xFFFF), gfIdx);
+    if (level >= 100) {
+        level = 100;
+        gf->exp = evalQuadraticCurve(99, g_gfData.abilityTable132[gfIdx].xpParamB,
+                                     g_gfData.abilityTable132[gfIdx].xpParamC);
     }
-
-    ret = 0x64;
-    REGALLOC_BARRIER(ret);
-    entry->xp = evalQuadraticCurve(0x63, g_gfData.abilityTable132[a0].xpParamB,
-                                   g_gfData.abilityTable132[a0].xpParamC);
-    return ret;
+    return level;
 }

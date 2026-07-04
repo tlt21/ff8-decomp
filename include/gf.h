@@ -300,17 +300,6 @@ typedef struct {
 extern GfData g_gfData;
 
 /**
- * @brief Per-GF runtime entry (stride 0x44 = 68 bytes, BSS at 0x800773C8).
- */
-typedef struct {
-    u8 pad00[0xC];
-    s32 xp;       /**< +0x0C: Accumulated XP/level value (word index 3). */
-    u8 pad10[0x34];
-} GfRuntimeEntry; /* 0x44 = 68 bytes */
-
-extern GfRuntimeEntry D_800773C8[];
-
-/**
  * @brief Per-magic-spell junction data (stride 60 bytes).
  *
  * Indexed by magic ID (0–56). Each entry holds the stat junction bonus
