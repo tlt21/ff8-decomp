@@ -613,7 +613,76 @@ void dispatchSfxAnimSpeed(s32 idx) {
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E298);
 
 
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E3A4);
+/**
+ * @brief One 8-byte sprite cell of a glyph in the @c D_80052A68 font table.
+ *
+ * A glyph is drawn from one or more of these cells. @c texInfo carries the PS1
+ * sprite attributes (texture page / CLUT / UV) and @c metrics packs the cell's
+ * placement as four bytes: @c x + (s8)@c xExtent give the cell's right edge,
+ * @c y + (s8)@c yExtent its bottom edge.
+ */
+typedef struct {
+    /* 0x00 */ u32 texInfo; /**< PS1 sprite/texture attributes for the cell. */
+    /* 0x04 */ u32 metrics; /**< x | (s8)xExtent<<8 | y<<16 | (s8)yExtent<<24. */
+} GlyphCell;
+
+/**
+ * @brief Header view of the @c D_80052A68 font table (baked into executable data).
+ *
+ * A glyph count followed by one descriptor per glyph. Each descriptor packs the
+ * glyph's cell @c count (high 16 bits) and the byte offset from the table base
+ * to that glyph's @ref GlyphCell list (low 16 bits). The cell lists themselves
+ * live in the trailing area the descriptors point at.
+ */
+typedef struct {
+    /* 0x00 */ u32 glyphCount;
+    /* 0x04 */ u32 descriptors[1]; /**< cellCount<<16 | byteOffsetToCells. */
+} GlyphTable;
+
+/** @brief Font glyph table (glyph count + per-glyph descriptors + cell lists). */
+extern GlyphTable D_80052A68;
+
+/**
+ * @brief Compute the bounding width of a multi-cell glyph.
+ *
+ * Walks glyph @p idx's cells and tracks the unsigned running maximum of each
+ * cell's right edge (@c x + (s8)@c xExtent) and bottom edge (@c y +
+ * (s8)@c yExtent), returning the peak width (low byte).
+ *
+ * @note The peak height is computed but unused by the return value — the caller
+ *       presumably only needs the advance width. Purpose inferred from the
+ *       neighbouring glyph-metric routines.
+ *
+ * @param idx Glyph index into @c D_80052A68.
+ * @return Bounding width of the glyph, masked to 8 bits.
+ */
+s32 func_8002E3A4(s32 idx) {
+    GlyphCell *cell = (GlyphCell *)&D_80052A68;
+    u32 word = D_80052A68.descriptors[idx];
+    s32 cellCount = word >> 16;
+    s32 maxWidth = 0;
+    s32 maxHeight = 0;
+
+    word &= 0xFFFF;
+    cell = (GlyphCell *)((u8 *)cell + word);
+    while (cellCount != 0) {
+        s32 width, height;
+        word = cell->metrics;
+        width = word & 0xFF;
+        width += (s8)(word >> 8);
+        height = (word >> 16) & 0xFF;
+        height += (s8)(word >> 24);
+        if ((u32)maxWidth < (u32)width) {
+            maxWidth = width;
+        }
+        if ((u32)maxHeight < (u32)height) {
+            do { maxHeight = height; } while (0);
+        }
+        cellCount--;
+        cell++;
+    }
+    return maxWidth & 0xFF;
+}
 
 
 /** @brief Extracts a 4-bit nibble from packed byte array D_800834D8.
@@ -631,7 +700,38 @@ s32 getNibbleValue(s32 idx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E454);
+/**
+ * @brief Remap a battle SFX id into a range, then extract its 4-bit nibble.
+ *
+ * Folds the SFX id @p idx into a compact table index depending on which of
+ * three ranges it falls in (< 0x100, < 0x1C00, or higher — the last range is
+ * offset and tagged with bit 0x400), then reads the packed nibble table
+ * @c D_800834D8 exactly like @ref getNibbleValue: even indices take the low
+ * nibble, odd indices the high nibble.
+ *
+ * @param idx SFX id to look up.
+ * @return The 4-bit table value (0-15).
+ */
+s32 func_8002E454(s32 idx) {
+    u8 *base;
+    u32 val;
+
+    if (idx < 0x100) {
+        idx -= 0x20;
+    } else if (idx < 0x1C00) {
+        idx -= 0x1820;
+    } else {
+        idx -= 0x1C20;
+        idx |= 0x400;
+    }
+
+    base = D_800834D8;
+    val = base[idx >> 1];
+    if (idx & 1) {
+        val >>= 4;
+    }
+    return val & 0xF;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E4AC);
