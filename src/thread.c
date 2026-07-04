@@ -1,5 +1,6 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
+#include "psxsdk/kernel.h"
 #include "battle.h"
 #include "thread.h"
 
@@ -55,20 +56,19 @@ void closeThreadSafe(s32 a0) {
 /**
  * @brief Manually switch the current thread without a syscall.
  *
- * Resolves the thread control block for @p a0 through the kernel table
- * of tables at 0x100 (TCB array pointer at 0x110, process control block
- * pointer at 0x108) and, if that thread is active (status 0x4000),
- * stores it as the current thread in the process control block.
+ * Resolves the thread control block for @p handle through the kernel
+ * table of tables and, if that thread is active, stores it as the
+ * current thread in the TCB header.
  *
- * @param a0 Thread handle (low 24 bits index the TCB array, stride 192).
+ * @param handle Thread handle (low 24 bits index the TCB table).
  */
-void func_80026F4C(s32 a0) {
-    char **tot = (char **)0x100;
-    char *tcbBase = tot[4];
-    s32 **current = (s32 **)tot[2];
-    s32 *tcb = (s32 *)(tcbBase + (a0 & 0xFFFFFF) * 192);
-    if (*tcb == 0x4000) {
-        *current = tcb;
+void func_80026F4C(s32 handle) {
+    ToT *tot = KERNEL_TOT;
+    TCB *tcbTable = (TCB *)tot[2].head;
+    TCBH *tcbh = (TCBH *)tot[1].head;
+    TCB *tcb = &tcbTable[handle & 0xFFFFFF];
+    if (tcb->status == TcbStACTIVE) {
+        tcbh->entry = tcb;
     }
 }
 
