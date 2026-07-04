@@ -40,7 +40,8 @@ typedef struct {
 typedef struct {
     /* 0x00 */ u8 flags;             /**< Bit 1: busy flag. Cleared/set by clearCdBusyFlag/setCdBusyFlag. */
     /* 0x01 */ u8 status;          /**< State machine phase (0=idle, 0xB=complete, 0xC=reset). */
-    /* 0x02 */ u8 pad02[2];
+    /* 0x02 */ u8 discNum;         /**< Detected disc number (aliases @c D_8008A3DA / @ref getDiscId). */
+    /* 0x03 */ u8 pad03;
     /* 0x04 */ u8 params[4];       /**< CdControl parameters. */
     /* 0x08 */ u32 sectorCount;    /**< Number of sectors to read. */
     /* 0x0C */ u8 pad0C[0x10];

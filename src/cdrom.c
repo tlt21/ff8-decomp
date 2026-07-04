@@ -294,7 +294,114 @@ void resetCdDriveMode(void) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/cdrom", func_80038A60);
+/**
+ * @brief Verify the disc in the drive and classify its state.
+ *
+ * Polls the CD drive and writes a status code to the global @c D_8008A3D0,
+ * which it also returns:
+ *   - 0: valid FF8 data disc; disc number recorded in @c D_8008A3D8.discNum.
+ *   - 1: error / unrecognized disc.
+ *   - 2: drive still spinning up (busy) — caller should retry.
+ *   - 3: drive shell (lid) is open.
+ *   - 4: audio (CD-DA) disc.
+ *   - 5: drive-ready timeout, or empty tray.
+ *   - 6: data disc whose disc number could not be identified.
+ *
+ * Issues @c CdlNop (command 1) to read the drive status; if the shell-open bit
+ * is set, returns 3. Otherwise waits up to 600 vsync frames for the drive to
+ * report ready (returns 5 on timeout), then dispatches on @c CdDiskReady and
+ * @c CdGetDiskType. For a data disc it seeks, re-reads the header, selects
+ * double-speed mode and calls @ref detectDiscNumber. While the drive reports
+ * "seeking" (@c CdDiskReady == 5) it periodically pulses @ref sndKeyOn as a
+ * keep-alive and reports busy (2).
+ *
+ * @return CD state code (see above), also stored in @c D_8008A3D0.
+ */
+s32 func_80038A60(void) {
+    u8 loc[4];
+    u8 result[8];
+    s32 ready;
+    s32 i;
+    s32 discNum;
+    u8 mode;
+
+    CdControlB(1, 0, result);
+    if (result[0] & 0x10) {
+        D_8008A3D0 = 3;
+        return 3;
+    }
+
+    i = 0x258;
+    CdControlB(7, 0, 0);
+    do {
+        VSync(0);
+        if (--i == 0) {
+            D_8008A3D0 = 5;
+            return 5;
+        }
+        CdControlB(1, 0, result);
+    } while (!(result[0] & 2));
+
+    ready = CdDiskReady(0);
+    switch (ready) {
+    case 2:
+        D_8008A3C8.timeout = 0;
+        break;
+    case 5:
+        D_8008A3C8.timeout++;
+        if (D_8008A3C8.timeout >= 0x708) {
+            D_8008A3C8.timeout = 0;
+            sndKeyOn(0x10, 0, 0x80, 0x7F, 0);
+        }
+        VSync(0);
+        D_8008A3C8.state = 2;
+        return 2;
+    case 0x10:
+        D_8008A3D0 = 3;
+        return 3;
+    default:
+        D_8008A3D0 = 1;
+        return 1;
+    }
+
+    mode = 0;
+    CdControlB(0xE, &mode, result);
+    switch (CdGetDiskType()) {
+    case 1:
+        D_8008A3D0 = 4;
+        return 4;
+    case 0:
+        D_8008A3D0 = 5;
+        return 5;
+    case 2:
+        break;
+    case 0x10:
+        D_8008A3D0 = 3;
+        return 3;
+    default:
+        D_8008A3D0 = 1;
+        return 1;
+    }
+
+    CdIntToPos(0x17, loc);
+    CdControlB(0x15, loc, result);
+    if ((result[0] & 1) || (result[1] & 0x40)) {
+        do { D_8008A3D0 = 1; } while (0);
+        return 1;
+    }
+    mode = 0x80;
+    CdControlB(0xE, &mode, result);
+    VSync(3);
+    D_8008A3D8.status = 0;
+    discNum = detectDiscNumber();
+    if (discNum == -1) {
+        D_8008A3D0 = 6;
+        return 6;
+    }
+    D_8008A3D8.discNum = discNum;
+    D_8008A3D0 = 0;
+    return 0;
+}
 
 
 /**
