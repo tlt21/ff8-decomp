@@ -598,8 +598,7 @@ typedef struct {
     /* 0x610 */ BattleGfEntry gfEntries[1];       /* hp sub-array (stride 12, 16 entries) */
     /* 0x61C */ u8 pad61C[0x04];
     /* 0x620 */ BattleLevelEntry levelEntries[16]; /* 16 × 12 bytes */
-    /* 0x6E0 */
-} BattleCharState;
+} BattleCharState;/* 0x6E0 */
 
 extern BattleCharState g_battleChars;
 
@@ -740,35 +739,33 @@ typedef struct {
 } Struct_4C0C;     /* 12 bytes */
 
 typedef struct {
-    u8 pad;
+    u8 pad[5];
     u8 unk48C5;
     u8 unk48C6;
     u8 unk48C7;
     u8 pad2[10];
     u16 unk48D2;
     u32 unk48D4;
-    u8 pad3[12];
-} Struct_48C4;    /* 32 bytes */
+    u8 pad3[8];
+} Struct_48BC;    /* 32 bytes */
 
 typedef struct {
+    u8 pad[8];
     u8 unk0;
     u8 unk1;
     u16 unk2;
     u32 unk4;
-    u8 pad[8];
-} Struct_4028;    /* 16 bytes */
+} Struct_4020;    /* 16 bytes */
 
 typedef struct {
-    u8 unk0;
-    u8 unk1;
-    u8 unk2;
+    u8 pad[7];
     u8 unk3;
     u8 unk4;
     u8 unk5;
     u16 unk6;
     u32 unk8;
-    u8 pad[8];
-} Struct_4A74;    /* 20 bytes */
+    u8 pad2[4];
+} Struct_4A70;    /* 20 bytes */
 
 
 typedef struct {
@@ -796,9 +793,10 @@ typedef struct {
 } Struct_3750; /* 24 bytes */
 
 typedef struct {
+    u8 pad[5];
     u8 unk0;
-    u8 pad[11];      
-} Struct_35C2; /* 12 bytes */
+    u8 pad2[6];      
+} Struct_35BD; /* 12 bytes */
 
 
 /**
@@ -816,39 +814,39 @@ typedef struct {
     /* 0x00A8 */ u8 pad00A8[0xD4 - 0xA8];
     /* 0x00D4 */ s32 rows8Arg;                  /**< resolveKernelPtr arg paired with rows8[]. */
     /* 0x00D8 */ u8 pad00D8[0xDC - 0xD8];                
-    /* 0x00DC */ s32 unk4C0CArg;                /**< resolveKernelPtr arg paired with unk4C0A[]. */
+    /* 0x00DC */ s32 unk4C0CArg;                /**< resolveKernelPtr arg paired with unk4C0C[]. */
     /* 0x00E0 */ u8 pad00E0[0x220 - 0xE0]; 
     /* 0x0220 */ BattleSpellRow spells[1];      /**< 60-byte stride (size unknown, index past). */
     /* 0x025C */ u8 pad025C[0x0F78 - 0x025C];
     /* 0x0F78 */ BattleSceneRow rows132[1];     /**< 132-byte stride (size unknown, index past). */
-    /* 0x0FFC */ u8 padFFC[0x17B8 - 0xFFC];
+    /* 0x0FFC */ u8 pad0FFC[0x17B8 - 0xFFC];
     /* 0x17B8 */ BattleSceneEntry entries17[1]; /**< stride 20 (size unknown, index past). */
-    /* 0x17CC */ u8 pad17CC[0x35C2 - 0x17CC];
-    /* 0x35C2 */ Struct_35C2 array35C2[1];
-    /* 0x35CE */ u8 pad35CE[0x3738 - 0x35CE];
+    /* 0x17CC */ u8 pad17CC[0x35BD - 0x17CC];
+    /* 0x35BD */ Struct_35BD array35BD[1];
+    /* 0x35C9 */ u8 pad35C9[0x3738 - 0x35C9];
     /* 0x3738 */ BattleAbilityRow unk3738[1];
     /* 0x3750 */ Struct_3750 array3750[1];
     /* 0x3768 */ u8 pad3768[0x3938 - 0x3768];
     /* 0x3938 */ BattleAbilityRow abilities[1]; /**< 24-byte stride (size unknown, index past). */
     /* 0x3950 */ u8 pad3950[0x3EE0 - 0x3950];
     /* 0x3EE0 */ BattleSceneEntry2 entriesA0[1]; /**< stride 20 (size unknown, index past). */
-    /* 0x3EF4 */ u8 pad3EF4[0x4028 - 0x3EF4];
-    /* 0x4028 */ Struct_4028 array4028[1];
-    /* 0x4038 */ u8 pad4038[0x448C - 0x4038];
+    /* 0x3EF4 */ u8 pad3EF4[0x4020 - 0x3EF4];
+    /* 0x4020 */ Struct_4020 array4020[1];
+    /* 0x4030 */ u8 pad4034[0x448C - 0x4030];
     /* 0x448C */ Struct_3750 array448C[1]; 
-    /* 0x44A5 */ u8 pad44A5[0x4504 - 0x44A4];
-    /* 0x4504 */ Struct_4028 array4504[1];
-    /* 0x4514 */ u8 pad4514[0x45F8 - 0x4514];
+    /* 0x44A4 */ u8 pad44A4[0x44FC - 0x44A4];
+    /* 0x44FC */ Struct_4020 array44FC[1];
+    /* 0x450C */ u8 pad4510[0x45F8 - 0x450C];
     /* 0x45F8 */ Struct_45F8 array45F8[1];      /**< stride 8 */
     /* 0x4600 */ u8 pad4600[0x4804 - 0x4600];
     /* 0x4804 */ Struct_3750 array4804[1];
-    /* 0x481D */ u8 pad481D[0x48C4 - 0x481D];
-    /* 0x48C4 */ Struct_48C4 array48C4[1];
-    /* 0x48D5 */ u8 pad48D5[0x4A5E - 0x48E4];
+    /* 0x481D */ u8 pad481D[0x48BC - 0x481D];
+    /* 0x48BC */ Struct_48BC array48BC[1];
+    /* 0x48DC */ u8 pad48DC[0x4A5E - 0x48DC];
     /* 0x4A5E */ BattleSceneRow8 rows8[1];      /**< stride 8 (size unknown, index past). */
-    /* 0x4A66 */ u8 pad4A66[0x4A74 - 0x4A66];
-    /* 0x4A74 */ Struct_4A74 array4A74[1];
-    /* 0x4A8B */ u8 pad4A8B[0x4C0C - 0x4A8B];
+    /* 0x4A66 */ u8 pad4A66[0x4A70 - 0x4A66];
+    /* 0x4A70 */ Struct_4A70 array4A70[1];
+    /* 0x4A84 */ u8 pad4A84[0x4C0C - 0x4A84];
     /* 0x4C0C */ Struct_4C0C unk4C0C[1];
     /* 0x4C18 */ u8 pad4C18[180];
     /* 0x4CCC */ u8 unk_4CCC[14];
@@ -939,7 +937,6 @@ typedef struct {
     /* 0x18 */ u8 pad18[4];
     /* 0x1C */ u16 statusCode;   /**< Status/command code; compared against 0x49 in func_8009D68C. */
     /* 0x1E */ u8 pad1E[0x22];
-
 } BattleCmdBuf;     /* 64 bytes */
 
 extern BattleCmdBuf D_800EE4C0; /**< 0x800EE4C0: command queue buffer. */
