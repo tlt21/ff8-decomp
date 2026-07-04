@@ -191,10 +191,70 @@ s32 getAbilityModifier(s32 charIdx, s32 a1) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021A64);
+
+/**
+* @brief Compute a character's base HP from level, class curve, and HP junction bonus.
+* @param level Character level.
+* @param charIdx Character slot index (stride 152 in g_gameState).
+* @return HP value computed as: level*coef - level²×10/div + base + maxHp + junctionBonus.
+* @note Uses xpCurves36[characterClass] fields at +0x08 (coef), +0x09 (div), +0x0A (base).
+*       The junction bonus is: junctionData[hpSlot].pad12[5] * getMagicQuantity().
+*/
+s32 calcHpFromLevel(s32 level, s32 charIdx) {
+    u8 hpJunc;
+    u8 charId;
+    s32 count;
+    s32 juncMult;
+    u8 _div;
+    u8 coef;
+    u8 addBase;
+    u16 maxHp;
+    s32 result;
+
+    hpJunc = g_gameState.chars[charIdx].junctions[0];
+    charId = g_gameState.chars[charIdx].characterId;
+    count = getMagicQuantity(charIdx, hpJunc);
+    juncMult = multiply(g_gfData.junctionData[hpJunc].pad12[5], count);
+    _div = g_gfData.xpCurves36[charId].pad09[0];
+    coef = g_gfData.xpCurves36[charId].constant;
+    addBase = g_gfData.xpCurves36[charId].pad09[1];
+    maxHp = g_gameState.chars[charIdx].maxHp;
+    result = level * coef - (level * level * 10) / _div + addBase + maxHp + juncMult;
+    return result;
+}
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021B58);
+/**
+ * @brief Resolve GF index for a character (used by calcHitStat).
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param fallback Fallback value returned when characterId is not 8, 9, or 10 in locked mode.
+ * @return GF index from PartyData if party is locked and characterId is 8/9/10,
+ *         weaponId if party is unlocked, or fallback otherwise.
+ * @note When partyLockFlag bit 0 is set, maps characterId 8->gfIndex0, 9->gfIndex1, 10->gfIndex2.
+ *       When party is unlocked, returns the character's weaponId.
+ */
+s32 func_80021B58(s32 charIdx, s32 fallback) {
+    s32 val;
+    s32 charId;
+    if (g_gameState.mainData.partyLockFlag & 1) {
+        charId = g_gameState.chars[charIdx].characterId;
+        val = fallback;
+        switch (charId) {
+            case 8:
+                val = g_gameState.mainData.party.gfIndex0;
+                break;
+            case 9:
+                val = g_gameState.mainData.party.gfIndex1;
+                break;
+            case 10:
+                val = g_gameState.mainData.party.gfIndex2;
+                break;
+        }
+    } else {
+        val = g_gameState.chars[charIdx].weaponId;
+    }
+    return val;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80021C10);
@@ -255,7 +315,26 @@ s32 getAtkElemBonus(s32 charIdx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_80022228);
+/**
+ * @brief Compute element defense resistance for a character.
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param shiftBit Element type bit index to check (0-7 for 8 elements).
+ * @return Element resistance percentage (capped at 1000).
+ */
+s32 getElemResistance(s32 charIdx, s32 shiftBit) {
+    s32 result = 0;
+    s32 i;
+    for (i = 0; i < 4; i++) {
+        u8 idx = g_gameState.chars[charIdx].junctions[JUNCTION_DEF_ELEM_0 + i];
+        if ((g_gfData.junctionData[idx].defElemFlag >> shiftBit) & 1) {
+            u8 mult = g_gfData.junctionData[idx].defElemMult;
+            result += multiplyDiv100(mult, getMagicQuantity(charIdx, idx));
+        }
+    }
+    result += 800;
+    if (result > 1000) result = 1000;
+    return result;
+}
 
 
 /**
@@ -306,12 +385,44 @@ s32 calcAtkStatusHit(s32 charIdx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002247C);
+/**
+ * @brief Compute status defense resistance for a character.
+ * @param charIdx Character slot index (stride 152 in g_gameState).
+ * @param shiftBit Status type bit index to check (0-12 for 13 statuses).
+ * @return Status resistance percentage (capped at 200).
+ */
+s32 getStatusResistance(s32 charIdx, s32 shiftBit) {
+    s32 result = 0;
+    s32 i;
+    for (i = 0; i < 4; i++) {
+        u8 idx = g_gameState.chars[charIdx].junctions[JUNCTION_DEF_STATUS_0 + i];
+        if ((g_gfData.junctionData[idx].defStatusFlags >> shiftBit) & 1) {
+            u8 base = g_gfData.junctionData[idx].defStatusBase;
+            result += multiplyDiv100(base, getMagicQuantity(charIdx, idx));
+        }
+    }
+    result += 100;
+    if (result > 200) result = 200;
+    return result;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002257C);
 
 
-INCLUDE_ASM("asm/nonmatchings/gf_curve", func_8002274C);
-
-
+/**
+ * @brief Add XP to a GF ability and return the new ability level.
+ * @param gfIdx GF index into g_gameState.gfs.
+ * @param delta XP amount to add (only lower 16 bits used).
+ * @return New ability level, capped at 100.
+ */
+s32 func_8002274C(s32 gfIdx, u16 delta) {
+    GfSaveData *gf = &g_gameState.gfs[gfIdx];
+    s32 level = findAbilityLevel(gf->exp += (delta & 0xFFFF), gfIdx);
+    if (level >= 100) {
+        level = 100;
+        gf->exp = evalQuadraticCurve(99, g_gfData.abilityTable132[gfIdx].xpParamB,
+                                     g_gfData.abilityTable132[gfIdx].xpParamC);
+    }
+    return level;
+}
