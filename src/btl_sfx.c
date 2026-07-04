@@ -256,7 +256,72 @@ s32 func_8002CE84(s32 idx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002CECC);
+/** @brief Holds the packed auto-repeat delays for @ref func_8002CECC (@c a0).
+ *  @note Real type TBD — a structure that sits before @c g_sfxEntries; the
+ *        caller @c func_8002CF54 passes @c &g_sfxEntries-0x220. */
+typedef struct {
+    u8 pad00[0x1E0];
+    u16 delays; /**< 0x1E0: repeatInterval (high byte) | restartDelay (low byte). */
+} SfxRepeatBase;
+
+/** @brief Per-item element carrying the per-channel edge masks (@c a1).
+ *  @note Real type TBD — a @c 0xC4-byte element within @ref SfxRepeatBase. */
+typedef struct {
+    u8 pad00[0x10];
+    u16 masks[4]; /**< 0x10: per-channel edge mask. */
+} SfxRepeatElem;
+
+/**
+ * @brief Keyboard-style auto-repeat for one SFX channel's edge bits.
+ *
+ * Latches @p newVal into @c sys->state.stored[channel] and, using the per-channel
+ * mask, decides whether the (masked) edge bits should fire this frame. If the new
+ * and previous masked bits overlap (a held cue) it ticks the per-channel countdown
+ * @c sys->state.counters[channel]: while it is running the event is suppressed
+ * (returns 0), and when it expires the countdown reloads to the repeat interval and
+ * fires. When the bits do not overlap the countdown resets to the restart delay and
+ * fires. Mirrors @c func_800A29D4 (the Triple Triad edge auto-repeat).
+ *
+ * @param base    Packed repeat delays (@c base->delays).
+ * @param elem    Per-channel edge masks (@c elem->masks).
+ * @param sys     SFX system (@c &g_sfxEntries); holds the stored bits and counters.
+ * @param newVal  Raw new edge bitmask for this frame.
+ * @param channel SFX channel index, 0..3.
+ * @return The masked edge bits that should fire this frame, or 0 while suppressed.
+ */
+s32 func_8002CECC(SfxRepeatBase *base, SfxRepeatElem *elem, SfxSystem *sys, u16 newVal, s32 channel) {
+    s32 counter;
+    s32 restartDelay;
+    s32 repeatInterval;
+    u16 mask;
+    u16 prevMasked;
+
+    prevMasked = sys->state.stored[channel];
+    sys->state.stored[channel] = newVal;
+    restartDelay = base->delays;
+    counter = sys->state.counters[channel];
+    mask = elem->masks[channel];
+
+    repeatInterval = restartDelay >> 8;
+    restartDelay &= 0xFF;
+    newVal &= mask;
+    prevMasked &= mask;
+    if (newVal & prevMasked) {
+        if (newVal != prevMasked) {
+            counter = restartDelay;
+        }
+        counter--;
+        if (counter < 0) {
+            counter = repeatInterval;
+        } else {
+            newVal = 0;
+        }
+    } else {
+        counter = restartDelay;
+    }
+    sys->state.counters[channel] = counter;
+    return newVal;
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002CF54);
@@ -635,10 +700,10 @@ void resetAllSfx(void) {
         func_8002DF5C(i);
     }
     D_800831D3 = 0;
-    sys->state.field18 = 0;
-    sys->state.field1A = 0;
-    sys->state.field14 = 0;
-    sys->state.field15 = 0;
+    sys->state.stored[0] = 0;
+    sys->state.stored[1] = 0;
+    sys->state.counters[0] = 0;
+    sys->state.counters[1] = 0;
     func_8002C130();
 }
 

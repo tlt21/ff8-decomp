@@ -120,18 +120,14 @@ typedef struct {
     u32 color2;         /* 0x08: flash color (output) */
     s8 activeFlag;      /* 0x0C */
     u8 pad0D[7];
-    u8 field14;
-    u8 field15;
-    u8 pad16[2];
-    u16 field18;
-    u16 field1A;
-} SfxGlobalState;
+    s8 counters[4];     /* 0x14: per-channel auto-repeat countdown (func_8002CECC) */
+    u16 stored[4];      /* 0x18: per-channel latched edge bits (func_8002CECC) */
+} SfxGlobalState;       /* 0x20 */
 
 /** @brief Complete SFX system: 8 entry slots + global state + message display values. */
 typedef struct {
     SfxEntry entries[8];       /* 0x000: 8 × 60 = 480 bytes */
-    SfxGlobalState state;      /* 0x1E0: global SFX state */
-    u8 pad1FC[4];              /* 0x1FC: padding */
+    SfxGlobalState state;      /* 0x1E0: global SFX state (0x20 bytes) */
     u32 msgValues[8];          /* 0x200: numeric values formatted by decodeMessage */
 } SfxSystem;
 
