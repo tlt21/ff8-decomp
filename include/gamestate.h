@@ -167,8 +167,9 @@ typedef struct {
     /* 0x00 */ u8 party[4];            /**< Active party member IDs (slot 3 always 0xFF). */
     /* 0x04 */ u32 unlockedWeapons;    /**< Bitfield of unlocked weapon upgrades. */
     /* 0x08 */ u8 grieverName[12];     /**< Player-chosen name for Griever. */
-    /* 0x14 */ u16 unknown14;          /**< Unknown (often 7966?). */
-    /* 0x16 */ u8 unknown16;           /**< Unknown (changes per disc). */
+    /* 0x14 */ u8 gfIndex0;            /**< GF index for character slot 0 (party locked mode). */
+    /* 0x15 */ u8 gfIndex1;            /**< GF index for character slot 1 (party locked mode). */
+    /* 0x16 */ u8 gfIndex2;            /**< GF index for character slot 2 (party locked mode). */
     /* 0x17 */ u8 trickLearning;       /**< Index (0-7) of Angelo trick currently being learned. */
     /* 0x18 */ u32 gil;                /**< Current gil. */
     /* 0x1C */ u32 dreamGil;           /**< Gil held during Laguna dream sequences. */

@@ -86,18 +86,20 @@ typedef struct {
     u8 pad1F;         /**< +0x1F: Unknown. */
     u8 statParamA;    /**< +0x20: Stat parameter A (func_8002216C). */
     u8 statParamB;    /**< +0x21: Stat parameter B (func_800221B4). */
-    u8 pad22[2];      /**< +0x22..+0x23: Unknown. */
+    u8 defElemFlag;   /**< +0x22: Element defense flag (checked for bit in getElemResistance). */
+    u8 defElemMult;   /**< +0x23: Element defense multiplier (getElemResistance). */
     u8 hitParam;      /**< +0x24: Hit parameter (func_80022404). */
-    u8 pad25;         /**< +0x25: Unknown. */
+    u8 defStatusBase; /**< +0x25: Status defense base value (getStatusResistance). */
     u16 statusFlags;  /**< +0x26: Status flags bitmask (func_80022328/func_80022370). */
-    u8 pad28[0x14];   /**< +0x28..+0x3B: Unknown. */
-} GfJunctionEntry; /* 60 bytes: 2+2+1+1+1+1+1+1+1+1+1+1+2+2+11+1+1+1+1+1+2+1+1+2+20 = 60 */
+    u16 defStatusFlags;/**< +0x28: Status defense flags (checked for bit in getStatusResistance). */
+    u8 pad2A[0x12];   /**< +0x2A..+0x3B: Unknown. */
+} GfJunctionEntry; /* 60 bytes: 2+2+1+1+1+1+1+1+1+1+1+1+2+2+11+1+1+1+1+1+1+1+1+1+2+2+18 = 60 */
 
 /**
  * @brief GF XP curve entry (stride 36 bytes).
  *
  * 11 entries starting at offset 0x37A4 within g_gfData (ptr slot +0x98).
- * Holds experience curve coefficients used by func_80021A64.
+ * Holds experience curve coefficients used by calcHpFromLevel.
  */
 typedef struct {
     u16 lookupParam;  /**< +0x00: Lookup param (getBattleCharName/getCharNamePtr). */
@@ -110,9 +112,9 @@ typedef struct {
     u8 pad09[3];      /**< +0x09..+0x0B: Unknown. */
     u8 field0C;       /**< +0x0C: Unknown. */
     u8 field0D;       /**< +0x0D: Unknown. */
-    u8 subIdx;        /**< +0x0E: func_80021A64 multiplier. */
-    u8 divisorField;  /**< +0x0F: func_80021A64 divisor. */
-    u8 addend;        /**< +0x10: func_80021A64 addend. */
+    u8 subIdx;        /**< +0x0E: calcHpFromLevel multiplier. */
+    u8 divisorField;  /**< +0x0F: calcHpFromLevel divisor. */
+    u8 addend;        /**< +0x10: calcHpFromLevel addend. */
     u8 pad11[0x13];   /**< +0x11..+0x23: Remaining (stride 36 total). */
 } GfCurveEntry; /* 36 bytes */
 
