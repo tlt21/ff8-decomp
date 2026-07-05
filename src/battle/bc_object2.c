@@ -84,7 +84,7 @@ s32 func_8009BB3C(s32 a0) {
 s32 func_8009BB98(void) {
     s32 i;
     for (i = 0; i < 32; i++) {
-        if (D_800ED148.entries[i].unk0 == 250) {
+        if (D_800ED148.entries[i].unk1 == 250) {
             return i;
         }
     }
@@ -108,9 +108,35 @@ BattleEntry* func_8009BBD0(void) {
     return currentEntry;
 }
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BC28);
 
-INCLUDE_ASM("asm/ovl/battle/nonmatchings/bc_object2", func_8009BCE4);
+void func_8009BC28(void) {
+    BattleEntity* slot;
+    SubEntry* subs;
+    s32 count;
+    s32 i;
+    
+    count = D_80078E00.array3750[D_800ED148.unk132E].unk0;
+    subs = func_8009BBD0()->subEntries;
+    slot = &D_800ED148.entities[subs->entityIdx];
+    slot[1].slot8.byteView.unk09 = count;
+    
+    for (i = 0; i < count; i++) {
+        func_800A09D0(subs->entityIdx);
+        func_800A5210(subs->entityIdx);
+        subs++;
+    }
+}
+
+void func_8009BCE4(void) {
+    s32 i;
+    SubEntry* var_s0;
+
+    var_s0 = func_8009BBD0()->subEntries;
+    for (i = 0; i < D_800ED148.unk1305; i++, var_s0++) {
+        func_800A09D0(var_s0->entityIdx); 
+        func_800A5210(var_s0->entityIdx);
+    }
+}
 
 s32 func_8009BD60(s32 arg0) {
     if ((D_800EEBC4 & BATTLE_ENTITY_FLAG_BIT_26) == 0) {

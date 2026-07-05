@@ -311,14 +311,22 @@ typedef struct {
     u16 z;
 } BattleVec3u;
 
+typedef struct {
+    u8 entityIdx;
+    u8 pad[0x17];
+} SubEntry;
+
 /** @brief 20-byte action-queue entry in @c BattleSystem.entries. */
 typedef struct {
-    u8 unk0;       
-    u8 pad01[13];
+    u8 unk0;
+    u8 unk1;       
+    u8 pad2[6];
+    SubEntry* subEntries;
+    u8 padC[2];
     u8 unkE;           
-    u8 pad0F[1];
+    u8 pad0F[2];
     u8 unk10;
-    u8 pad11[3];
+    u8 pad11[2];
 } BattleEntry; /*  0x14 (20 byte) */
 
 /** @brief Linked-list node for the @c BattleSystem.taskLinks queue.
@@ -357,9 +365,8 @@ typedef struct {
     /* 0x05C1 */ u8 pad5C1[0x1];
     /* 0x05C2 */ u8 unk5C2;                     /**< Misc state byte (init to 1 by func_8009A1E0/ACEC). */
     /* 0x05C3 */ u8 unk5C3;                     /**< Misc state byte (init to 1 by func_80099FE8). */
-    /* 0x05C4 */ u8 unk5C4;
-    /* 0x05C5 */ BattleEntry entries[90];       /**< Action queue (stride 0x14)*/
-    /* 0x0CDD */ u8 padCDD[0x17];                /**< Pad to unkCE4. */
+    /* 0x05C4 */ BattleEntry entries[90];       /**< Action queue (stride 0x14)*/
+    /* 0x0CCC */ u8 padCDC[0x0CE4 - 0x0CCC];                /**< Pad to unkCE4. */
     /* 0x0CE4 */ BattleVec3u unkCE4[8];         /**< 8-entry x/y/z position table (read by @c func_8009A528). */
     /* 0x0D14 */ u8 unkD14[0x8];                /**< Hit-type byte table (8 entries). */
     /* 0x0D1C */ u8 padD1C[0x40];               /**< Misc state. */
@@ -433,7 +440,9 @@ typedef struct {
     /* 0x1327 */ u8 unk1327;
     /* 0x1328 */ u8 unk1328; 
     /* 0x1329 */ u8 unk1329;
-} BattleSystem; /* 0x132A */
+    /* 0x132A */ u8 pad132A[4];
+    /* 0x132E */ u8 unk132E;
+} BattleSystem; /* 0x132F */
 
 /** @brief 5-byte slot in @c BattleAnimTable.animSlots. */
 typedef struct {
@@ -834,7 +843,7 @@ typedef struct {
 
 
 typedef struct {
-    u8 pad;
+    u8 unk0;
     u8 unk1;
     u8 unk2;
     u8 unk3;
