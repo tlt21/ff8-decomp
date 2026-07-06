@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-// Public prototypes (owned by cdrom.c)
+// Public prototypes
 
 /** @brief Initialize the CD subsystem. */
 void initCdSubsystem(s32 mode);
@@ -18,7 +18,7 @@ s32 func_80038A60(void);
 /** @brief Record the active disc number in the drive state. */
 void setDiscNumber(s32 discNumber);
 
-// Private prototypes (internal to cdrom.c
+// Private prototypes
 
 s32 detectDiscNumber(void);
 void setAudioVolume(s32 voice);
@@ -31,15 +31,11 @@ s32 cdReadRetry(s32 lba, void (*callback)(void));
 u32 getCdState(void);
 void stopCdDrive(void);
 
-// Private data (internal to cdrom.c
+// Private data
 
-extern u8 D_8001092C[]; /**< Disc-1 identifier filename (searched by detectDiscNumber). */
+extern u8 D_8001092C[]; /**< Disc-1 identifier filename. */
 extern u8 D_8001093C[]; /**< Disc-2 identifier filename. */
 extern u8 D_8001094C[]; /**< Disc-3 identifier filename. */
 extern u8 D_8001095C[]; /**< Disc-4 identifier filename. */
-
-/* The former standalone symbols D_8008A3D0 / D_8008A3D2 / D_8008A3D9 /
-   D_8008A3DA are fields of the CdDriveState at D_8008A3C8 (cd.h): state,
-   discNumber, cdState and discId respectively. */
 
 #endif /* CDROM_H */
