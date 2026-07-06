@@ -2,6 +2,7 @@
 #include "psxsdk/libgpu.h"
 #include "battle.h"
 #include "btl_sfx.h"
+#include "btl_entity.h"
 
 extern SfxSystem g_sfxEntries;
 extern s32 g_flashColor;
@@ -18,7 +19,6 @@ void setBattleEntityBoundRect(s32 idx, RECT *src);
 void setBattleEntityRectClamp(s32 idx, RECT *src);
 void func_8002E064(s32 index, RECT *srcRect);
 void func_8002E1B4(s32 index, s32 value);
-s32 func_8002C734(u8 c);
 
 
 /**
