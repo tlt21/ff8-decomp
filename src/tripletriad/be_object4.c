@@ -98,11 +98,11 @@ void func_800A1D68(s32 id, u8 *str, s32 param) {
     GlyphSize sfx;   /* "Play / Quit" suffix size (id 5 only) */
     RECT rect;
 
-    dim.raw[0] = getGlyphWidthA((s32)str);
+    dim.raw[0] = getGlyphWidthA(str);
 
     if (id == 5) {
         s16 m;
-        sfx.raw[0] = getGlyphWidthA((s32)((u8 *)&D_801826E2 - 0x62 + D_801826E2));
+        sfx.raw[0] = getGlyphWidthA((u8 *)&D_801826E2 - 0x62 + D_801826E2);
         m = (u16)sfx.wh[0] + 0x20;
         sfx.wh[0] = m;
         if (dim.wh[0] < m) {

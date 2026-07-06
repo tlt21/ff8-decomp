@@ -18,6 +18,7 @@ void setBattleEntityBoundRect(s32 idx, RECT *src);
 void setBattleEntityRectClamp(s32 idx, RECT *src);
 void func_8002E064(s32 index, RECT *srcRect);
 void func_8002E1B4(s32 index, s32 value);
+s32 func_8002C734(u8 c);
 
 
 /**
@@ -868,26 +869,111 @@ s32 func_8002E454(s32 idx) {
 }
 
 
-INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E4AC);
+/**
+ * @brief Measure a battle-message string's packed {width, height}.
+ *
+ * Scans the string @p s, interpreting control codes (1/2/7 = line breaks,
+ * 5 = special glyph resolved via @c func_8002C734 / @c func_8002E3A4,
+ * 0x18-0x1F = multi-byte glyphs) and accumulating each line's pixel width from
+ * the packed nibble-width table @ref D_800834D8. Tracks the widest line and the
+ * line count; codes below 0x10 (other than 1/2/5/7) consume a following
+ * argument byte. When @p flag is 0 the scan stops at the first line break.
+ *
+ * @param s    Null-terminated message string.
+ * @param flag If nonzero, measure every line; if zero, stop at the first break.
+ * @return Packed dimensions: width in the low 16 bits, @c (lines*16 - 4) in the
+ *         high 16 bits.
+ */
+s32 func_8002E4AC(u8 *s, s32 flag) {
+    s32 width = 0;
+    s32 maxWidth = 0;
+    s32 lines = 1;
+    s32 maxLines = 1;
+    s32 height;
+
+    for (;;) {
+        s32 c = *s++;
+        if (c == 0) {
+            if (maxWidth < width) {
+                maxWidth = width;
+            }
+            if (maxLines < lines) {
+                maxLines = lines;
+            }
+            height = maxLines * 16;
+            break;
+        }
+        if ((u32) (c - 1) < 2 || c == 7) {
+            /* control codes 1, 2, 7: line break */
+            lines++;
+            if (c == 1) {
+                lines = 1;
+            }
+            if (c == 7) {
+                lines = 1;
+            }
+            if (maxLines < lines) {
+                maxLines = lines;
+            }
+            if (maxWidth < width) {
+                maxWidth = width;
+            }
+            width = 0;
+            if (flag == 0) {
+                height = maxLines * 16;
+                break;
+            }
+        } else if (c == 5) {
+            c = *s++;
+            width += func_8002E3A4(func_8002C734(c));
+            width++;
+        } else if (c < 0x10) {
+            s++;
+        } else if (c >= 0x18) {
+            u8 packed;
+            s32 nib;
+            if (c >= 0x20) {
+                c = c - 0x20;
+            } else if (c < 0x1C) {
+                c *= 0xE0;
+                c += *s++;
+                c -= 0x1520;
+            } else {
+                c *= 0xE0;
+                c += *s++;
+                c -= 0x18A0;
+                c |= 0x400;
+            }
+            packed = D_800834D8[c >> 1];
+            if (c & 1) {
+                packed >>= 4;
+            }
+            nib = packed & 0xF;
+            width += nib;
+        }
+    }
+
+    return maxWidth | (((maxLines * 16) - 4) << 16);
+}
 
 
 INCLUDE_ASM("asm/nonmatchings/btl_sfx", func_8002E680);
 
 
 /** @brief Get a string's packed {width, height} (variant A). */
-s32 getGlyphWidthA(s32 code) {
+s32 getGlyphWidthA(u8 *code) {
     return func_8002E4AC(code, 1);
 }
 
 
 /** @brief Get glyph width (variant B). */
-void getGlyphWidthB(s32 code) {
+void getGlyphWidthB(u8 *code) {
     func_8002E4AC(code, 1);
 }
 
 
 /** @brief Get glyph width as u16. */
-u16 getGlyphWidthU16(s32 code) {
+u16 getGlyphWidthU16(u8 *code) {
     return (u16)func_8002E4AC(code, 1);
 }
 
@@ -897,7 +983,7 @@ u16 getGlyphWidthU16(s32 code) {
  * @param code Glyph code.
  * @return Status value truncated to 16 bits.
  */
-u16 getGlyphStatusU16(s32 code) {
+u16 getGlyphStatusU16(u8 *code) {
     return (u16)func_8002E4AC(code, 0);
 }
 
