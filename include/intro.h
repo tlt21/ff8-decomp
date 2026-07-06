@@ -81,7 +81,6 @@ extern s32  func_8004D208(s32 a);
 extern void func_800275D4();          /* K&R prototype, intentional. */
 extern s32  func_800393C8(void);
 extern s32  getDiscId(void);
-/* resetCdDriveMode / func_80038A60 are declared by their owner, cdrom.h. */
 extern s32  getAnimFrameParam(s32 slot, s32 sub);
 
 #endif /* INTRO_H */
