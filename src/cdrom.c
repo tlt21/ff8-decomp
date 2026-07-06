@@ -1,14 +1,10 @@
 #include "common.h"
 #include "psxsdk/libgpu.h"
+#include "psxsdk/libcd.h"
 #include "overlay.h"
 #include "cd.h"
 #include "cdrom.h"
 #include "snd_cd.h"
-
-/* CdIntToPos is a PsyQ SDK routine (psxsdk/libcd.h), but FF8 calls it with a
-   raw u8 position buffer rather than CdlLOC*; kept local until the libcd.h
-   signature is reconciled. */
-void CdIntToPos(s32 lba, u8 *pos);
 
 /**
  * @brief Detect the disc number by searching for disc-specific files.
@@ -124,7 +120,7 @@ void flushCdAndWait(void) {
 void func_80038760(s32 mode, s32 lba, u32 size, u8 *dest, void (*callback)(void)) {
     while (func_800393C8()) {}
 
-    CdIntToPos(lba, D_8008A3D8.params);
+    CdIntToPos(lba, &D_8008A3D8.params);
     D_8008A3D8.sectorCount = (size + 0x7FF) >> 11;
     D_8008A3D8.readBuffer = dest;
     D_8008A3D8.callback = callback;
@@ -303,7 +299,7 @@ void resetCdDriveMode(void) {
  * @return CD state code (see above), also stored in @c D_8008A3C8.state.
  */
 s32 func_80038A60(void) {
-    u8 loc[4];
+    CdlLOC loc;
     u8 result[8];
     s32 ready;
     s32 i;
@@ -368,8 +364,8 @@ s32 func_80038A60(void) {
         return 1;
     }
 
-    CdIntToPos(0x17, loc);
-    CdControlB(0x15, loc, result);
+    CdIntToPos(0x17, &loc);
+    CdControlB(0x15, (u8 *)&loc, result);
     if ((result[0] & 1) || (result[1] & 0x40)) {
         do { D_8008A3C8.state = 1; } while (0);
         return 1;

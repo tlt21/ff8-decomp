@@ -2,6 +2,7 @@
 #define CD_H
 
 #include "common.h"
+#include "psxsdk/libcd.h"
 
 /** @brief CD-ROM file descriptor (sector + size pair).
  *
@@ -42,7 +43,8 @@ typedef struct {
     /* 0x01 */ u8 status;          /**< State machine phase (0=idle, 0xB=complete, 0xC=reset). */
     /* 0x02 */ u8 discNum;         /**< Detected disc number (aliases @c D_8008A3DA / @ref getDiscId). */
     /* 0x03 */ u8 pad03;
-    /* 0x04 */ u8 params[4];       /**< CdControl parameters. */
+    /* 0x04 */ CdlLOC params;      /**< Seek location filled by CdIntToPos; cast to
+                                    *   @c u8* when passed to CdControl. */
     /* 0x08 */ u32 sectorCount;    /**< Number of sectors to read. */
     /* 0x0C */ u8 pad0C[0x10];
     /* 0x1C */ u8 *readBuffer;     /**< Destination buffer for CdRead. */
